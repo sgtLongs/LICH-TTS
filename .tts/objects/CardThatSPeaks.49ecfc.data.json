@@ -4,10 +4,10 @@
   "Transform": {
     "posX": 2.8787806,
     "posY": 0.7640465,
-    "posZ": -0.517305255,
-    "rotX": -0.0002495637,
+    "posZ": -0.5173052,
+    "rotX": -0.000249548844,
     "rotY": 180,
-    "rotZ": -0.0007677888,
+    "rotZ": -0.0007676528,
     "scaleX": 1,
     "scaleY": 1,
     "scaleZ": 1
@@ -41,7 +41,7 @@
   "Hands": true,
   "CardID": 23,
   "SidewaysCard": false,
-  "LuaScript": "local SpeakerButton = require(\"objects/SpeakerButton\")\r\n\r\nfunction onLoad()\r\n    SpeakerButton.onLoad(self)\r\nend\r\n\r\nfunction handleSpeakButtonClicked(obj, playerColor, altClick)\r\n    SpeakerButton.handleSpeakButtonClicked(self, obj, playerColor, altClick)\r\nend",
+  "LuaScript": "function onLoad()\r\n    self.clearButtons()\r\n\r\n    self.createButton({\r\n        label = \"Speak\",\r\n        click_function = \"handleSpeakButtonClicked\",\r\n        function_owner = self,\r\n\r\n        position = {0, 0.3, 0},\r\n        width = 900,\r\n        height = 400,\r\n        font_size = 180\r\n    })\r\nend\r\n\r\nfunction handleSpeakButtonClicked(obj, playerColor, altClick)\r\n    printToAll(\"Object handler fired\", {1, 1, 0})\r\n\r\n    Global.call(\"onSpeakerButtonClicked\", {\r\n        playerColor = playerColor,\r\n        objectGuid = self.getGUID(),\r\n        objectName = self.getName()\r\n    })\r\nend",
   "LuaScriptState": "",
   "XmlUI": ""
 }

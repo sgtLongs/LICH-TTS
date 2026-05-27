@@ -2,6 +2,13 @@
 
 --[[ The OnLoad function. This is called after everything in the game save finishes loading.
 Most of your script code goes here. --]]
+
+local ChatService = require("src/ChatService")
+
+function onSpeakerButtonClicked(data)
+    ChatService.sayButtonClicked(data.playerColor, data.objectName)
+end
+
 function onload()
     --[[ print('Onload!') --]]
 end
@@ -10,3 +17,4 @@ end
 function update ()
     --[[ print('Update loop!') --]]
 end
+
