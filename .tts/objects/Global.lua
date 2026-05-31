@@ -1,20 +1,13 @@
---[[ Lua code. See documentation: http://berserk-games.com/knowledgebase/scripting/ --]]
+local Game = require("src/Game")
 
---[[ The OnLoad function. This is called after everything in the game save finishes loading.
-Most of your script code goes here. --]]
+function onLoad(saveState)
+    Game.onLoad(saveState)
+end
 
-local ChatService = require("src/ChatService")
+function onSave()
+    return Game.onSave()
+end
 
 function onSpeakerButtonClicked(data)
-    ChatService.sayButtonClicked(data.playerColor, data.objectName)
+    Game.onSpeakerButtonClicked(data)
 end
-
-function onload()
-    --[[ print('Onload!') --]]
-end
-
---[[ The Update function. This is called once per frame. --]]
-function update ()
-    --[[ print('Update loop!') --]]
-end
-

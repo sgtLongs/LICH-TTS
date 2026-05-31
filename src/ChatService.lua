@@ -12,4 +12,4 @@ function ChatService.sayButtonClicked(playerColor, objectName)
     ChatService.sayToAll(playerColor .. " clicked " .. objectName)
 end
 
-return ChatService  
+return ChatService

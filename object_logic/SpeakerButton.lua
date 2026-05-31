@@ -3,6 +3,8 @@ local ButtonFactory = require("src/ButtonFactory")
 local SpeakerButton = {}
 
 function SpeakerButton.onLoad(ttsObject)
+    ttsObject.clearButtons()
+
     ButtonFactory.createTextButton(
         ttsObject,
         "Speak",
