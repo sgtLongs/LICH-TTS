@@ -9,6 +9,9 @@ Test.case("card fields build six 7 by 3 sectioned grids", function()
     Test.equal(6, #result.fields)
     Test.equal(21, #result.fields[1].cells)
     Test.equal(144, #result.lines)
+    Test.equal(Config.deckSlot.row, result.fields[1].deckSlot.row)
+    Test.equal(Config.deckSlot.column, result.fields[1].deckSlot.column)
+    Test.equal("3c4e81", result.fields[1].surfaceObjectGuid)
 
     local sectionCounts = {}
 

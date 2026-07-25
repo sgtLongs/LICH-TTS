@@ -8,6 +8,47 @@ local CardFieldConfig = {
     sectionLineThickness = 0.18,
     gridColor = {0.75, 0.75, 0.75, 0.8},
 
+    deckSlot = {
+        row = 1,
+        column = 1,
+        -- Player-field columns are numbered from right to left, making
+        -- column 7 the leftmost slot.
+        columnsRunRightToLeft = true,
+        -- Click-target dimensions in world units.
+        buttonWidth = 20,
+        buttonHeight = 27,
+        buttonSurfaceOffset = 0.03,
+        invisibleButtonColor = {0, 0, 0, 0},
+        debugLabel = "DECK",
+        debugFontSize = 80,
+        debugColor = {1, 0.45, 0.05, 0.55},
+        debugFontColor = {1, 1, 1, 1},
+        debugHoverColor = {1, 0.65, 0.15, 0.72},
+        debugPressColor = {0.85, 0.25, 0.02, 0.82},
+        clickFunction = "onCardFieldDeckSlotClicked",
+        apiUrl =
+            "https://kickback-kingdom.com/api/v1/lich/get-deck.php",
+        menuRootId = "deckSelectionMenuRoot",
+        decks = {
+            {lootId = 9636, name = "Arysa Andrews"},
+            {lootId = 4371, name = "Aurelia, Maiden of the Brush"},
+            {lootId = 11164, name = "Brain"},
+            {lootId = 4375, name = "Devon Andrews"},
+            {lootId = 10471, name = "Draelith, Phoenix King"},
+            {lootId = 4369, name = "Eric and Eugene"},
+            {lootId = 4370, name = "Eric, the Possessed"},
+            {lootId = 9078, name = "Isiaiah Mangrum"},
+            {lootId = 7813, name = "Kronnid the Wretched"},
+            {lootId = 4376, name = "Maldrith, Acolyte of Shadows"},
+            {lootId = 10853, name = "Manfred Schneider"},
+            {lootId = 4374, name = "Marok, the Devourer"},
+            {lootId = 4373, name = "Yashlaegon, the Sinful"}
+        },
+        cardSpawnHeight = 2,
+        cardDropHeight = 40,
+        spawnDelay = 0.08
+    },
+
     -- Rectangles use inclusive, one-based grid coordinates. Keeping the
     -- layout here makes it easy to replace with the final CSV mapping.
     sections = {
@@ -45,36 +86,42 @@ local CardFieldConfig = {
     fields = {
         {
             playerColor = "White",
+            surfaceObjectGuid = "3c4e81",
             position = {x = -36, z = -41},
             rotationDegrees = 0,
             size = {x = 28, z = 16.5}
         },
         {
             playerColor = "Brown",
+            surfaceObjectGuid = "665355",
             position = {x = 0, z = -41},
             rotationDegrees = 0,
             size = {x = 28, z = 16.5}
         },
         {
             playerColor = "Red",
+            surfaceObjectGuid = "0c8d35",
             position = {x = 36, z = -41},
             rotationDegrees = 0,
             size = {x = 28, z = 16.5}
         },
         {
             playerColor = "Green",
+            surfaceObjectGuid = "5dd89b",
             position = {x = 36, z = 41},
             rotationDegrees = 180,
             size = {x = 28, z = 16.5}
         },
         {
             playerColor = "Teal",
+            surfaceObjectGuid = "661907",
             position = {x = 0, z = 41},
             rotationDegrees = 180,
             size = {x = 28, z = 16.5}
         },
         {
             playerColor = "Blue",
+            surfaceObjectGuid = "88b8d6",
             position = {x = -36, z = 41},
             rotationDegrees = 180,
             size = {x = 28, z = 16.5}

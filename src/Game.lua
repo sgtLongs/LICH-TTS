@@ -97,6 +97,14 @@ function Game.onHexGridClicked(playerColor, altClick)
     HexGrid.onClicked(playerColor, altClick)
 end
 
+function Game.onCardFieldDeckSlotClicked(object, playerColor)
+    CardFields.onDeckSlotClicked(object, playerColor)
+end
+
+function Game.onDeckSelectionUiClicked(playerColor, action)
+    CardFields.onDeckMenuUiClicked(playerColor, action)
+end
+
 function Game.onHexGridObjectClicked(object, playerColor, altClick)
     HexGrid.onObjectClicked(object, playerColor, altClick)
 end

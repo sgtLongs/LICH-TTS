@@ -11,6 +11,14 @@ local ChatService = {
 local CardFields = {
     onLoad = function()
         calls.cardFieldsLoaded = true
+    end,
+    onDeckSlotClicked = function(object, playerColor)
+        calls.deckSlotObject = object
+        calls.deckSlotPlayerColor = playerColor
+    end,
+    onDeckMenuUiClicked = function(playerColor, action)
+        calls.deckMenuPlayerColor = playerColor
+        calls.deckMenuAction = action
     end
 }
 local DungeonMap = {
@@ -170,6 +178,18 @@ Test.case("game routes edit mode UI changes", function()
 
     Test.equal("Red", calls.editModePlayerColor)
     Test.equal("True", calls.editModeValue)
+end)
+
+Test.case("game routes deck slot and deck menu choices", function()
+    local object = {}
+
+    Game.onCardFieldDeckSlotClicked(object, "Blue")
+    Game.onDeckSelectionUiClicked("Blue", "9636")
+
+    Test.equal(object, calls.deckSlotObject)
+    Test.equal("Blue", calls.deckSlotPlayerColor)
+    Test.equal("Blue", calls.deckMenuPlayerColor)
+    Test.equal("9636", calls.deckMenuAction)
 end)
 
 Test.case("game load tolerates invalid JSON", function()

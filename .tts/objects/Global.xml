@@ -413,6 +413,139 @@
 </Panel>
 
 <Panel
+    id="deckSelectionMenuRoot"
+    rectAlignment="MiddleCenter"
+    width="900"
+    height="650"
+    color="#090C12F5"
+    padding="22 22 22 22"
+    active="false"
+>
+    <VerticalLayout spacing="12" childAlignment="UpperCenter">
+        <HorizontalLayout
+            preferredHeight="58"
+            spacing="12"
+            childAlignment="MiddleCenter"
+        >
+            <Text
+                text="Choose a Deck"
+                fontSize="30"
+                fontStyle="Bold"
+                preferredWidth="760"
+                preferredHeight="52"
+            />
+            <Button
+                text="X"
+                fontSize="28"
+                colors="#751D24|#A62A34|#5A151B|#5A151B"
+                onClick="onDeckSelectionUiClicked(close)"
+                preferredWidth="56"
+                preferredHeight="52"
+                tooltip="Close"
+            />
+        </HorizontalLayout>
+
+        <HorizontalLayout preferredHeight="68" spacing="12">
+            <Button
+                text="Arysa Andrews"
+                onClick="onDeckSelectionUiClicked(9636)"
+                preferredWidth="420"
+                preferredHeight="64"
+            />
+            <Button
+                text="Aurelia, Maiden of the Brush"
+                onClick="onDeckSelectionUiClicked(4371)"
+                resizeTextForBestFit="true"
+                resizeTextMinSize="16"
+                preferredWidth="420"
+                preferredHeight="64"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout preferredHeight="68" spacing="12">
+            <Button
+                text="Brain"
+                onClick="onDeckSelectionUiClicked(11164)"
+                preferredWidth="420"
+                preferredHeight="64"
+            />
+            <Button
+                text="Devon Andrews"
+                onClick="onDeckSelectionUiClicked(4375)"
+                preferredWidth="420"
+                preferredHeight="64"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout preferredHeight="68" spacing="12">
+            <Button
+                text="Draelith, Phoenix King"
+                onClick="onDeckSelectionUiClicked(10471)"
+                preferredWidth="420"
+                preferredHeight="64"
+            />
+            <Button
+                text="Eric and Eugene"
+                onClick="onDeckSelectionUiClicked(4369)"
+                preferredWidth="420"
+                preferredHeight="64"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout preferredHeight="68" spacing="12">
+            <Button
+                text="Eric, the Possessed"
+                onClick="onDeckSelectionUiClicked(4370)"
+                preferredWidth="420"
+                preferredHeight="64"
+            />
+            <Button
+                text="Isiaiah Mangrum"
+                onClick="onDeckSelectionUiClicked(9078)"
+                preferredWidth="420"
+                preferredHeight="64"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout preferredHeight="68" spacing="12">
+            <Button
+                text="Kronnid the Wretched"
+                onClick="onDeckSelectionUiClicked(7813)"
+                preferredWidth="420"
+                preferredHeight="64"
+            />
+            <Button
+                text="Maldrith, Acolyte of Shadows"
+                onClick="onDeckSelectionUiClicked(4376)"
+                resizeTextForBestFit="true"
+                resizeTextMinSize="16"
+                preferredWidth="420"
+                preferredHeight="64"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout preferredHeight="68" spacing="12">
+            <Button
+                text="Manfred Schneider"
+                onClick="onDeckSelectionUiClicked(10853)"
+                preferredWidth="420"
+                preferredHeight="64"
+            />
+            <Button
+                text="Marok, the Devourer"
+                onClick="onDeckSelectionUiClicked(4374)"
+                preferredWidth="420"
+                preferredHeight="64"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout preferredHeight="68" spacing="12">
+            <Button
+                text="Yashlaegon, the Sinful"
+                onClick="onDeckSelectionUiClicked(4373)"
+                preferredWidth="420"
+                preferredHeight="64"
+            />
+            <Panel preferredWidth="420" preferredHeight="64" />
+        </HorizontalLayout>
+    </VerticalLayout>
+</Panel>
+
+<Panel
     id="dungeonMapRoot"
     rectAlignment="MiddleCenter"
     width="1080"

@@ -66,6 +66,23 @@ function CardFieldGeometry.buildField(field, config)
     local cellHeight = field.size.z / config.rows
     local left = -field.size.x * 0.5
     local top = -field.size.z * 0.5
+    local deckSlot = config.deckSlot
+    local deckSlotPoint = nil
+
+    if deckSlot ~= nil then
+        local deckSlotColumn = deckSlot.column
+
+        if deckSlot.columnsRunRightToLeft == true then
+            deckSlotColumn = config.columns - deckSlot.column + 1
+        end
+
+        local deckSlotX = left + (deckSlotColumn - 0.5) * cellWidth
+        local deckSlotZ = top + (deckSlot.row - 0.5) * cellHeight
+        deckSlotPoint = rotatePoint(deckSlotX, deckSlotZ, field)
+        deckSlotPoint.y = config.surfaceY
+        deckSlotPoint.row = deckSlot.row
+        deckSlotPoint.column = deckSlot.column
+    end
 
     for boundary = 0, config.columns do
         local x = left + boundary * cellWidth
@@ -130,7 +147,15 @@ function CardFieldGeometry.buildField(field, config)
     return {
         lines = lines,
         cells = cells,
-        playerColor = field.playerColor
+        playerColor = field.playerColor,
+        surfaceObjectGuid = field.surfaceObjectGuid,
+        position = {
+            x = field.position.x,
+            z = field.position.z
+        },
+        deckSlot = deckSlotPoint,
+        cellWidth = cellWidth,
+        cellHeight = cellHeight
     }
 end
 

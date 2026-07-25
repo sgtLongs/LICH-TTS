@@ -24,6 +24,14 @@ function onHexGridClicked(object, playerColor, altClick)
     Game.onHexGridClicked(playerColor, altClick)
 end
 
+function onCardFieldDeckSlotClicked(object, playerColor, altClick)
+    Game.onCardFieldDeckSlotClicked(object, playerColor)
+end
+
+function onDeckSelectionUiClicked(player, action, id)
+    Game.onDeckSelectionUiClicked(player.color, action)
+end
+
 function onHexGridObjectClicked(object, playerColor, altClick)
     Game.onHexGridObjectClicked(object, playerColor, altClick)
 end
