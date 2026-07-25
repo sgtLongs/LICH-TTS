@@ -1,4 +1,5 @@
 local ChatService = require("src/ChatService")
+local DungeonMap = require("src/DungeonMap")
 local HexGrid = require("src/hex/HexGrid")
 local SettingsMenu = require("src/SettingsMenu")
 local TurnSystem = require("src/turns/TurnSystem")
@@ -7,6 +8,7 @@ local Game = {}
 
 local function getSaveState()
     return {
+        dungeonMap = DungeonMap.getSaveState(),
         hexGrid = HexGrid.getSaveState(),
         settings = SettingsMenu.getSaveState(),
         turnSystem = TurnSystem.getSaveState()
@@ -60,8 +62,16 @@ function Game.onLoad(saveState)
         getBoardStateJson = HexGrid.getBoardStateJson,
         loadBoardState = HexGrid.loadBoardState,
         loadBoardStateJson = HexGrid.loadBoardStateJson,
+        onBoardLoadStarted = DungeonMap.onExternalBoardLoadStarted,
+        onBoardLoadCompleted = DungeonMap.onExternalBoardLoadCompleted,
+        onSavedBoardsChanged = DungeonMap.onSavedBoardsChanged,
         persistState = Game.persistState
     }, savedGame.settings)
+    DungeonMap.initialize({
+        getSavedBoardSummaries = SettingsMenu.getSavedBoardSummaries,
+        loadSavedBoardById = SettingsMenu.loadSavedBoardById,
+        persistState = Game.persistState
+    }, savedGame.dungeonMap)
 end
 
 function Game.onSave()
@@ -98,6 +108,10 @@ end
 
 function Game.onSettingsBoardNameEdited(playerColor, value)
     SettingsMenu.onBoardNameEdited(playerColor, value)
+end
+
+function Game.onDungeonMapUiClicked(playerColor, action)
+    DungeonMap.handleAction(playerColor, action)
 end
 
 function Game.onPlayerAction(player, action, targets)

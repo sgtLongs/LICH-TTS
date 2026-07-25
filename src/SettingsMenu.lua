@@ -6,13 +6,17 @@ local jsonDraftsByPlayerColor = {}
 local nameDraftsByPlayerColor = {}
 local savedBoards = {}
 local selectedBoardIndex = nil
+local nextBoardId = 1
 local boardListPage = 1
 local context = {
     getBoardState = nil,
     getBoardStateJson = nil,
     loadBoardState = nil,
     loadBoardStateJson = nil,
-    persistState = nil
+    persistState = nil,
+    onSavedBoardsChanged = nil,
+    onBoardLoadStarted = nil,
+    onBoardLoadCompleted = nil
 }
 
 local function isAdmin(playerColor)
@@ -73,6 +77,152 @@ local function findBoardByName(name)
     end
 
     return nil
+end
+
+local function isValidBoardId(boardId)
+    return type(boardId) == "string" and trim(boardId) ~= ""
+end
+
+local function findBoardById(boardId)
+    if not isValidBoardId(boardId) then
+        return nil
+    end
+
+    for index, savedBoard in ipairs(savedBoards) do
+        if savedBoard.id == boardId then
+            return index
+        end
+    end
+
+    return nil
+end
+
+local function normalizeNextBoardId(value)
+    local normalizedValue = tonumber(value)
+
+    if normalizedValue == nil
+        or normalizedValue < 1
+        or normalizedValue ~= math.floor(normalizedValue)
+    then
+        return nil
+    end
+
+    return normalizedValue
+end
+
+local function advanceNextBoardIdPast(boardId)
+    local numericId = tonumber(string.match(boardId, "^board%-(%d+)$"))
+
+    if numericId ~= nil and numericId >= nextBoardId then
+        nextBoardId = numericId + 1
+    end
+end
+
+local function allocateBoardId(reservedBoardIds)
+    local boardId = "board-" .. nextBoardId
+
+    while findBoardById(boardId)
+        or (reservedBoardIds ~= nil and reservedBoardIds[boardId])
+    do
+        nextBoardId = nextBoardId + 1
+        boardId = "board-" .. nextBoardId
+    end
+
+    nextBoardId = nextBoardId + 1
+    return boardId
+end
+
+local function isSavedBoardCandidate(savedBoard)
+    return type(savedBoard) == "table"
+        and type(savedBoard.name) == "string"
+        and trim(savedBoard.name) ~= ""
+        and type(savedBoard.boardState) == "table"
+end
+
+local function loadSavedBoard(savedBoard, playerColor, onCompleted)
+    if savedBoard == nil then
+        return false, "Select a saved board before loading."
+    end
+
+    if context.loadBoardState == nil then
+        return false, "Board loading is unavailable."
+    end
+
+    local succeeded, message = context.loadBoardState(
+        savedBoard.boardState,
+        playerColor,
+        onCompleted
+    )
+
+    if succeeded then
+        message = "Loaded " .. savedBoard.name .. ". " .. message
+    end
+
+    return succeeded, message
+end
+
+local function createExternalLoadTracker(boardSaveId, playerColor)
+    local loadAccepted = false
+    local completionArrived = false
+    local completionSucceeded = false
+    local completionReported = false
+    local loadGeneration = nil
+
+    local function reportCompletionIfReady()
+        if completionReported
+            or not loadAccepted
+            or not completionArrived
+        then
+            return
+        end
+
+        completionReported = true
+
+        local completionAccepted = true
+
+        if context.onBoardLoadCompleted ~= nil then
+            completionAccepted = context.onBoardLoadCompleted(
+                loadGeneration,
+                boardSaveId,
+                completionSucceeded
+            ) ~= false
+        end
+
+        if not completionSucceeded and completionAccepted then
+            local failureMessage =
+                "The board changed, but one or more objects did not "
+                    .. "finish loading."
+
+            setStatus(failureMessage, "#FCA5A5")
+            broadcastToColor(
+                failureMessage,
+                playerColor,
+                Config.colors.failure
+            )
+        end
+    end
+
+    local function onCompleted(succeeded)
+        if completionArrived then
+            return
+        end
+
+        completionArrived = true
+        completionSucceeded = succeeded == true
+        reportCompletionIfReady()
+    end
+
+    local function markAccepted()
+        loadAccepted = true
+
+        if context.onBoardLoadStarted ~= nil then
+            loadGeneration = context.onBoardLoadStarted(boardSaveId)
+        end
+
+        reportCompletionIfReady()
+    end
+
+    return onCompleted, markAccepted
 end
 
 local function getPageCount()
@@ -180,29 +330,65 @@ function SettingsMenu.initialize(parameters, savedState)
     context.loadBoardState = parameters.loadBoardState
     context.loadBoardStateJson = parameters.loadBoardStateJson
     context.persistState = parameters.persistState
+    context.onSavedBoardsChanged = parameters.onSavedBoardsChanged
+    context.onBoardLoadStarted = parameters.onBoardLoadStarted
+    context.onBoardLoadCompleted = parameters.onBoardLoadCompleted
     activePlayerColor = nil
     jsonDraftsByPlayerColor = {}
     nameDraftsByPlayerColor = {}
     savedBoards = {}
     selectedBoardIndex = nil
+    nextBoardId = 1
     boardListPage = 1
+
+    if type(savedState) == "table"
+        and savedState.schemaVersion ~= nil
+        and tonumber(savedState.schemaVersion)
+            ~= Config.legacySettingsSchemaVersion
+        and tonumber(savedState.schemaVersion)
+            ~= Config.settingsSchemaVersion
+    then
+        print("SettingsMenu: ignored an unsupported saved-state version.")
+        savedState = {}
+    end
 
     if type(savedState) == "table"
         and type(savedState.savedBoards) == "table"
     then
+        nextBoardId = normalizeNextBoardId(savedState.nextBoardId) or 1
+        local reservedBoardIds = {}
+
         for _, savedBoard in ipairs(savedState.savedBoards) do
-            if type(savedBoard) == "table"
-                and type(savedBoard.name) == "string"
-                and trim(savedBoard.name) ~= ""
-                and type(savedBoard.boardState) == "table"
+            if isSavedBoardCandidate(savedBoard)
+                and isValidBoardId(savedBoard.id)
             then
+                reservedBoardIds[savedBoard.id] = true
+                advanceNextBoardIdPast(savedBoard.id)
+            end
+        end
+
+        local usedBoardIds = {}
+
+        for _, savedBoard in ipairs(savedState.savedBoards) do
+            if isSavedBoardCandidate(savedBoard) then
+                local boardId = savedBoard.id
+
+                if not isValidBoardId(boardId) or usedBoardIds[boardId] then
+                    boardId = allocateBoardId(reservedBoardIds)
+                end
+
+                usedBoardIds[boardId] = true
                 savedBoards[#savedBoards + 1] = {
+                    id = boardId,
                     name = trim(savedBoard.name),
                     boardState = savedBoard.boardState
                 }
             end
         end
-    elseif type(savedState) == "table"
+    end
+
+    if #savedBoards == 0
+        and type(savedState) == "table"
         and type(savedState.boardStateJson) == "string"
     then
         local succeeded, legacyBoardState = pcall(
@@ -212,6 +398,7 @@ function SettingsMenu.initialize(parameters, savedState)
 
         if succeeded and type(legacyBoardState) == "table" then
             savedBoards[1] = {
+                id = allocateBoardId(),
                 name = "Imported Saved Board",
                 boardState = legacyBoardState
             }
@@ -219,6 +406,13 @@ function SettingsMenu.initialize(parameters, savedState)
     end
 
     if type(savedState) == "table"
+        and isValidBoardId(savedState.selectedBoardId)
+    then
+        selectedBoardIndex = findBoardById(savedState.selectedBoardId)
+    end
+
+    if selectedBoardIndex == nil
+        and type(savedState) == "table"
         and type(savedState.selectedBoardName) == "string"
     then
         selectedBoardIndex = findBoardByName(
@@ -238,11 +432,60 @@ function SettingsMenu.getSaveState()
         and savedBoards[selectedBoardIndex] or nil
 
     return {
-        schemaVersion = Config.schemaVersion,
+        schemaVersion = Config.settingsSchemaVersion,
         savedBoards = savedBoards,
+        nextBoardId = nextBoardId,
+        selectedBoardId = selectedBoard ~= nil
+            and selectedBoard.id or nil,
         selectedBoardName = selectedBoard ~= nil
             and selectedBoard.name or nil
     }
+end
+
+function SettingsMenu.getSavedBoardSummaries()
+    local summaries = {}
+
+    for index, savedBoard in ipairs(savedBoards) do
+        summaries[index] = {
+            id = savedBoard.id,
+            name = savedBoard.name
+        }
+    end
+
+    return summaries
+end
+
+function SettingsMenu.loadSavedBoardById(
+    boardId,
+    playerColor,
+    onCompleted
+)
+    local boardIndex = findBoardById(boardId)
+
+    if boardIndex == nil then
+        return false, "Select a saved board before loading."
+    end
+
+    local succeeded, message = loadSavedBoard(
+        savedBoards[boardIndex],
+        playerColor,
+        onCompleted
+    )
+
+    if succeeded then
+        selectedBoardIndex = boardIndex
+        nameDraftsByPlayerColor = {}
+        nameDraftsByPlayerColor[playerColor] =
+            savedBoards[boardIndex].name
+        UI.setAttribute(
+            Config.ui.boardNameInputId,
+            "text",
+            savedBoards[boardIndex].name
+        )
+        refreshBoardList(playerColor)
+    end
+
+    return succeeded, message
 end
 
 function SettingsMenu.handleAction(playerColor, action)
@@ -328,6 +571,9 @@ function SettingsMenu.handleAction(playerColor, action)
 
         local existingIndex = findBoardByName(boardName)
         local savedBoard = {
+            id = existingIndex ~= nil
+                and savedBoards[existingIndex].id
+                or allocateBoardId(),
             name = boardName,
             boardState = context.getBoardState()
         }
@@ -346,6 +592,9 @@ function SettingsMenu.handleAction(playerColor, action)
             selectedBoardIndex / Config.boardListPageSize
         )
         refreshBoardList(playerColor)
+        if context.onSavedBoardsChanged ~= nil then
+            context.onSavedBoardsChanged()
+        end
         local persistedImmediately = context.persistState ~= nil
             and context.persistState() or false
         setStatus(
@@ -363,20 +612,16 @@ function SettingsMenu.handleAction(playerColor, action)
     if action == "load" and context.loadBoardState ~= nil then
         local savedBoard = selectedBoardIndex ~= nil
             and savedBoards[selectedBoardIndex] or nil
-
-        if savedBoard == nil then
-            setStatus("Select a saved board before loading.", "#FCA5A5")
-            return
-        end
-
-        local succeeded, message = context.loadBoardState(
-            savedBoard.boardState,
+        local onCompleted, markAccepted = createExternalLoadTracker(
+            savedBoard ~= nil and savedBoard.id or nil,
             playerColor
         )
 
-        if succeeded then
-            message = "Loaded " .. savedBoard.name .. ". " .. message
-        end
+        local succeeded, message = loadSavedBoard(
+            savedBoard,
+            playerColor,
+            onCompleted
+        )
 
         setStatus(message, succeeded and "#86EFAC" or "#FCA5A5")
         broadcastToColor(
@@ -384,6 +629,11 @@ function SettingsMenu.handleAction(playerColor, action)
             playerColor,
             succeeded and Config.colors.success or Config.colors.failure
         )
+
+        if succeeded then
+            markAccepted()
+        end
+
         return
     end
 
@@ -406,9 +656,14 @@ function SettingsMenu.handleAction(playerColor, action)
         return
     end
 
+    local onCompleted, markAccepted = createExternalLoadTracker(
+        nil,
+        playerColor
+    )
     local succeeded, message = context.loadBoardStateJson(
         boardStateJson,
-        playerColor
+        playerColor,
+        onCompleted
     )
 
     if not succeeded then
@@ -422,6 +677,7 @@ function SettingsMenu.handleAction(playerColor, action)
     UI.setAttribute(Config.ui.jsonInputId, "text", normalizedJson)
     setStatus(message, "#86EFAC")
     broadcastToColor(message, playerColor, Config.colors.success)
+    markAccepted()
 end
 
 function SettingsMenu.onJsonEdited(playerColor, value)

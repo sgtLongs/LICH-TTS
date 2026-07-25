@@ -40,6 +40,10 @@ function onSettingsBoardNameEdited(player, value, id)
     Game.onSettingsBoardNameEdited(player.color, value)
 end
 
+function onDungeonMapUiClicked(player, action, id)
+    Game.onDungeonMapUiClicked(player.color, action)
+end
+
 function onPlayerAction(player, action, targets)
     return Game.onPlayerAction(player, action, targets)
 end

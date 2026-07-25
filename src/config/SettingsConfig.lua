@@ -1,5 +1,7 @@
 local SettingsConfig = {
-    schemaVersion = 1,
+    boardStateSchemaVersion = 1,
+    legacySettingsSchemaVersion = 1,
+    settingsSchemaVersion = 2,
     placedObjectTag = "LichHexGridObject",
     boardListPageSize = 5,
     ui = {

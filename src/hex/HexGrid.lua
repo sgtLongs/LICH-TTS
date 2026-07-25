@@ -190,7 +190,26 @@ local function hasPlacement(targetPlacement)
     return false
 end
 
-local function spawnPlacement(placement, playerColor, silent)
+local function spawnPlacement(
+    placement,
+    playerColor,
+    silent,
+    onCompleted
+)
+    local completionReported = false
+
+    local function reportCompletion(succeeded)
+        if completionReported then
+            return
+        end
+
+        completionReported = true
+
+        if onCompleted ~= nil then
+            pcall(onCompleted, succeeded)
+        end
+    end
+
     local template = templatesByKey[placement.templateKey]
     local targetCell = cellsByKey[
         HexGridBuilder.cellKey(
@@ -216,6 +235,7 @@ local function spawnPlacement(placement, playerColor, silent)
         or facingCell == nil
         or getAdjacentCells(targetCell)[facingKey] == nil
     then
+        reportCompletion(false)
         return false
     end
 
@@ -237,17 +257,23 @@ local function spawnPlacement(placement, playerColor, silent)
         function(spawnedObject)
             if not hasPlacement(placement) then
                 destroyObject(spawnedObject)
+                reportCompletion(false)
                 return
             end
 
-            placement.guid = spawnedObject.getGUID()
-            spawnedObject.addTag(SettingsConfig.placedObjectTag)
+            local completedSuccessfully = pcall(function()
+                placement.guid = spawnedObject.getGUID()
+                spawnedObject.addTag(SettingsConfig.placedObjectTag)
+            end)
+
+            reportCompletion(completedSuccessfully)
         end,
         silent
     )
 
     if not accepted then
         removePlacement(placement)
+        reportCompletion(false)
     end
 
     return accepted
@@ -523,7 +549,9 @@ local function normalizeBoardState(boardState)
         return nil, "Board-state JSON must contain an object."
     end
 
-    if tonumber(boardState.schemaVersion) ~= SettingsConfig.schemaVersion then
+    if tonumber(boardState.schemaVersion)
+        ~= SettingsConfig.boardStateSchemaVersion
+    then
         return nil, "Unsupported board-state schema version."
     end
 
@@ -653,7 +681,7 @@ function HexGrid.getBoardState()
     end
 
     return {
-        schemaVersion = SettingsConfig.schemaVersion,
+        schemaVersion = SettingsConfig.boardStateSchemaVersion,
         boardGuid = Config.boardGuid,
         selectedHexes = selectedHexes,
         hexObjects = hexObjects
@@ -664,7 +692,7 @@ function HexGrid.getBoardStateJson()
     return JSON.encode_pretty(HexGrid.getBoardState())
 end
 
-function HexGrid.loadBoardState(boardState, playerColor)
+function HexGrid.loadBoardState(boardState, playerColor, onCompleted)
     if board == nil or #cells == 0 then
         return false, "The hex board is not ready yet."
     end
@@ -714,14 +742,53 @@ function HexGrid.loadBoardState(boardState, playerColor)
 
     selectedCells = normalizedState.selectedCells
     local spawnedCount = 0
+    local completedSpawnCount = 0
+    local successfulSpawnCount = 0
+    local spawningFinished = false
+    local completionReported = false
+
+    local function reportLoadCompletionIfReady()
+        if completionReported
+            or not spawningFinished
+            or completedSpawnCount < #normalizedState.placements
+        then
+            return
+        end
+
+        completionReported = true
+
+        if onCompleted ~= nil then
+            pcall(
+                onCompleted,
+                successfulSpawnCount == #normalizedState.placements
+            )
+        end
+    end
+
+    local function onPlacementCompleted(succeeded)
+        completedSpawnCount = completedSpawnCount + 1
+
+        if succeeded then
+            successfulSpawnCount = successfulSpawnCount + 1
+        end
+
+        reportLoadCompletionIfReady()
+    end
 
     for _, placement in ipairs(normalizedState.placements) do
-        if spawnPlacement(placement, playerColor, true) then
+        if spawnPlacement(
+            placement,
+            playerColor,
+            true,
+            onPlacementCompleted
+        ) then
             spawnedCount = spawnedCount + 1
         end
     end
 
     drawGrid()
+    spawningFinished = true
+    reportLoadCompletionIfReady()
 
     return true,
         "Board setup loaded: "
@@ -729,7 +796,11 @@ function HexGrid.loadBoardState(boardState, playerColor)
             .. spawnedCount .. " objects."
 end
 
-function HexGrid.loadBoardStateJson(boardStateJson, playerColor)
+function HexGrid.loadBoardStateJson(
+    boardStateJson,
+    playerColor,
+    onCompleted
+)
     local decodedSuccessfully, boardState = pcall(
         JSON.decode,
         boardStateJson
@@ -739,7 +810,11 @@ function HexGrid.loadBoardStateJson(boardStateJson, playerColor)
         return false, "The board-state JSON is not valid JSON."
     end
 
-    return HexGrid.loadBoardState(boardState, playerColor)
+    return HexGrid.loadBoardState(
+        boardState,
+        playerColor,
+        onCompleted
+    )
 end
 
 function HexGrid.onObjectDestroy(object)
