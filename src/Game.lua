@@ -1,6 +1,6 @@
 local ChatService = require("src/ChatService")
-local HexGrid = require("src/HexGrid")
-local TurnSystem = require("src/TurnSystem")
+local HexGrid = require("src/hex/HexGrid")
+local TurnSystem = require("src/turns/TurnSystem")
 
 local Game = {}
 

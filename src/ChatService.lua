@@ -1,7 +1,9 @@
+local Config = require("src/config/ChatConfig")
+
 local ChatService = {}
 
 function ChatService.sayToAll(message)
-    printToAll(message, {1, 1, 1})
+    printToAll(message, Config.defaultColor)
 end
 
 function ChatService.sayButtonClicked(playerColor, objectName)

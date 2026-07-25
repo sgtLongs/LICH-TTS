@@ -1,3 +1,5 @@
+local Config = require("src/config/ButtonConfig")
+
 local ButtonFactory = {}
 
 function ButtonFactory.createTextButton(owner, label, clickFunction, position)
@@ -6,16 +8,16 @@ function ButtonFactory.createTextButton(owner, label, clickFunction, position)
         click_function = clickFunction,
         function_owner = owner,
 
-        position = position or {0, 0.3, 0},
-        rotation = {0, 0, 0},
-        scale = {1, 1, 1},
+        position = position or Config.position,
+        rotation = Config.rotation,
+        scale = Config.scale,
 
-        width = 900,
-        height = 400,
-        font_size = 180,
+        width = Config.width,
+        height = Config.height,
+        font_size = Config.fontSize,
 
-        color = {1, 1, 1},
-        font_color = {0, 0, 0}
+        color = Config.color,
+        font_color = Config.fontColor
     })
 end
 
