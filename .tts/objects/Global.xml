@@ -1234,7 +1234,7 @@
     id="hexGridMenuRoot"
     rectAlignment="MiddleRight"
     width="430"
-    height="550"
+    height="630"
     offsetXY="-28 0"
     color="#090C12F5"
     padding="18 18 18 18"
@@ -1269,7 +1269,7 @@
         <Panel
             id="hexGridMenuAddPage"
             color="#00000000"
-            preferredHeight="440"
+            preferredHeight="520"
         >
             <Button
                 id="hexGridMenuAddObject"
@@ -1288,7 +1288,7 @@
         <VerticalLayout
             id="hexGridMenuObjectPage"
             active="false"
-            preferredHeight="440"
+            preferredHeight="520"
             spacing="12"
             childAlignment="UpperCenter"
         >
@@ -1376,12 +1376,24 @@
                     preferredHeight="64"
                 />
             </HorizontalLayout>
+            <Button
+                id="hexGridMenuDeleteObject"
+                active="false"
+                text="DELETE OBJECT"
+                fontSize="24"
+                fontStyle="Bold"
+                colors="#751D24|#A62A34|#5A151B|#5A151B"
+                onClick="onHexGridMenuUiClicked(delete)"
+                preferredWidth="382"
+                preferredHeight="64"
+                tooltip="Permanently remove this object"
+            />
         </VerticalLayout>
 
         <VerticalLayout
             id="hexGridMenuRotationPage"
             active="false"
-            preferredHeight="440"
+            preferredHeight="520"
             spacing="24"
             childAlignment="MiddleCenter"
             padding="22 18 22 18"

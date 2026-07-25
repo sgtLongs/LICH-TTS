@@ -4,6 +4,7 @@ local HexMenuConfig = {
         titleId = "hexGridMenuTitle",
         addPageId = "hexGridMenuAddPage",
         objectPageId = "hexGridMenuObjectPage",
+        deleteButtonId = "hexGridMenuDeleteObject",
         rotationPageId = "hexGridMenuRotationPage",
         rotationPromptId = "hexGridMenuRotationPrompt"
     },

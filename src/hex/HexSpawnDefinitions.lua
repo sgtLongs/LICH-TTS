@@ -38,7 +38,8 @@ local HexSpawnDefinitions = {
         label = "Double Rock",
         json = SavedObjectData.doubleRock,
         positionOffset = {x = -1.3, y = 0.03, z = 0},
-        rotationOffsetY = 90
+        rotationOffsetY = 90,
+        occupiesFacingCell = true
     },
     {
         key = "crystal",

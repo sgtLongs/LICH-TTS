@@ -85,7 +85,7 @@ local function applyRotation(object, rotationY)
 end
 
 local function schedulePlacementCorrections(parameters, spawnedObject)
-    for _, frameCount in ipairs(Config.placementCorrectionFrames) do
+    for index, frameCount in ipairs(Config.placementCorrectionFrames) do
         Wait.frames(function()
             if spawnedObject == nil or spawnedObject.isDestroyed() then
                 return
@@ -99,6 +99,12 @@ local function schedulePlacementCorrections(parameters, spawnedObject)
                 parameters.template.positionOffset,
                 parameters.localRotationY
             )
+
+            if index == #Config.placementCorrectionFrames
+                and parameters.onPlacementFinalized ~= nil
+            then
+                parameters.onPlacementFinalized(spawnedObject)
+            end
         end, frameCount)
     end
 end

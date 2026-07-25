@@ -47,6 +47,7 @@ local function spawnObject(
     localRotationY,
     playerColor,
     onSpawned,
+    onPlacementFinalized,
     silent
 )
     return HexObjectSpawner.spawn({
@@ -59,6 +60,7 @@ local function spawnObject(
         localRotationY = localRotationY,
         playerColor = playerColor,
         onSpawned = onSpawned,
+        onPlacementFinalized = onPlacementFinalized,
         silent = silent
     })
 end
@@ -90,14 +92,20 @@ local function getAdjacentCells(targetCell)
     return adjacentCells
 end
 
-local function beginRotationSelection(template, targetCell, playerColor)
+local function beginRotationSelection(
+    template,
+    targetCell,
+    playerColor,
+    replacementPlacement
+)
     local adjacentCells = getAdjacentCells(targetCell)
 
     pendingSpawn = {
         template = template,
         targetCell = targetCell,
         playerColor = playerColor,
-        adjacentCells = adjacentCells
+        adjacentCells = adjacentCells,
+        replacementPlacement = replacementPlacement
     }
     rotationCandidateCells = {}
 
@@ -190,6 +198,204 @@ local function hasPlacement(targetPlacement)
     return false
 end
 
+local function getPlacementOccupiedCells(placement)
+    local occupiedCells = {placement.cell}
+    local template = templatesByKey[placement.templateKey]
+
+    if template ~= nil
+        and template.occupiesFacingCell == true
+        and placement.facingCell ~= nil
+    then
+        occupiedCells[#occupiedCells + 1] = placement.facingCell
+    end
+
+    return occupiedCells
+end
+
+local function placementOccupiesCell(placement, cell)
+    if cell == nil then
+        return false
+    end
+
+    for _, occupiedCell in ipairs(
+        getPlacementOccupiedCells(placement)
+    ) do
+        if occupiedCell.row == cell.row
+            and occupiedCell.column == cell.column
+        then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function getPlacementAtCell(cell)
+    if cell == nil then
+        return nil
+    end
+
+    for _, placement in ipairs(placedObjects) do
+        if placementOccupiesCell(placement, cell) then
+            return placement
+        end
+    end
+
+    return nil
+end
+
+local function getPlacementByGuid(guid)
+    if type(guid) ~= "string" then
+        return nil
+    end
+
+    for _, placement in ipairs(placedObjects) do
+        if placement.guid == guid then
+            return placement
+        end
+    end
+
+    return nil
+end
+
+local function addObjectClickButton(object, placement)
+    if object == nil or placement == nil or board == nil then
+        return
+    end
+
+    local existingButtons = object.getButtons() or {}
+
+    for index = #existingButtons, 1, -1 do
+        if existingButtons[index].click_function
+            == Config.objectButtonClickFunction
+        then
+            object.removeButton(existingButtons[index].index)
+        end
+    end
+
+    local boundsCenter = object.getBounds().center
+    local showDebug = Config.objectButtonDebug == true
+
+    for groupIndex, occupiedCell in ipairs(
+        getPlacementOccupiedCells(placement)
+    ) do
+        local cell = cellsByKey[
+            HexGridBuilder.cellKey(
+                occupiedCell.row,
+                occupiedCell.column
+            )
+        ]
+
+        if cell ~= nil then
+            local cellWorldCenter = board.positionToWorld({
+                x = cell.x,
+                y = resolvedSurfaceY,
+                z = cell.z
+            })
+            local groupCenter = object.positionToLocal({
+                x = cellWorldCenter.x,
+                y = boundsCenter.y,
+                z = cellWorldCenter.z
+            })
+
+            for _, surface in ipairs(Config.objectButtonSurfaces) do
+                local offset = surface.positionOffset or {}
+                local position = {
+                    x = groupCenter.x + (offset.x or 0),
+                    y = groupCenter.y + (offset.y or 0),
+                    z = groupCenter.z + (offset.z or 0)
+                }
+                local rotations = {surface.rotation}
+
+                if surface.doubleSided then
+                    rotations[#rotations + 1] = {
+                        (surface.rotation[1] or 0) + 180,
+                        surface.rotation[2] or 0,
+                        surface.rotation[3] or 0
+                    }
+                end
+
+                for faceIndex, rotation in ipairs(rotations) do
+                    object.createButton({
+                        label = showDebug and faceIndex == 1
+                            and surface.label .. " " .. groupIndex or "",
+                        click_function = Config.objectButtonClickFunction,
+                        function_owner = Global,
+                        position = position,
+                        rotation = rotation,
+                        width = surface.width,
+                        height = surface.height,
+                        font_size = showDebug
+                            and Config.objectButtonDebugFontSize or 1,
+                        color = showDebug
+                            and surface.debugColor
+                            or Config.invisibleButtonColor,
+                        font_color = showDebug
+                            and Config.buttonFontColor
+                            or Config.invisibleButtonColor,
+                        hover_color = showDebug
+                            and surface.debugColor
+                            or Config.invisibleButtonColor,
+                        press_color = showDebug
+                            and surface.debugColor
+                            or Config.invisibleButtonColor,
+                        tooltip = "Edit object"
+                    })
+                end
+            end
+        end
+    end
+end
+
+local function openPlacementMenu(placement, playerColor)
+    if placement == nil or not isAdmin(playerColor) then
+        return false
+    end
+
+    local player = Player[playerColor]
+    local cell = cellsByKey[
+        HexGridBuilder.cellKey(
+            placement.cell.row,
+            placement.cell.column
+        )
+    ]
+
+    if player == nil or cell == nil then
+        return false
+    end
+
+    HexGridMenu.open(playerColor, player, cell, placement)
+    return true
+end
+
+local function deletePlacement(placement, playerColor)
+    if not hasPlacement(placement) then
+        HexGridMenu.close()
+        return false
+    end
+
+    local template = templatesByKey[placement.templateKey]
+    local object = type(placement.guid) == "string"
+        and getObjectFromGUID(placement.guid) or nil
+
+    removePlacement(placement)
+    HexGridMenu.close()
+
+    if object ~= nil then
+        destroyObject(object)
+    end
+
+    broadcastToColor(
+        (template ~= nil and template.label or "Object")
+            .. " deleted from hex " .. placement.cell.row
+            .. ", " .. placement.cell.column .. ".",
+        playerColor,
+        Config.rotationCancelColor
+    )
+
+    return true
+end
+
 local function spawnPlacement(
     placement,
     playerColor,
@@ -264,9 +470,13 @@ local function spawnPlacement(
             local completedSuccessfully = pcall(function()
                 placement.guid = spawnedObject.getGUID()
                 spawnedObject.addTag(SettingsConfig.placedObjectTag)
+                addObjectClickButton(spawnedObject, placement)
             end)
 
             reportCompletion(completedSuccessfully)
+        end,
+        function(spawnedObject)
+            addObjectClickButton(spawnedObject, placement)
         end,
         silent
     )
@@ -281,6 +491,7 @@ end
 
 local function completePendingSpawn(facingCell)
     local spawn = pendingSpawn
+    local replacementPlacement = spawn.replacementPlacement
 
     pendingSpawn = nil
     rotationCandidateCells = {}
@@ -290,7 +501,21 @@ local function completePendingSpawn(facingCell)
         templateKey = spawn.template.key,
         cell = copyCell(spawn.targetCell),
         facingCell = copyCell(facingCell)
-    }, spawn.playerColor, false)
+    }, spawn.playerColor, false, function(succeeded)
+        if succeeded and replacementPlacement ~= nil
+            and hasPlacement(replacementPlacement)
+        then
+            local replacedObject =
+                type(replacementPlacement.guid) == "string"
+                and getObjectFromGUID(replacementPlacement.guid) or nil
+
+            removePlacement(replacementPlacement)
+
+            if replacedObject ~= nil then
+                destroyObject(replacedObject)
+            end
+        end
+    end)
 end
 
 local function updateHoveredCells()
@@ -364,6 +589,7 @@ local function buildGrid()
         board = board,
         isAdmin = isAdmin,
         onObjectChoice = beginRotationSelection,
+        onDeleteObject = deletePlacement,
         onTargetChanged = function(cell)
             menuTargetCell = cell
             drawGrid()
@@ -417,6 +643,7 @@ local function buildGrid()
 
             if existingObject ~= nil then
                 existingObject.addTag(SettingsConfig.placedObjectTag)
+                addObjectClickButton(existingObject, placement)
                 placedObjects[#placedObjects + 1] = placement
             elseif not spawnPlacement(placement, nil, true) then
                 print(
@@ -519,6 +746,11 @@ local function normalizeCell(value, fieldName)
     end
 
     return copyCell(cell)
+end
+
+local function cellsMatch(firstCell, secondCell)
+    return firstCell.row == secondCell.row
+        and firstCell.column == secondCell.column
 end
 
 local function getArrayLength(value, fieldName)
@@ -650,6 +882,59 @@ local function normalizeBoardState(boardState)
                     .. "].facing must be adjacent to its hex."
         end
 
+        local template = templatesByKey[objectState.type]
+        local expectedOccupiedCells = {cell}
+
+        if template.occupiesFacingCell == true then
+            expectedOccupiedCells[#expectedOccupiedCells + 1] = facingCell
+        end
+
+        if objectState.occupiedHexes ~= nil then
+            if type(objectState.occupiedHexes) ~= "table" then
+                return nil,
+                    "hexObjects[" .. index
+                        .. "].occupiedHexes must be an array."
+            end
+
+            local occupiedHexCount, occupiedHexesError = getArrayLength(
+                objectState.occupiedHexes,
+                "hexObjects[" .. index .. "].occupiedHexes"
+            )
+
+            if occupiedHexCount == nil then
+                return nil, occupiedHexesError
+            end
+
+            if occupiedHexCount ~= #expectedOccupiedCells then
+                return nil,
+                    "hexObjects[" .. index .. "].occupiedHexes must contain "
+                        .. #expectedOccupiedCells .. " "
+                        .. (#expectedOccupiedCells == 1 and "hex." or "hexes.")
+            end
+
+            for occupiedIndex, expectedCell in ipairs(
+                expectedOccupiedCells
+            ) do
+                local occupiedCell, occupiedCellError = normalizeCell(
+                    objectState.occupiedHexes[occupiedIndex],
+                    "hexObjects[" .. index .. "].occupiedHexes["
+                        .. occupiedIndex .. "]"
+                )
+
+                if occupiedCell == nil then
+                    return nil, occupiedCellError
+                end
+
+                if not cellsMatch(occupiedCell, expectedCell) then
+                    return nil,
+                        "hexObjects[" .. index
+                            .. "].occupiedHexes does not match its hex"
+                            .. (template.occupiesFacingCell == true
+                                and " and facing hex." or ".")
+                end
+            end
+        end
+
         normalized.placements[#normalized.placements + 1] = {
             templateKey = objectState.type,
             cell = cell,
@@ -673,10 +958,20 @@ function HexGrid.getBoardState()
     end
 
     for _, placement in ipairs(placedObjects) do
+        local occupiedHexes = {}
+
+        for _, occupiedCell in ipairs(
+            getPlacementOccupiedCells(placement)
+        ) do
+            occupiedHexes[#occupiedHexes + 1] =
+                copyCell(occupiedCell)
+        end
+
         hexObjects[#hexObjects + 1] = {
             type = placement.templateKey,
             hex = copyCell(placement.cell),
-            facing = copyCell(placement.facingCell)
+            facing = copyCell(placement.facingCell),
+            occupiedHexes = occupiedHexes
         }
     end
 
@@ -883,6 +1178,13 @@ local function handlePointerClick(playerColor, altClick)
         return false
     end
 
+    local placement = getPlacementAtCell(cell)
+
+    if placement ~= nil then
+        openPlacementMenu(placement, playerColor)
+        return true
+    end
+
     if isAdmin(playerColor) then
         HexGridMenu.open(playerColor, player, cell)
         return true
@@ -906,6 +1208,23 @@ function HexGrid.onClicked(playerColor, altClick)
     handlePointerClick(playerColor, altClick)
 end
 
+function HexGrid.onObjectClicked(object, playerColor, altClick)
+    if object == nil or altClick then
+        return
+    end
+
+    if pendingSpawn ~= nil then
+        if pendingSpawn.playerColor == playerColor then
+            cancelPendingSpawn(playerColor)
+        end
+
+        return
+    end
+
+    local placement = getPlacementByGuid(object.getGUID())
+    openPlacementMenu(placement, playerColor)
+end
+
 function HexGrid.onPlayerAction(player, action, targets)
     if pendingSpawn ~= nil
         and action == Player.Action.Select
@@ -926,16 +1245,27 @@ function HexGrid.onPlayerAction(player, action, targets)
         or type(targets) ~= "table"
         or #targets ~= 1
         or targets[1] == nil
-        or targets[1].getGUID() ~= Config.boardGuid
     then
         return true
     end
 
-    if handlePointerClick(player.color, false) then
-        return false
+    local targetGuid = targets[1].getGUID()
+
+    if targetGuid == Config.boardGuid then
+        if handlePointerClick(player.color, false) then
+            return false
+        end
+
+        return true
     end
 
-    return true
+    local placement = getPlacementByGuid(targetGuid)
+
+    if placement == nil then
+        return true
+    end
+
+    return not openPlacementMenu(placement, player.color)
 end
 
 function HexGrid.onMenuUiClicked(playerColor, action)

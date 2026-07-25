@@ -94,6 +94,10 @@ function Game.onHexGridClicked(playerColor, altClick)
     HexGrid.onClicked(playerColor, altClick)
 end
 
+function Game.onHexGridObjectClicked(object, playerColor, altClick)
+    HexGrid.onObjectClicked(object, playerColor, altClick)
+end
+
 function Game.onHexGridMenuUiClicked(playerColor, action)
     HexGrid.onMenuUiClicked(playerColor, action)
 end

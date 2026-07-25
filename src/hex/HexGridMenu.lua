@@ -12,6 +12,7 @@ local context = {
     board = nil,
     isAdmin = nil,
     onObjectChoice = nil,
+    onDeleteObject = nil,
     onTargetChanged = nil,
     onCancelRotation = nil
 }
@@ -78,6 +79,7 @@ function HexGridMenu.initialize(parameters)
     context.board = parameters.board
     context.isAdmin = parameters.isAdmin
     context.onObjectChoice = parameters.onObjectChoice
+    context.onDeleteObject = parameters.onDeleteObject
     context.onTargetChanged = parameters.onTargetChanged
     context.onCancelRotation = parameters.onCancelRotation
     activeMenu = nil
@@ -87,23 +89,35 @@ function HexGridMenu.initialize(parameters)
     removeLegacyMenu()
 end
 
-function HexGridMenu.open(playerColor, player, cell)
+function HexGridMenu.open(playerColor, player, cell, placement)
     if context.board == nil or player == nil or cell == nil then
         return
     end
 
     activeMenu = {
         playerColor = playerColor,
-        cell = cell
+        cell = cell,
+        placement = placement
     }
 
     UI.setAttribute(Config.ui.rootId, "visibility", playerColor)
     UI.setAttribute(
         Config.ui.titleId,
         "text",
-        "Selected Hex " .. cell.row .. ", " .. cell.column
+        placement ~= nil
+            and "Edit " .. templatesByKey[placement.templateKey].label
+            or "Selected Hex " .. cell.row .. ", " .. cell.column
     )
-    setPage(Config.ui.addPageId)
+    UI.setAttribute(
+        Config.ui.deleteButtonId,
+        "active",
+        placement ~= nil and "true" or "false"
+    )
+    setPage(
+        placement ~= nil
+            and Config.ui.objectPageId
+            or Config.ui.addPageId
+    )
     UI.setAttribute(Config.ui.rootId, "active", "true")
     notifyTargetChanged(cell)
 end
@@ -129,13 +143,31 @@ function HexGridMenu.handleAction(playerColor, action)
         return
     end
 
+    if action == "delete" then
+        if activeMenu.placement ~= nil
+            and context.onDeleteObject ~= nil
+        then
+            context.onDeleteObject(
+                activeMenu.placement,
+                playerColor
+            )
+        end
+
+        return
+    end
+
     local template = templatesByKey[action]
 
     if template == nil or context.onObjectChoice == nil then
         return
     end
 
-    if context.onObjectChoice(template, activeMenu.cell, playerColor) then
+    if context.onObjectChoice(
+        template,
+        activeMenu.cell,
+        playerColor,
+        activeMenu.placement
+    ) then
         activeMenu.rotationPending = true
         UI.setAttribute(
             Config.ui.titleId,
