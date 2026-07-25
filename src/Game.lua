@@ -1,4 +1,3 @@
-local ChatService = require("src/ChatService")
 local CardFields = require("src/card_fields/CardFields")
 local DungeonMap = require("src/dungeon/DungeonMap")
 local HexGrid = require("src/hex/HexGrid")
@@ -83,10 +82,6 @@ end
 
 function Game.onObjectHover()
     HexGrid.onObjectHover()
-end
-
-function Game.onSpeakerButtonClicked(data)
-    ChatService.sayButtonClicked(data.playerColor, data.objectName)
 end
 
 function Game.onEndTurnClicked(playerColor)

@@ -12,10 +12,6 @@ function onObjectHover(playerColor, object)
     Game.onObjectHover(playerColor, object)
 end
 
-function onSpeakerButtonClicked(data)
-    Game.onSpeakerButtonClicked(data)
-end
-
 function onEndTurnClicked(player, value, id)
     Game.onEndTurnClicked(player.color)
 end

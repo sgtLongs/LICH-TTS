@@ -4,10 +4,6 @@ local calls = {}
 local encodedValue = nil
 local decodedValue = nil
 
-local ChatService = {
-    sayButtonClicked = function()
-    end
-}
 local CardFields = {
     onLoad = function()
         calls.cardFieldsLoaded = true
@@ -104,7 +100,6 @@ local TurnSystem = {
     end
 }
 
-package.loaded["src/ChatService"] = ChatService
 package.loaded["src/card_fields/CardFields"] = CardFields
 package.loaded["src/dungeon/DungeonMap"] = DungeonMap
 package.loaded["src/hex/HexGrid"] = HexGrid
