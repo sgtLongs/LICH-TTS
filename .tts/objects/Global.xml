@@ -240,5 +240,40 @@
                 />
             </HorizontalLayout>
         </VerticalLayout>
+
+        <VerticalLayout
+            id="hexGridMenuRotationPage"
+            active="false"
+            preferredHeight="440"
+            spacing="24"
+            childAlignment="MiddleCenter"
+            padding="22 18 22 18"
+        >
+            <Text
+                id="hexGridMenuRotationPrompt"
+                text="Click a highlighted adjacent hex to choose which way the object faces."
+                fontSize="27"
+                resizeTextForBestFit="true"
+                resizeTextMinSize="20"
+                resizeTextMaxSize="27"
+                preferredWidth="360"
+                preferredHeight="180"
+            />
+            <Text
+                text="Clicking anywhere else cancels the spawn."
+                fontSize="20"
+                color="#FFB4A2"
+                preferredWidth="360"
+                preferredHeight="70"
+            />
+            <Button
+                text="CANCEL SPAWN"
+                fontSize="24"
+                colors="#751D24|#A62A34|#5A151B|#5A151B"
+                onClick="onHexGridMenuUiClicked(close)"
+                preferredWidth="280"
+                preferredHeight="68"
+            />
+        </VerticalLayout>
     </VerticalLayout>
 </Panel>

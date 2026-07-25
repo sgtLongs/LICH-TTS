@@ -82,10 +82,15 @@ local function makeHexLine(cell, surfaceY, color, thickness, surfaceOffset)
     }
 end
 
-local function makeHexFillLines(cell, surfaceY)
+local function makeHexFillLines(
+    cell,
+    surfaceY,
+    color,
+    thickness,
+    surfaceOffset
+)
     local lines = {}
-    local thickness = Config.hoverFillLineThickness
-    local fillY = surfaceY + Config.hoverFillSurfaceOffset
+    local fillY = surfaceY + surfaceOffset
     local radians = math.rad(Config.rotationDegrees)
     local cosine = math.cos(radians)
     local sine = math.sin(radians)
@@ -117,7 +122,7 @@ local function makeHexFillLines(cell, surfaceY)
                     z = cell.z + endX * sine + localZ * cosine
                 }
             },
-            color = Config.hoverFillColor,
+            color = color,
             thickness = stripeHeight
         })
     end
@@ -157,8 +162,41 @@ function HexGridBuilder.draw(board, cells, surfaceY, state)
             )
         end
 
+        if state.rotationCandidateCells[key] then
+            for _, fillLine in ipairs(
+                makeHexFillLines(
+                    cell,
+                    surfaceY,
+                    Config.rotationCandidateFillColor,
+                    Config.rotationCandidateFillLineThickness,
+                    Config.rotationCandidateFillSurfaceOffset
+                )
+            ) do
+                table.insert(lines, fillLine)
+            end
+
+            table.insert(
+                lines,
+                makeHexLine(
+                    cell,
+                    surfaceY,
+                    Config.rotationCandidateColor,
+                    Config.rotationCandidateLineThickness,
+                    Config.rotationCandidateSurfaceOffset
+                )
+            )
+        end
+
         if state.hoveredCells[key] then
-            for _, fillLine in ipairs(makeHexFillLines(cell, surfaceY)) do
+            for _, fillLine in ipairs(
+                makeHexFillLines(
+                    cell,
+                    surfaceY,
+                    Config.hoverFillColor,
+                    Config.hoverFillLineThickness,
+                    Config.hoverFillSurfaceOffset
+                )
+            ) do
                 table.insert(lines, fillLine)
             end
 

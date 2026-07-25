@@ -2,25 +2,53 @@ local Config = require("src/config/HexSpawnConfig")
 
 local HexObjectSpawner = {}
 
-local function getLocalPosition(surfaceY, cell, heightAboveSurface, offset)
+local function getRotatedOffset(offset, rotationY)
     local positionOffset = offset or {}
+    local radians = math.rad(rotationY or 0)
+    local cosine = math.cos(radians)
+    local sine = math.sin(radians)
+    local offsetX = positionOffset.x or 0
+    local offsetZ = positionOffset.z or 0
 
     return {
-        x = cell.x + (positionOffset.x or 0),
-        y = surfaceY
-            + (heightAboveSurface or 0)
-            + (positionOffset.y or 0),
-        z = cell.z + (positionOffset.z or 0)
+        x = offsetX * cosine + offsetZ * sine,
+        y = positionOffset.y or 0,
+        z = -offsetX * sine + offsetZ * cosine
     }
 end
 
-local function placeObject(board, surfaceY, object, cell, offset)
+local function getLocalPosition(
+    surfaceY,
+    cell,
+    heightAboveSurface,
+    offset,
+    rotationY
+)
+    local positionOffset = getRotatedOffset(offset, rotationY)
+
+    return {
+        x = cell.x + positionOffset.x,
+        y = surfaceY
+            + (heightAboveSurface or 0)
+            + positionOffset.y,
+        z = cell.z + positionOffset.z
+    }
+end
+
+local function placeObject(
+    board,
+    surfaceY,
+    object,
+    cell,
+    offset,
+    localRotationY
+)
     if object == nil or board == nil then
         return
     end
 
     local targetSurface = board.positionToWorld(
-        getLocalPosition(surfaceY, cell, 0, offset)
+        getLocalPosition(surfaceY, cell, 0, offset, localRotationY)
     )
     local currentPosition = object.getPosition()
     local bounds = object.getBounds()
@@ -34,6 +62,39 @@ local function placeObject(board, surfaceY, object, cell, offset)
     object.setLuaScript("")
     object.script_state = ""
     object.setLock(true)
+end
+
+local function applyRotation(object, rotationY)
+    if rotationY == nil then
+        return
+    end
+
+    local currentRotation = object.getRotation()
+
+    object.setRotation({
+        x = currentRotation.x,
+        y = rotationY,
+        z = currentRotation.z
+    })
+end
+
+local function schedulePlacementCorrections(parameters, spawnedObject)
+    for _, frameCount in ipairs(Config.placementCorrectionFrames) do
+        Wait.frames(function()
+            if spawnedObject == nil or spawnedObject.isDestroyed() then
+                return
+            end
+
+            placeObject(
+                parameters.board,
+                parameters.surfaceY,
+                spawnedObject,
+                parameters.cell,
+                parameters.template.positionOffset,
+                parameters.localRotationY
+            )
+        end, frameCount)
+    end
 end
 
 function HexObjectSpawner.spawn(parameters)
@@ -54,7 +115,8 @@ function HexObjectSpawner.spawn(parameters)
             parameters.surfaceY,
             parameters.cell,
             Config.initialHeightAboveSurface,
-            template.positionOffset
+            template.positionOffset,
+            parameters.localRotationY
         )
     )
 
@@ -66,21 +128,17 @@ function HexObjectSpawner.spawn(parameters)
                 spawnedObject.setLuaScript("")
                 spawnedObject.script_state = ""
                 spawnedObject.setLock(true)
+                applyRotation(spawnedObject, parameters.rotationY)
 
-                Wait.frames(function()
-                    placeObject(
-                        parameters.board,
-                        parameters.surfaceY,
-                        spawnedObject,
-                        parameters.cell,
-                        template.positionOffset
-                    )
-                end, 2)
+                schedulePlacementCorrections(parameters, spawnedObject)
 
                 broadcastToColor(
                     template.label .. " added at hex "
                         .. parameters.cell.row .. ", "
-                        .. parameters.cell.column .. ".",
+                        .. parameters.cell.column
+                        .. " facing hex "
+                        .. parameters.facingCell.row .. ", "
+                        .. parameters.facingCell.column .. ".",
                     playerColor,
                     Config.successColor
                 )

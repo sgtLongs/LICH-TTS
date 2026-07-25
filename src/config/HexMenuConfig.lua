@@ -3,7 +3,9 @@ local HexMenuConfig = {
         rootId = "hexGridMenuRoot",
         titleId = "hexGridMenuTitle",
         addPageId = "hexGridMenuAddPage",
-        objectPageId = "hexGridMenuObjectPage"
+        objectPageId = "hexGridMenuObjectPage",
+        rotationPageId = "hexGridMenuRotationPage",
+        rotationPromptId = "hexGridMenuRotationPrompt"
     },
     legacy = {
         anchorTag = "HexGridAdminMenu",

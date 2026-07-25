@@ -9,6 +9,8 @@ local cells = {}
 local selectedCells = {}
 local hoveredCells = {}
 local menuTargetCell = nil
+local rotationCandidateCells = {}
+local pendingSpawn = nil
 local resolvedSurfaceY = 0
 local hoverWaitId = nil
 local recentClickCells = {}
@@ -17,7 +19,8 @@ local function drawGrid()
     HexGridBuilder.draw(board, cells, resolvedSurfaceY, {
         selectedCells = selectedCells,
         hoveredCells = hoveredCells,
-        menuTargetCell = menuTargetCell
+        menuTargetCell = menuTargetCell,
+        rotationCandidateCells = rotationCandidateCells
     })
 end
 
@@ -26,14 +29,152 @@ local function isAdmin(playerColor)
     return player ~= nil and player.admin == true
 end
 
-local function spawnObject(template, targetCell, playerColor)
+local function spawnObject(
+    template,
+    targetCell,
+    facingCell,
+    rotationY,
+    localRotationY,
+    playerColor
+)
     return HexObjectSpawner.spawn({
         board = board,
         surfaceY = resolvedSurfaceY,
         template = template,
         cell = targetCell,
+        facingCell = facingCell,
+        rotationY = rotationY,
+        localRotationY = localRotationY,
         playerColor = playerColor
     })
+end
+
+local adjacentOffsets = {
+    {row = 0, column = 1},
+    {row = -1, column = 1},
+    {row = -1, column = 0},
+    {row = 0, column = -1},
+    {row = 1, column = -1},
+    {row = 1, column = 0}
+}
+
+local function getAdjacentCells(targetCell)
+    local cellsByKey = {}
+    local adjacentCells = {}
+
+    for _, cell in ipairs(cells) do
+        cellsByKey[HexGridBuilder.cellKey(cell.row, cell.column)] = cell
+    end
+
+    for _, offset in ipairs(adjacentOffsets) do
+        local key = HexGridBuilder.cellKey(
+            targetCell.row + offset.row,
+            targetCell.column + offset.column
+        )
+        local adjacentCell = cellsByKey[key]
+
+        if adjacentCell ~= nil then
+            adjacentCells[key] = adjacentCell
+        end
+    end
+
+    return adjacentCells
+end
+
+local function beginRotationSelection(template, targetCell, playerColor)
+    local adjacentCells = getAdjacentCells(targetCell)
+
+    pendingSpawn = {
+        template = template,
+        targetCell = targetCell,
+        playerColor = playerColor,
+        adjacentCells = adjacentCells
+    }
+    rotationCandidateCells = {}
+
+    for key, _ in pairs(adjacentCells) do
+        rotationCandidateCells[key] = true
+    end
+
+    drawGrid()
+    return true
+end
+
+local function cancelPendingSpawn(playerColor, closeMenu)
+    if pendingSpawn == nil
+        or pendingSpawn.playerColor ~= playerColor
+    then
+        return false
+    end
+
+    local label = pendingSpawn.template.label
+    pendingSpawn = nil
+    rotationCandidateCells = {}
+
+    if closeMenu ~= false then
+        HexGridMenu.close()
+    else
+        drawGrid()
+    end
+
+    broadcastToColor(
+        label .. " spawn canceled.",
+        playerColor,
+        Config.rotationCancelColor
+    )
+
+    return true
+end
+
+local function getFacingRotations(targetCell, facingCell, template)
+    local targetWorld = board.positionToWorld({
+        x = targetCell.x,
+        y = resolvedSurfaceY,
+        z = targetCell.z
+    })
+    local facingWorld = board.positionToWorld({
+        x = facingCell.x,
+        y = resolvedSurfaceY,
+        z = facingCell.z
+    })
+    local rotationOffsetY = template.rotationOffsetY or 0
+    local worldRotationY = math.deg(
+        math.atan2(
+            facingWorld.x - targetWorld.x,
+            facingWorld.z - targetWorld.z
+        )
+    ) + rotationOffsetY
+    local localRotationY = math.deg(
+        math.atan2(
+            facingCell.x - targetCell.x,
+            facingCell.z - targetCell.z
+        )
+    ) + rotationOffsetY
+
+    return (worldRotationY + 360) % 360,
+        (localRotationY + 360) % 360
+end
+
+local function completePendingSpawn(facingCell)
+    local spawn = pendingSpawn
+    local rotationY, localRotationY = getFacingRotations(
+        spawn.targetCell,
+        facingCell,
+        spawn.template
+    )
+
+    pendingSpawn = nil
+    rotationCandidateCells = {}
+    HexGridMenu.close()
+
+    return spawnObject(
+        spawn.template,
+        spawn.targetCell,
+        facingCell,
+        rotationY,
+        localRotationY,
+        spawn.playerColor
+    )
 end
 
 local function updateHoveredCells()
@@ -90,16 +231,21 @@ local function buildGrid()
     cells = buildResult.cells
     resolvedSurfaceY = buildResult.surfaceY
     menuTargetCell = nil
+    pendingSpawn = nil
+    rotationCandidateCells = {}
 
     drawGrid()
 
     HexGridMenu.initialize({
         board = board,
         isAdmin = isAdmin,
-        onObjectChoice = spawnObject,
+        onObjectChoice = beginRotationSelection,
         onTargetChanged = function(cell)
             menuTargetCell = cell
             drawGrid()
+        end,
+        onCancelRotation = function(playerColor)
+            cancelPendingSpawn(playerColor, false)
         end
     })
 
@@ -124,6 +270,8 @@ function HexGrid.onLoad(savedState)
     selectedCells = {}
     hoveredCells = {}
     recentClickCells = {}
+    rotationCandidateCells = {}
+    pendingSpawn = nil
 
     if type(savedState) == "table"
         and type(savedState.selectedCells) == "table"
@@ -158,23 +306,43 @@ local function handlePointerClick(playerColor, altClick)
     local localPointer = board.positionToLocal(player.getPointerPosition())
     local cell = HexGridBuilder.findCellAt(cells, localPointer)
 
-    if cell == nil or altClick then
-        return false
-    end
+    local key = cell ~= nil
+        and HexGridBuilder.cellKey(cell.row, cell.column) or nil
 
-    local key = HexGridBuilder.cellKey(cell.row, cell.column)
-
-    if recentClickCells[playerColor] == key then
+    if key ~= nil and recentClickCells[playerColor] == key then
         return true
     end
 
-    recentClickCells[playerColor] = key
+    if key ~= nil then
+        recentClickCells[playerColor] = key
 
-    Wait.frames(function()
-        if recentClickCells[playerColor] == key then
-            recentClickCells[playerColor] = nil
+        Wait.frames(function()
+            if recentClickCells[playerColor] == key then
+                recentClickCells[playerColor] = nil
+            end
+        end, 2)
+    end
+
+    if pendingSpawn ~= nil then
+        if pendingSpawn.playerColor ~= playerColor then
+            return true
         end
-    end, 2)
+
+        local facingCell = key ~= nil
+            and pendingSpawn.adjacentCells[key] or nil
+
+        if not altClick and facingCell ~= nil then
+            completePendingSpawn(facingCell)
+        else
+            cancelPendingSpawn(playerColor)
+        end
+
+        return true
+    end
+
+    if cell == nil or altClick then
+        return false
+    end
 
     if isAdmin(playerColor) then
         HexGridMenu.open(playerColor, player, cell)
@@ -200,6 +368,20 @@ function HexGrid.onClicked(playerColor, altClick)
 end
 
 function HexGrid.onPlayerAction(player, action, targets)
+    if pendingSpawn ~= nil
+        and action == Player.Action.Select
+        and player.color == pendingSpawn.playerColor
+        and (
+            type(targets) ~= "table"
+            or #targets ~= 1
+            or targets[1] == nil
+            or targets[1].getGUID() ~= Config.boardGuid
+        )
+    then
+        cancelPendingSpawn(player.color)
+        return true
+    end
+
     if board == nil
         or action ~= Player.Action.Select
         or type(targets) ~= "table"

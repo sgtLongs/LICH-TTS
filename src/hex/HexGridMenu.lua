@@ -12,7 +12,8 @@ local context = {
     board = nil,
     isAdmin = nil,
     onObjectChoice = nil,
-    onTargetChanged = nil
+    onTargetChanged = nil,
+    onCancelRotation = nil
 }
 local activeMenu = nil
 
@@ -26,6 +27,11 @@ local function setPage(pageId)
         Config.ui.objectPageId,
         "active",
         pageId == Config.ui.objectPageId and "true" or "false"
+    )
+    UI.setAttribute(
+        Config.ui.rotationPageId,
+        "active",
+        pageId == Config.ui.rotationPageId and "true" or "false"
     )
 end
 
@@ -73,6 +79,7 @@ function HexGridMenu.initialize(parameters)
     context.isAdmin = parameters.isAdmin
     context.onObjectChoice = parameters.onObjectChoice
     context.onTargetChanged = parameters.onTargetChanged
+    context.onCancelRotation = parameters.onCancelRotation
     activeMenu = nil
 
     hideMenu()
@@ -112,6 +119,12 @@ function HexGridMenu.handleAction(playerColor, action)
     end
 
     if action == "close" then
+        if activeMenu.rotationPending
+            and context.onCancelRotation ~= nil
+        then
+            context.onCancelRotation(playerColor)
+        end
+
         HexGridMenu.close()
         return
     end
@@ -123,7 +136,19 @@ function HexGridMenu.handleAction(playerColor, action)
     end
 
     if context.onObjectChoice(template, activeMenu.cell, playerColor) then
-        HexGridMenu.close()
+        activeMenu.rotationPending = true
+        UI.setAttribute(
+            Config.ui.titleId,
+            "text",
+            "Rotate " .. template.label
+        )
+        UI.setAttribute(
+            Config.ui.rotationPromptId,
+            "text",
+            "Click a highlighted adjacent hex to choose which way "
+                .. template.label .. " faces."
+        )
+        setPage(Config.ui.rotationPageId)
     end
 end
 

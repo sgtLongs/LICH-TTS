@@ -54,6 +54,9 @@ local HexGridConfig = {
     hoverFillColor = {1, 1, 0, 0.18},
     selectedColor = {1, 0.75, 0.1},
     menuTargetColor = {0.95, 0.2, 1},
+    rotationCandidateColor = {0.2, 1, 0.35},
+    rotationCandidateFillColor = {0.2, 1, 0.35, 0.2},
+    rotationCancelColor = {1, 0.45, 0.25},
     lineThickness = 0.0,
     hoverFillLineThickness = 0.12,
     hoverFillSurfaceOffset = 0.02,
@@ -61,7 +64,11 @@ local HexGridConfig = {
     hoverSurfaceOffset = 0.04,
     selectedLineThickness = 0.18,
     menuTargetLineThickness = 0.34,
-    menuTargetSurfaceOffset = 0.07
+    menuTargetSurfaceOffset = 0.07,
+    rotationCandidateFillLineThickness = 0.12,
+    rotationCandidateFillSurfaceOffset = 0.03,
+    rotationCandidateLineThickness = 0.28,
+    rotationCandidateSurfaceOffset = 0.08
 }
 
 return HexGridConfig
