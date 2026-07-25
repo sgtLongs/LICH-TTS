@@ -26,6 +26,10 @@ function Game.onSave()
     })
 end
 
+function Game.onObjectHover()
+    HexGrid.onObjectHover()
+end
+
 function Game.onSpeakerButtonClicked(data)
     ChatService.sayButtonClicked(data.playerColor, data.objectName)
 end

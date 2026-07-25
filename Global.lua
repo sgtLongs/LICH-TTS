@@ -8,6 +8,10 @@ function onSave()
     return Game.onSave()
 end
 
+function onObjectHover(playerColor, object)
+    Game.onObjectHover(playerColor, object)
+end
+
 function onSpeakerButtonClicked(data)
     Game.onSpeakerButtonClicked(data)
 end

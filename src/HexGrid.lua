@@ -19,8 +19,11 @@ local CONFIG = {
     surfaceOffset = -4.302,
 
     lineColor = {0, 0.8, 1},
+    hoverColor = {1, 1, 0},
     selectedColor = {1, 0.75, 0.1},
     lineThickness = 0.10,
+    hoverLineThickness = 0.28,
+    hoverSurfaceOffset = 0.04,
     selectedLineThickness = 0.18
 }
 
@@ -28,7 +31,9 @@ local SQRT_3 = math.sqrt(3)
 local board = nil
 local cells = {}
 local selectedCells = {}
+local hoveredCells = {}
 local resolvedSurfaceY = 0
+local hoverWaitId = nil
 
 local function cellKey(row, column)
     return tostring(row) .. ":" .. tostring(column)
@@ -70,15 +75,16 @@ local function makeCells()
     end
 end
 
-local function makeHexLine(cell, color, thickness)
+local function makeHexLine(cell, color, thickness, surfaceOffset)
     local points = {}
+    local lineY = resolvedSurfaceY + (surfaceOffset or 0)
 
     for corner = 0, 6 do
         -- Starting at 30 degrees creates a pointy-top hex.
         local angle = math.rad(30 + (corner % 6) * 60 + CONFIG.rotationDegrees)
         table.insert(points, {
             x = cell.x + CONFIG.hexRadius * math.cos(angle),
-            y = resolvedSurfaceY,
+            y = lineY,
             z = cell.z + CONFIG.hexRadius * math.sin(angle)
         })
     end
@@ -106,6 +112,18 @@ local function drawLines()
                 makeHexLine(cell, CONFIG.selectedColor, CONFIG.selectedLineThickness)
             )
         end
+
+        if hoveredCells[cellKey(cell.row, cell.column)] then
+            table.insert(
+                lines,
+                makeHexLine(
+                    cell,
+                    CONFIG.hoverColor,
+                    CONFIG.hoverLineThickness,
+                    CONFIG.hoverSurfaceOffset
+                )
+            )
+        end
     end
 
     board.setVectorLines(lines)
@@ -123,25 +141,44 @@ local function createButtons()
         end
     end
 
-    for _, cell in ipairs(cells) do
-        board.createButton({
-            label = "",
-            click_function = "onHexGridClicked",
-            function_owner = Global,
-            position = {cell.x, resolvedSurfaceY + 0.02, cell.z},
-            rotation = {0, CONFIG.rotationDegrees, 0},
-            width = math.floor(CONFIG.hexRadius * 150),
-            height = math.floor(CONFIG.hexRadius * 130),
-            font_size = 1,
-            color = {0, 0, 0, 0},
-            hover_color = {1, 0.75, 0.1, 0.18},
-            press_color = {1, 0.75, 0.1, 0.35},
-            tooltip = "Hex " .. cell.row .. ", " .. cell.column
-        })
-    end
+    local gridRadius = CONFIG.sideLength - 1
+
+    -- One control spans the whole grid. Per-cell bounding boxes overlap at
+    -- every sloped edge, which makes TTS choose controls inconsistently.
+    -- The callback below performs the exact per-hex hit test.
+    board.createButton({
+        label = "",
+        click_function = "onHexGridClicked",
+        function_owner = Global,
+        position = {CONFIG.offsetX, resolvedSurfaceY + 0.02, CONFIG.offsetZ},
+        rotation = {0, CONFIG.rotationDegrees, 0},
+        width = math.ceil(
+            SQRT_3 * CONFIG.hexRadius * (2 * gridRadius + 1) * 100
+        ),
+        height = math.ceil(
+            CONFIG.hexRadius * (3 * gridRadius + 2) * 100
+        ),
+        font_size = 1,
+        color = {0, 0, 0, 0},
+        hover_color = {0, 0, 0, 0},
+        press_color = {0, 0, 0, 0},
+        tooltip = "Hex grid"
+    })
 end
 
-local function findNearestCell(localPointer)
+local function pointIsInsideCell(localPointer, cell)
+    local deltaX = localPointer.x - cell.x
+    local deltaZ = localPointer.z - cell.z
+    local radians = math.rad(-CONFIG.rotationDegrees)
+    local localX = math.abs(deltaX * math.cos(radians) - deltaZ * math.sin(radians))
+    local localZ = math.abs(deltaX * math.sin(radians) + deltaZ * math.cos(radians))
+
+    -- Exact pointy-top regular-hex containment test.
+    return localX <= SQRT_3 * CONFIG.hexRadius * 0.5
+        and SQRT_3 * localZ + localX <= SQRT_3 * CONFIG.hexRadius
+end
+
+local function findCellAt(localPointer)
     local nearest = nil
     local nearestDistanceSquared = nil
 
@@ -156,7 +193,51 @@ local function findNearestCell(localPointer)
         end
     end
 
-    return nearest
+    if nearest ~= nil and pointIsInsideCell(localPointer, nearest) then
+        return nearest
+    end
+
+    return nil
+end
+
+local function updateHoveredCells()
+    if board == nil then
+        return
+    end
+
+    local nextHoveredCells = {}
+
+    for _, player in ipairs(Player.getPlayers()) do
+        local localPointer = board.positionToLocal(player.getPointerPosition())
+        local cell = findCellAt(localPointer)
+
+        if cell ~= nil then
+            nextHoveredCells[cellKey(cell.row, cell.column)] = true
+        end
+    end
+
+    local changed = false
+
+    for key, _ in pairs(hoveredCells) do
+        if not nextHoveredCells[key] then
+            changed = true
+            break
+        end
+    end
+
+    if not changed then
+        for key, _ in pairs(nextHoveredCells) do
+            if not hoveredCells[key] then
+                changed = true
+                break
+            end
+        end
+    end
+
+    if changed then
+        hoveredCells = nextHoveredCells
+        drawLines()
+    end
 end
 
 local function resolveSurfaceY()
@@ -187,6 +268,15 @@ local function buildGrid()
     drawLines()
     createButtons()
 
+    if hoverWaitId ~= nil then
+        Wait.stop(hoverWaitId)
+    end
+
+    -- getPointerPosition is TTS's native cursor-ray hit position. Poll it
+    -- directly here so hover tracking does not depend on a forwarded Global
+    -- onUpdate callback.
+    hoverWaitId = Wait.time(updateHoveredCells, 0.05, -1)
+
     print(
         "HexGrid: drew " .. #cells .. " hexes on " .. CONFIG.boardGuid
             .. " at local surface Y " .. string.format("%.3f", resolvedSurfaceY)
@@ -195,6 +285,7 @@ end
 
 function HexGrid.onLoad(savedState)
     selectedCells = {}
+    hoveredCells = {}
 
     if type(savedState) == "table" and type(savedState.selectedCells) == "table" then
         selectedCells = savedState.selectedCells
@@ -202,6 +293,10 @@ function HexGrid.onLoad(savedState)
 
     -- Objects may not all be available during Global's first onLoad frame.
     Wait.frames(buildGrid, 2)
+end
+
+function HexGrid.onObjectHover()
+    updateHoveredCells()
 end
 
 function HexGrid.getSaveState()
@@ -222,7 +317,7 @@ function HexGrid.onClicked(playerColor)
     end
 
     local localPointer = board.positionToLocal(player.getPointerPosition())
-    local cell = findNearestCell(localPointer)
+    local cell = findCellAt(localPointer)
 
     if cell == nil then
         return
