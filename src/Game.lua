@@ -1,5 +1,5 @@
 local ChatService = require("src/ChatService")
-local DungeonMap = require("src/DungeonMap")
+local DungeonMap = require("src/dungeon/DungeonMap")
 local HexGrid = require("src/hex/HexGrid")
 local SettingsMenu = require("src/SettingsMenu")
 local TurnSystem = require("src/turns/TurnSystem")

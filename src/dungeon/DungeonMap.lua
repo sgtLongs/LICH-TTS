@@ -1,4 +1,4 @@
-local Config = require("src/config/DungeonMapConfig")
+local Config = require("src/dungeon/DungeonMapConfig")
 
 local DungeonMap = {}
 local cells = {}

@@ -19,38 +19,28 @@ local HexGridConfig = {
     buttonLayerSpacing = 0.002,
     buttonClickFunction = "onHexGridClicked",
     objectButtonClickFunction = "onHexGridObjectClicked",
-    objectButtonDebug = true,
     objectButtonDebugFontSize = 28,
+    objectButtonOpacity = 0.6,
     objectButtonSurfaces = {
         {
             label = "VERTICAL 1",
-            positionOffset = {x = 0, y = 0, z = 0},
             rotation = {60, 0, 90},
-            width = 1750,
-            height = 1750,
             doubleSided = true,
-            debugColor = {1, 0.25, 0.25, 1}
+            debugColor = {1, 0.25, 0.25}
         },
         {
             label = "VERTICAL 2",
-            positionOffset = {x = 0, y = 0, z = 0},
             rotation = {120, 0, 90},
-            width = 1750,
-            height = 1750,
             doubleSided = true,
-            debugColor = {0.25, 1, 0.35, 1}
+            debugColor = {0.25, 1, 0.35}
         },
         {
             label = "VERTICAL 3",
-            positionOffset = {x = 0, y = 0, z = 0},
             rotation = {0, 0, 90},
-            width = 1750,
-            height = 1750,
             doubleSided = true,
-            debugColor = {0.1, 0.7, 1, 1}
+            debugColor = {0.1, 0.7, 1}
         }
     },
-    showButtonDebug = false,
     buttonFontSize = 34,
     buttonFontColor = {1, 1, 1, 0.95},
     invisibleButtonColor = {0, 0, 0, 0},

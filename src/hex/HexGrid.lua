@@ -1,4 +1,5 @@
 local Config = require("src/config/HexGridConfig")
+local DebugConfig = require("src/config/GlobalDebugConfig")
 local HexGridBuilder = require("src/hex/HexGridBuilder")
 local HexGridMenu = require("src/hex/HexGridMenu")
 local HexObjectSpawner = require("src/hex/HexObjectSpawner")
@@ -274,7 +275,11 @@ local function addObjectClickButton(object, placement)
     end
 
     local boundsCenter = object.getBounds().center
-    local showDebug = Config.objectButtonDebug == true
+    local showDebug = DebugConfig.drawEditObjectButtons == true
+    local template = templatesByKey[placement.templateKey]
+    local clickArea = template ~= nil
+        and template.editClickArea or {}
+    local clickAreaOffset = clickArea.positionOffset or {}
 
     for groupIndex, occupiedCell in ipairs(
         getPlacementOccupiedCells(placement)
@@ -299,11 +304,19 @@ local function addObjectClickButton(object, placement)
             })
 
             for _, surface in ipairs(Config.objectButtonSurfaces) do
-                local offset = surface.positionOffset or {}
+                local debugColor = {
+                    surface.debugColor[1],
+                    surface.debugColor[2],
+                    surface.debugColor[3],
+                    Config.objectButtonOpacity
+                }
                 local position = {
-                    x = groupCenter.x + (offset.x or 0),
-                    y = groupCenter.y + (offset.y or 0),
-                    z = groupCenter.z + (offset.z or 0)
+                    x = groupCenter.x
+                        + (clickAreaOffset.x or 0),
+                    y = groupCenter.y
+                        + (clickAreaOffset.y or 0),
+                    z = groupCenter.z
+                        + (clickAreaOffset.z or 0)
                 }
                 local rotations = {surface.rotation}
 
@@ -323,21 +336,21 @@ local function addObjectClickButton(object, placement)
                         function_owner = Global,
                         position = position,
                         rotation = rotation,
-                        width = surface.width,
-                        height = surface.height,
+                        width = clickArea.height,
+                        height = clickArea.width,
                         font_size = showDebug
                             and Config.objectButtonDebugFontSize or 1,
                         color = showDebug
-                            and surface.debugColor
+                            and debugColor
                             or Config.invisibleButtonColor,
                         font_color = showDebug
                             and Config.buttonFontColor
                             or Config.invisibleButtonColor,
                         hover_color = showDebug
-                            and surface.debugColor
+                            and debugColor
                             or Config.invisibleButtonColor,
                         press_color = showDebug
-                            and surface.debugColor
+                            and debugColor
                             or Config.invisibleButtonColor,
                         tooltip = "Edit object"
                     })
@@ -470,7 +483,6 @@ local function spawnPlacement(
             local completedSuccessfully = pcall(function()
                 placement.guid = spawnedObject.getGUID()
                 spawnedObject.addTag(SettingsConfig.placedObjectTag)
-                addObjectClickButton(spawnedObject, placement)
             end)
 
             reportCompletion(completedSuccessfully)

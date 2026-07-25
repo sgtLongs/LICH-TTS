@@ -1,4 +1,5 @@
 local Config = require("src/config/HexGridConfig")
+local DebugConfig = require("src/config/GlobalDebugConfig")
 
 local HexGridBuilder = {}
 local SQRT_3 = math.sqrt(3)
@@ -257,7 +258,7 @@ local function createButtons(board, cells, surfaceY)
     removeGridButtons(board)
 
     local dimensions = getButtonDimensions()
-    local showDebug = Config.showButtonDebug == true
+    local showDebug = DebugConfig.drawHexButtons == true
 
     for _, cell in ipairs(cells) do
         for buttonIndex, buttonConfig in ipairs(Config.buttons) do

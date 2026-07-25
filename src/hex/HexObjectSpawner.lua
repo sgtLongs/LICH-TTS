@@ -86,6 +86,9 @@ end
 
 local function schedulePlacementCorrections(parameters, spawnedObject)
     for index, frameCount in ipairs(Config.placementCorrectionFrames) do
+        local isFinalCorrection =
+            index == #Config.placementCorrectionFrames
+
         Wait.frames(function()
             if spawnedObject == nil or spawnedObject.isDestroyed() then
                 return
@@ -100,7 +103,7 @@ local function schedulePlacementCorrections(parameters, spawnedObject)
                 parameters.localRotationY
             )
 
-            if index == #Config.placementCorrectionFrames
+            if isFinalCorrection
                 and parameters.onPlacementFinalized ~= nil
             then
                 parameters.onPlacementFinalized(spawnedObject)
