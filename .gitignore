@@ -1,1 +1,3 @@
 .tts/bundled/
+tests/runner/bin/
+tests/runner/obj/

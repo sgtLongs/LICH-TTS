@@ -1,4 +1,5 @@
 local Config = require("src/dungeon/DungeonMapConfig")
+local DungeonMapState = require("src/dungeon/DungeonMapState")
 
 local DungeonMap = {}
 local cells = {}
@@ -19,29 +20,11 @@ local context = {
 }
 
 local function cellKey(q, r)
-    return tostring(q) .. ":" .. tostring(r)
+    return DungeonMapState.cellKey(q, r)
 end
 
 local function buildCells()
-    cells = {}
-    cellsByKey = {}
-
-    for r = -Config.radius, Config.radius do
-        local minimumQ = math.max(-Config.radius, -r - Config.radius)
-        local maximumQ = math.min(Config.radius, -r + Config.radius)
-
-        for q = minimumQ, maximumQ do
-            local cell = {
-                index = #cells + 1,
-                q = q,
-                r = r,
-                key = cellKey(q, r)
-            }
-
-            cells[#cells + 1] = cell
-            cellsByKey[cell.key] = cell
-        end
-    end
+    cells, cellsByKey = DungeonMapState.buildCells(Config.radius)
 end
 
 buildCells()
@@ -144,25 +127,11 @@ local function getAssignmentDescription(cell, savedBoards)
 end
 
 local function canTraverseToCell(cell)
-    if currentCellKey == nil or cell.key == currentCellKey then
-        return true
-    end
-
-    local currentCell = cellsByKey[currentCellKey]
-
-    if currentCell == nil then
-        return true
-    end
-
-    local differenceQ = cell.q - currentCell.q
-    local differenceR = cell.r - currentCell.r
-    local distance = math.max(
-        math.abs(differenceQ),
-        math.abs(differenceR),
-        math.abs(differenceQ + differenceR)
+    return DungeonMapState.canTraverse(
+        cellsByKey,
+        currentCellKey,
+        cell
     )
-
-    return distance == 1
 end
 
 local function refreshTiles(savedBoards)
@@ -672,62 +641,17 @@ local function traverseToCell(playerColor, cell)
     finalizeTraversalIfReady()
 end
 
-local function normalizeInteger(value)
-    local number = tonumber(value)
-
-    if number == nil or number ~= math.floor(number) then
-        return nil
-    end
-
-    return number
-end
-
 local function loadSavedState(savedState)
-    assignmentsByCellKey = {}
-    currentCellKey = nil
+    local loadedState = DungeonMapState.load(
+        savedState,
+        cellsByKey,
+        Config.schemaVersion
+    )
+    assignmentsByCellKey = loadedState.assignmentsByCellKey
+    currentCellKey = loadedState.currentCellKey
 
-    if type(savedState) ~= "table" then
-        return
-    end
-
-    if savedState.schemaVersion ~= nil
-        and tonumber(savedState.schemaVersion) ~= Config.schemaVersion
-    then
+    if loadedState.unsupportedVersion then
         print("DungeonMap: ignored an unsupported saved-state version.")
-        return
-    end
-
-    if type(savedState.tiles) == "table" then
-        for _, savedTile in ipairs(savedState.tiles) do
-            local q = type(savedTile) == "table"
-                and normalizeInteger(savedTile.q) or nil
-            local r = type(savedTile) == "table"
-                and normalizeInteger(savedTile.r) or nil
-            local boardSaveId = type(savedTile) == "table"
-                and savedTile.boardSaveId or nil
-            local key = q ~= nil and r ~= nil
-                and cellKey(q, r) or nil
-
-            if cellsByKey[key] ~= nil
-                and type(boardSaveId) == "string"
-                and boardSaveId ~= ""
-                and assignmentsByCellKey[key] == nil
-            then
-                assignmentsByCellKey[key] = boardSaveId
-            end
-        end
-    end
-
-    local currentTile = savedState.currentTile
-    local currentQ = type(currentTile) == "table"
-        and normalizeInteger(currentTile.q) or nil
-    local currentR = type(currentTile) == "table"
-        and normalizeInteger(currentTile.r) or nil
-    local savedCurrentKey = currentQ ~= nil and currentR ~= nil
-        and cellKey(currentQ, currentR) or nil
-
-    if assignmentsByCellKey[savedCurrentKey] ~= nil then
-        currentCellKey = savedCurrentKey
     end
 end
 
@@ -749,31 +673,13 @@ function DungeonMap.initialize(parameters, savedState)
 end
 
 function DungeonMap.getSaveState()
-    local savedTiles = {}
-
-    for _, cell in ipairs(cells) do
-        local boardSaveId = assignmentsByCellKey[cell.key]
-
-        if boardSaveId ~= nil then
-            savedTiles[#savedTiles + 1] = {
-                q = cell.q,
-                r = cell.r,
-                boardSaveId = boardSaveId
-            }
-        end
-    end
-
-    local currentCell = currentCellKey ~= nil
-        and cellsByKey[currentCellKey] or nil
-
-    return {
-        schemaVersion = Config.schemaVersion,
-        currentTile = currentCell ~= nil and {
-            q = currentCell.q,
-            r = currentCell.r
-        } or nil,
-        tiles = savedTiles
-    }
+    return DungeonMapState.serialize(
+        cells,
+        cellsByKey,
+        assignmentsByCellKey,
+        currentCellKey,
+        Config.schemaVersion
+    )
 end
 
 function DungeonMap.handleAction(playerColor, action)

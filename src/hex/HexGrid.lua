@@ -1,5 +1,7 @@
 local Config = require("src/config/HexGridConfig")
 local DebugConfig = require("src/config/GlobalDebugConfig")
+local HexBoardState = require("src/hex/HexBoardState")
+local HexGeometry = require("src/hex/HexGeometry")
 local HexGridBuilder = require("src/hex/HexGridBuilder")
 local HexGridMenu = require("src/hex/HexGridMenu")
 local HexObjectSpawner = require("src/hex/HexObjectSpawner")
@@ -66,31 +68,8 @@ local function spawnObject(
     })
 end
 
-local adjacentOffsets = {
-    {row = 0, column = 1},
-    {row = -1, column = 1},
-    {row = -1, column = 0},
-    {row = 0, column = -1},
-    {row = 1, column = -1},
-    {row = 1, column = 0}
-}
-
 local function getAdjacentCells(targetCell)
-    local adjacentCells = {}
-
-    for _, offset in ipairs(adjacentOffsets) do
-        local key = HexGridBuilder.cellKey(
-            targetCell.row + offset.row,
-            targetCell.column + offset.column
-        )
-        local adjacentCell = cellsByKey[key]
-
-        if adjacentCell ~= nil then
-            adjacentCells[key] = adjacentCell
-        end
-    end
-
-    return adjacentCells
+    return HexGeometry.getAdjacentCells(targetCell, cellsByKey)
 end
 
 local function beginRotationSelection(
@@ -736,225 +715,13 @@ function HexGrid.getSaveState()
     }
 end
 
-local function normalizeCell(value, fieldName)
-    if type(value) ~= "table" then
-        return nil, fieldName .. " must be an object."
-    end
-
-    local row = tonumber(value.row)
-    local column = tonumber(value.column)
-
-    if row == nil or column == nil
-        or row ~= math.floor(row)
-        or column ~= math.floor(column)
-    then
-        return nil, fieldName .. " must contain integer row and column values."
-    end
-
-    local cell = cellsByKey[HexGridBuilder.cellKey(row, column)]
-
-    if cell == nil then
-        return nil, fieldName .. " is outside the hex grid."
-    end
-
-    return copyCell(cell)
-end
-
-local function cellsMatch(firstCell, secondCell)
-    return firstCell.row == secondCell.row
-        and firstCell.column == secondCell.column
-end
-
-local function getArrayLength(value, fieldName)
-    local entryCount = 0
-    local highestIndex = 0
-
-    for key, _ in pairs(value) do
-        if type(key) ~= "number"
-            or key < 1
-            or key ~= math.floor(key)
-        then
-            return nil, fieldName .. " must be an array."
-        end
-
-        entryCount = entryCount + 1
-        highestIndex = math.max(highestIndex, key)
-    end
-
-    if entryCount ~= highestIndex then
-        return nil, fieldName .. " must not contain missing entries."
-    end
-
-    return entryCount
-end
-
 local function normalizeBoardState(boardState)
-    if type(boardState) ~= "table" then
-        return nil, "Board-state JSON must contain an object."
-    end
-
-    if tonumber(boardState.schemaVersion)
-        ~= SettingsConfig.boardStateSchemaVersion
-    then
-        return nil, "Unsupported board-state schema version."
-    end
-
-    if boardState.boardGuid ~= Config.boardGuid then
-        return nil, "This board state belongs to a different board."
-    end
-
-    if type(boardState.selectedHexes) ~= "table" then
-        return nil, "selectedHexes must be an array."
-    end
-
-    if type(boardState.hexObjects) ~= "table" then
-        return nil, "hexObjects must be an array."
-    end
-
-    local selectedHexCount, selectedHexesError = getArrayLength(
-        boardState.selectedHexes,
-        "selectedHexes"
-    )
-
-    if selectedHexCount == nil then
-        return nil, selectedHexesError
-    end
-
-    local hexObjectCount, hexObjectsError = getArrayLength(
-        boardState.hexObjects,
-        "hexObjects"
-    )
-
-    if hexObjectCount == nil then
-        return nil, hexObjectsError
-    end
-
-    local normalized = {
-        selectedCells = {},
-        selectedHexCount = 0,
-        placements = {}
-    }
-
-    for index = 1, selectedHexCount do
-        local selectedHex = boardState.selectedHexes[index]
-        local cell, cellError = normalizeCell(
-            selectedHex,
-            "selectedHexes[" .. index .. "]"
-        )
-
-        if cell == nil then
-            return nil, cellError
-        end
-
-        local key = HexGridBuilder.cellKey(cell.row, cell.column)
-
-        if not normalized.selectedCells[key] then
-            normalized.selectedCells[key] = true
-            normalized.selectedHexCount =
-                normalized.selectedHexCount + 1
-        end
-    end
-
-    for index = 1, hexObjectCount do
-        local objectState = boardState.hexObjects[index]
-        if type(objectState) ~= "table"
-            or type(objectState.type) ~= "string"
-            or templatesByKey[objectState.type] == nil
-        then
-            return nil,
-                "hexObjects[" .. index .. "] has an unknown object type."
-        end
-
-        local cell, cellError = normalizeCell(
-            objectState.hex,
-            "hexObjects[" .. index .. "].hex"
-        )
-
-        if cell == nil then
-            return nil, cellError
-        end
-
-        local facingCell, facingError = normalizeCell(
-            objectState.facing,
-            "hexObjects[" .. index .. "].facing"
-        )
-
-        if facingCell == nil then
-            return nil, facingError
-        end
-
-        local facingKey = HexGridBuilder.cellKey(
-            facingCell.row,
-            facingCell.column
-        )
-
-        if getAdjacentCells(cell)[facingKey] == nil then
-            return nil,
-                "hexObjects[" .. index
-                    .. "].facing must be adjacent to its hex."
-        end
-
-        local template = templatesByKey[objectState.type]
-        local expectedOccupiedCells = {cell}
-
-        if template.occupiesFacingCell == true then
-            expectedOccupiedCells[#expectedOccupiedCells + 1] = facingCell
-        end
-
-        if objectState.occupiedHexes ~= nil then
-            if type(objectState.occupiedHexes) ~= "table" then
-                return nil,
-                    "hexObjects[" .. index
-                        .. "].occupiedHexes must be an array."
-            end
-
-            local occupiedHexCount, occupiedHexesError = getArrayLength(
-                objectState.occupiedHexes,
-                "hexObjects[" .. index .. "].occupiedHexes"
-            )
-
-            if occupiedHexCount == nil then
-                return nil, occupiedHexesError
-            end
-
-            if occupiedHexCount ~= #expectedOccupiedCells then
-                return nil,
-                    "hexObjects[" .. index .. "].occupiedHexes must contain "
-                        .. #expectedOccupiedCells .. " "
-                        .. (#expectedOccupiedCells == 1 and "hex." or "hexes.")
-            end
-
-            for occupiedIndex, expectedCell in ipairs(
-                expectedOccupiedCells
-            ) do
-                local occupiedCell, occupiedCellError = normalizeCell(
-                    objectState.occupiedHexes[occupiedIndex],
-                    "hexObjects[" .. index .. "].occupiedHexes["
-                        .. occupiedIndex .. "]"
-                )
-
-                if occupiedCell == nil then
-                    return nil, occupiedCellError
-                end
-
-                if not cellsMatch(occupiedCell, expectedCell) then
-                    return nil,
-                        "hexObjects[" .. index
-                            .. "].occupiedHexes does not match its hex"
-                            .. (template.occupiesFacingCell == true
-                                and " and facing hex." or ".")
-                end
-            end
-        end
-
-        normalized.placements[#normalized.placements + 1] = {
-            templateKey = objectState.type,
-            cell = cell,
-            facingCell = facingCell
-        }
-    end
-
-    return normalized
+    return HexBoardState.normalize(boardState, {
+        schemaVersion = SettingsConfig.boardStateSchemaVersion,
+        boardGuid = Config.boardGuid,
+        cellsByKey = cellsByKey,
+        templatesByKey = templatesByKey
+    })
 end
 
 function HexGrid.getBoardState()

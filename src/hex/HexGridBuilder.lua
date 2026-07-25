@@ -1,48 +1,12 @@
 local Config = require("src/config/HexGridConfig")
 local DebugConfig = require("src/config/GlobalDebugConfig")
+local HexGeometry = require("src/hex/HexGeometry")
 
 local HexGridBuilder = {}
 local SQRT_3 = math.sqrt(3)
 
 function HexGridBuilder.cellKey(row, column)
-    return tostring(row) .. ":" .. tostring(column)
-end
-
-local function rotatePoint(x, z)
-    local radians = math.rad(Config.rotationDegrees)
-    local cosine = math.cos(radians)
-    local sine = math.sin(radians)
-
-    return {
-        x = x * cosine - z * sine + Config.offsetX,
-        z = x * sine + z * cosine + Config.offsetZ
-    }
-end
-
-local function makeCells()
-    local gridRadius = Config.sideLength - 1
-    local cells = {}
-
-    for q = -gridRadius, gridRadius do
-        local minimumR = math.max(-gridRadius, -q - gridRadius)
-        local maximumR = math.min(gridRadius, -q + gridRadius)
-
-        for r = minimumR, maximumR do
-            local center = rotatePoint(
-                SQRT_3 * Config.hexRadius * (q + r * 0.5),
-                1.5 * Config.hexRadius * r
-            )
-
-            table.insert(cells, {
-                row = r,
-                column = q,
-                x = center.x,
-                z = center.z
-            })
-        end
-    end
-
-    return cells
+    return HexGeometry.cellKey(row, column)
 end
 
 local function resolveSurfaceY(board)
@@ -296,7 +260,7 @@ local function createButtons(board, cells, surfaceY)
 end
 
 function HexGridBuilder.build(board)
-    local cells = makeCells()
+    local cells = HexGeometry.buildCells(Config)
     local surfaceY = resolveSurfaceY(board)
 
     createButtons(board, cells, surfaceY)
@@ -307,44 +271,8 @@ function HexGridBuilder.build(board)
     }
 end
 
-local function pointIsInsideCell(localPointer, cell)
-    local deltaX = localPointer.x - cell.x
-    local deltaZ = localPointer.z - cell.z
-    local radians = math.rad(-Config.rotationDegrees)
-    local localX = math.abs(
-        deltaX * math.cos(radians) - deltaZ * math.sin(radians)
-    )
-    local localZ = math.abs(
-        deltaX * math.sin(radians) + deltaZ * math.cos(radians)
-    )
-    local hitRadius = Config.hexRadius + Config.hitEdgePadding
-
-    return localX <= SQRT_3 * hitRadius * 0.5
-        and SQRT_3 * localZ + localX <= SQRT_3 * hitRadius
-end
-
 function HexGridBuilder.findCellAt(cells, localPointer)
-    local nearest = nil
-    local nearestDistanceSquared = nil
-
-    for _, cell in ipairs(cells) do
-        local deltaX = localPointer.x - cell.x
-        local deltaZ = localPointer.z - cell.z
-        local distanceSquared = deltaX * deltaX + deltaZ * deltaZ
-
-        if nearestDistanceSquared == nil
-            or distanceSquared < nearestDistanceSquared
-        then
-            nearest = cell
-            nearestDistanceSquared = distanceSquared
-        end
-    end
-
-    if nearest ~= nil and pointIsInsideCell(localPointer, nearest) then
-        return nearest
-    end
-
-    return nil
+    return HexGeometry.findCellAt(cells, localPointer, Config)
 end
 
 return HexGridBuilder

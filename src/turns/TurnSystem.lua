@@ -1,11 +1,12 @@
 local ChatService = require("src/ChatService")
 local Config = require("src/config/TurnConfig")
+local TurnState = require("src/turns/TurnState")
 
 local TurnSystem = {}
-local currentTurnIndex = 1
+local turnState = TurnState.new(Config.playerColors)
 
 local function getCurrentColor()
-    return Config.playerColors[currentTurnIndex]
+    return TurnState.getCurrentColor(turnState)
 end
 
 local function getPlayerName(playerColor)
@@ -67,16 +68,7 @@ local function announceTurn()
 end
 
 function TurnSystem.onLoad(savedTurnState)
-    if type(savedTurnState) == "table" then
-        local savedIndex = tonumber(savedTurnState.currentTurnIndex)
-
-        if savedIndex ~= nil
-            and savedIndex >= 1
-            and savedIndex <= #Config.playerColors
-        then
-            currentTurnIndex = math.floor(savedIndex)
-        end
-    end
+    turnState = TurnState.new(Config.playerColors, savedTurnState)
 
     Wait.frames(function()
         updateUi()
@@ -85,9 +77,7 @@ function TurnSystem.onLoad(savedTurnState)
 end
 
 function TurnSystem.getSaveState()
-    return {
-        currentTurnIndex = currentTurnIndex
-    }
+    return TurnState.getSaveState(turnState)
 end
 
 function TurnSystem.endTurn(playerColor)
@@ -102,7 +92,7 @@ function TurnSystem.endTurn(playerColor)
         return
     end
 
-    currentTurnIndex = (currentTurnIndex % #Config.playerColors) + 1
+    TurnState.endTurn(turnState, playerColor)
     updateUi()
     announceTurn()
 end
