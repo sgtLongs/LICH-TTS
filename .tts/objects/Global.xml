@@ -1,1 +1,94 @@
-<!-- Xml UI. See documentation: https://api.tabletopsimulator.com/ui/introUI/ -->
+<Defaults>
+    <Text
+        font="Arial"
+        alignment="MiddleCenter"
+        color="#FFFFFF"
+    />
+    <Button
+        font="Arial"
+        fontSize="24"
+        textColor="#FFFFFF"
+        colors="#5A189A|#7130A8|#42106F|#42106F"
+    />
+</Defaults>
+
+<Panel
+    id="turnPanel"
+    rectAlignment="UpperCenter"
+    width="560"
+    height="150"
+    offsetXY="0 -22"
+    color="#111827E8"
+    padding="10 10 10 10"
+>
+    <VerticalLayout spacing="3" childAlignment="UpperCenter">
+        <Text
+            id="turnPlayerName"
+            text="White's Turn"
+            fontSize="34"
+            fontStyle="Bold"
+            preferredHeight="45"
+        />
+        <Text
+            id="turnColorName"
+            text="White Player"
+            fontSize="18"
+            color="#D1D5DB"
+            preferredHeight="27"
+        />
+
+        <Button
+            id="endTurnWhite"
+            text="END MY TURN"
+            visibility="White"
+            onClick="onEndTurnClicked"
+            preferredWidth="260"
+            preferredHeight="50"
+        />
+        <Button
+            id="endTurnBrown"
+            text="WAITING..."
+            visibility="Brown"
+            onClick="onEndTurnClicked"
+            preferredWidth="260"
+            preferredHeight="50"
+            interactable="false"
+        />
+        <Button
+            id="endTurnRed"
+            text="WAITING..."
+            visibility="Red"
+            onClick="onEndTurnClicked"
+            preferredWidth="260"
+            preferredHeight="50"
+            interactable="false"
+        />
+        <Button
+            id="endTurnGreen"
+            text="WAITING..."
+            visibility="Green"
+            onClick="onEndTurnClicked"
+            preferredWidth="260"
+            preferredHeight="50"
+            interactable="false"
+        />
+        <Button
+            id="endTurnTeal"
+            text="WAITING..."
+            visibility="Teal"
+            onClick="onEndTurnClicked"
+            preferredWidth="260"
+            preferredHeight="50"
+            interactable="false"
+        />
+        <Button
+            id="endTurnBlue"
+            text="WAITING..."
+            visibility="Blue"
+            onClick="onEndTurnClicked"
+            preferredWidth="260"
+            preferredHeight="50"
+            interactable="false"
+        />
+    </VerticalLayout>
+</Panel>
