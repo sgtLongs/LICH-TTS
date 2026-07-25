@@ -3,11 +3,11 @@
   "Name": "Card",
   "Transform": {
     "posX": 55.6572952,
-    "posY": 1.71079314,
-    "posZ": -0.790334344,
-    "rotX": 0.00000335223876,
+    "posY": 1.71079135,
+    "posZ": -0.7903344,
+    "rotX": 0.00000321655671,
     "rotY": 90.02052,
-    "rotZ": 7.062801e-7,
+    "rotZ": 4.533577e-7,
     "scaleX": 1,
     "scaleY": 1,
     "scaleZ": 1
@@ -41,7 +41,7 @@
   "Hands": true,
   "CardID": 23,
   "SidewaysCard": false,
-  "LuaScript": "local SpeakerButton = require(\"object_logic/SpeakerButton\")\r\n\r\nfunction onLoad()\r\n    SpeakerButton.onLoad(self)\r\nend\r\n\r\nfunction handleSpeakButtonClicked(obj, playerColor, altClick)\r\n    SpeakerButton.handleSpeakButtonClicked(self, obj, playerColor, altClick)\r\nend",
+  "LuaScript": "function onLoad()\r\n    self.interactable = false;\r\n    self.createButton({\r\n    label = \"\",\r\n    click_function = \"onButtonClick\",\r\n    function_owner = self,\r\n    width = 5000,\r\n    height = 1000,\r\n    color = {0, 0, 0, 0.0},\r\n    position = {62.4, 40.75, 0},\r\n    rotation = {0, 90, 90},\r\n    font_size = 200\r\n    })\r\nend\r\n\r\nfunction onButtonClick()\r\n    self.setState( 1 + (self.getStateId() % 2) )\r\n\r\nend",
   "LuaScriptState": "",
   "XmlUI": ""
 }

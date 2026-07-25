@@ -27,7 +27,7 @@ local function addDeckSlotButton(field)
                 .. tostring(field.surfaceObjectGuid)
                 .. " for " .. field.playerColor .. "."
         )
-        return
+        return false
     end
 
     removeDeckSlotButtons(surface)
@@ -62,6 +62,14 @@ local function addDeckSlotButton(field)
             and Config.deckSlot.debugPressColor or buttonColor,
         tooltip = "Choose a deck"
     })
+
+    return true
+end
+
+local function refreshDeckSlotButtons()
+    for _, field in ipairs(fields) do
+        addDeckSlotButton(field)
+    end
 end
 
 function CardFields.onLoad()
@@ -76,9 +84,12 @@ function CardFields.onLoad()
         Global.setVectorLines({})
     end
 
-    for _, field in ipairs(fields) do
-        addDeckSlotButton(field)
-    end
+    refreshDeckSlotButtons()
+
+    -- Stateful cabinet objects can replace and reload themselves after Global's
+    -- onLoad has run. Refresh once those object-level load handlers have
+    -- settled so their replacement does not discard a deck-slot button.
+    Wait.time(refreshDeckSlotButtons, 1)
 
     print(
         "CardFields: built " .. #fields

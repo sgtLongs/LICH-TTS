@@ -3,7 +3,7 @@ local CardFieldConfig = {
     rows = 3,
 
     -- World-space height used for the debug lines.
-    surfaceY = 1.72,
+    surfaceY = -0.7,
     lineThickness = 0.08,
     sectionLineThickness = 0.18,
     gridColor = {0.75, 0.75, 0.75, 0.8},
@@ -46,6 +46,9 @@ local CardFieldConfig = {
         },
         cardSpawnHeight = 2,
         cardDropHeight = 40,
+        -- Rotation applied to every card spawned from the deck slot.
+        -- Values are Euler angles in degrees: {x, y, z}.
+        cardSpawnRotation = {0, 180, 0},
         spawnDelay = 0.08
     },
 

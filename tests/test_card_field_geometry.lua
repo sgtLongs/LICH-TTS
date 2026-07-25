@@ -35,6 +35,7 @@ Test.case("card field position rotation and size affect drawing", function()
     local result = CardFieldGeometry.buildField(field, Config)
     local firstLine = result.lines[1]
 
+    Test.equal(90, result.downRotationDegrees)
     Test.near(7, firstLine.points[1].x, 0.0001)
     Test.near(27, firstLine.points[1].z, 0.0001)
     Test.near(13, firstLine.points[2].x, 0.0001)

@@ -72,8 +72,9 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
     end
 
     local field = {
-        playerColor = "White",
+        playerColor = "Green",
         surfaceObjectGuid = "test-field",
+        downRotationDegrees = 180,
         deckSlot = {x = 10, y = 2, z = 20}
     }
 
@@ -96,6 +97,18 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
     Test.equal("Skeleton | Undead ", spawnedCards[1].name)
     Test.equal(70, spawnedCards[1].parameters.position[1])
     Test.equal(80, spawnedCards[1].parameters.position[3])
+    Test.equal(
+        Config.deckSlot.cardSpawnRotation[1],
+        spawnedCards[1].parameters.rotation[1]
+    )
+    Test.equal(
+        Config.deckSlot.cardSpawnRotation[2] + 180,
+        spawnedCards[1].parameters.rotation[2]
+    )
+    Test.equal(
+        Config.deckSlot.cardSpawnRotation[3],
+        spawnedCards[1].parameters.rotation[3]
+    )
     Test.equal(70, spawnedCards[1].finishedPosition[1])
     Test.equal(80, spawnedCards[1].finishedPosition[3])
 

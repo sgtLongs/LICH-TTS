@@ -51,11 +51,18 @@ local function makeCardDefinitions(data)
     return definitions, nil, deckSize
 end
 
-local function createCard(card, position)
+local function createCard(card, position, downRotationDegrees)
+    local configuredRotation = Config.deckSlot.cardSpawnRotation
+    local rotation = {
+        configuredRotation[1],
+        configuredRotation[2] + (downRotationDegrees or 0),
+        configuredRotation[3]
+    }
+
     local newCard = spawnObject({
         type = "CardCustom",
         position = position,
-        rotation = {0, -90, 0},
+        rotation = rotation,
         snap_to_grid = false,
         callback_function = function(spawnedCard)
             -- Custom objects finish spawning asynchronously. Reapply the
@@ -100,12 +107,17 @@ local function spawnDeck(field, spawnPosition, definitions, deckSize)
 
         generatedCount = generatedCount + 1
 
-        createCard(definition, {
-            slot.x,
-            slot.y + Config.deckSlot.cardSpawnHeight
-                + (generatedCount / deckSize) * Config.deckSlot.cardDropHeight,
-            slot.z
-        })
+        createCard(
+            definition,
+            {
+                slot.x,
+                slot.y + Config.deckSlot.cardSpawnHeight
+                    + (generatedCount / deckSize)
+                        * Config.deckSlot.cardDropHeight,
+                slot.z
+            },
+            field.downRotationDegrees
+        )
 
         duplicateIndex = duplicateIndex + 1
 
