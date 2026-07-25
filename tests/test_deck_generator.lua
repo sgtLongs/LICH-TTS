@@ -5,11 +5,13 @@ local DeckGenerator = require("src/card_fields/DeckGenerator")
 Test.case("deck slot fetches its API and spawns the returned cards", function()
     local originalWebRequest = WebRequest
     local originalJson = JSON
-    local originalWait = Wait
-    local originalSpawnObject = spawnObject
+    local originalSpawnObjectData = spawnObjectData
     local requestedUrl = nil
     local requestCallback = nil
-    local spawnedCards = {}
+    local spawnParameters = nil
+    local spawnedDeck = nil
+    local spawnCallCount = 0
+    local decodedQuantity = 2
 
     WebRequest = {
         get = function(url, callback)
@@ -27,48 +29,32 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
                         description = "A test card",
                         frontImageURL = "front.png",
                         types = {"Undead"},
-                        quantity = 2
+                        quantity = decodedQuantity
                     }
                 }
             }
         end
     }
-    Wait = {
-        time = function(callback)
-            callback()
-        end
-    }
-    spawnObject = function(parameters)
-        local spawned = {
-            parameters = parameters
-        }
+    spawnObjectData = function(parameters)
+        spawnCallCount = spawnCallCount + 1
+        spawnParameters = parameters
+        spawnedDeck = {}
 
-        spawned.setCustomObject = function(customObject)
-            spawned.customObject = customObject
+        spawnedDeck.setPosition = function(position)
+            spawnedDeck.finishedPosition = position
         end
-        spawned.setName = function(name)
-            spawned.name = name
+        spawnedDeck.setVelocity = function(velocity)
+            spawnedDeck.velocity = velocity
         end
-        spawned.setDescription = function(description)
-            spawned.description = description
+        spawnedDeck.setAngularVelocity = function(velocity)
+            spawnedDeck.angularVelocity = velocity
         end
-        spawned.setPosition = function(position)
-            spawned.finishedPosition = position
-        end
-        spawned.setVelocity = function(velocity)
-            spawned.velocity = velocity
-        end
-        spawned.setAngularVelocity = function(velocity)
-            spawned.angularVelocity = velocity
-        end
-
-        spawnedCards[#spawnedCards + 1] = spawned
 
         if parameters.callback_function then
-            parameters.callback_function(spawned)
+            parameters.callback_function(spawnedDeck)
         end
 
-        return spawned
+        return spawnedDeck
     end
 
     local field = {
@@ -91,29 +77,63 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
         text = "{}"
     })
 
-    Test.equal(2, #spawnedCards)
-    Test.equal("front.png", spawnedCards[1].customObject.face)
-    Test.equal("back.png", spawnedCards[1].customObject.back)
-    Test.equal("Skeleton | Undead ", spawnedCards[1].name)
-    Test.equal(70, spawnedCards[1].parameters.position[1])
-    Test.equal(80, spawnedCards[1].parameters.position[3])
+    Test.equal(1, spawnCallCount)
+    Test.equal("DeckCustom", spawnParameters.data.Name)
+    Test.equal(2, #spawnParameters.data.DeckIDs)
+    Test.equal(2, #spawnParameters.data.ContainedObjects)
+    Test.equal(100, spawnParameters.data.DeckIDs[1])
+    Test.equal(100, spawnParameters.data.DeckIDs[2])
+    Test.equal(
+        "front.png",
+        spawnParameters.data.CustomDeck[1].FaceURL
+    )
+    Test.equal(
+        "back.png",
+        spawnParameters.data.CustomDeck[1].BackURL
+    )
+    Test.equal(
+        "Skeleton | Undead ",
+        spawnParameters.data.ContainedObjects[1].Nickname
+    )
+    Test.equal(
+        "A test card",
+        spawnParameters.data.ContainedObjects[1].Description
+    )
+    Test.equal("Card", spawnParameters.data.ContainedObjects[1].Name)
+    Test.equal(
+        1,
+        spawnParameters.data.ContainedObjects[1].Transform.scaleX
+    )
+    Test.equal(1, spawnParameters.data.Transform.scaleX)
+    Test.equal(70, spawnParameters.position[1])
+    Test.equal(80, spawnParameters.position[3])
     Test.equal(
         Config.deckSlot.cardSpawnRotation[1],
-        spawnedCards[1].parameters.rotation[1]
+        spawnParameters.rotation[1]
     )
     Test.equal(
         Config.deckSlot.cardSpawnRotation[2] + 180,
-        spawnedCards[1].parameters.rotation[2]
+        spawnParameters.rotation[2]
     )
     Test.equal(
         Config.deckSlot.cardSpawnRotation[3],
-        spawnedCards[1].parameters.rotation[3]
+        spawnParameters.rotation[3]
     )
-    Test.equal(70, spawnedCards[1].finishedPosition[1])
-    Test.equal(80, spawnedCards[1].finishedPosition[3])
+    Test.equal(70, spawnedDeck.finishedPosition[1])
+    Test.equal(80, spawnedDeck.finishedPosition[3])
+
+    decodedQuantity = 1
+    Test.truthy(DeckGenerator.fetch(field, nil, 10853))
+    requestCallback({
+        is_error = false,
+        text = "{}"
+    })
+
+    Test.equal(2, spawnCallCount)
+    Test.equal("CardCustom", spawnParameters.data.Name)
+    Test.equal(1, spawnParameters.data.Transform.scaleX)
 
     WebRequest = originalWebRequest
     JSON = originalJson
-    Wait = originalWait
-    spawnObject = originalSpawnObject
+    spawnObjectData = originalSpawnObjectData
 end)

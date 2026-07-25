@@ -45,11 +45,9 @@ local CardFieldConfig = {
             {lootId = 4373, name = "Yashlaegon, the Sinful"}
         },
         cardSpawnHeight = 2,
-        cardDropHeight = 40,
         -- Rotation applied to every card spawned from the deck slot.
         -- Values are Euler angles in degrees: {x, y, z}.
-        cardSpawnRotation = {0, 180, 0},
-        spawnDelay = 0.08
+        cardSpawnRotation = {0, 180, 0}
     },
 
     -- Rectangles use inclusive, one-based grid coordinates. Keeping the
