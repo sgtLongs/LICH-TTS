@@ -1,0 +1,444 @@
+local Config = require("src/config/SettingsConfig")
+
+local SettingsMenu = {}
+local activePlayerColor = nil
+local jsonDraftsByPlayerColor = {}
+local nameDraftsByPlayerColor = {}
+local savedBoards = {}
+local selectedBoardIndex = nil
+local boardListPage = 1
+local context = {
+    getBoardState = nil,
+    getBoardStateJson = nil,
+    loadBoardState = nil,
+    loadBoardStateJson = nil,
+    persistState = nil
+}
+
+local function isAdmin(playerColor)
+    local player = Player[playerColor]
+    return player ~= nil and player.admin == true
+end
+
+local function setStatus(message, color)
+    UI.setAttribute(Config.ui.statusId, "text", message or "")
+
+    if color ~= nil then
+        UI.setAttribute(Config.ui.statusId, "color", color)
+    end
+end
+
+local function close()
+    activePlayerColor = nil
+    UI.setAttribute(Config.ui.rootId, "active", "false")
+end
+
+local function setPage(pageId)
+    UI.setAttribute(
+        Config.ui.mainPageId,
+        "active",
+        pageId == Config.ui.mainPageId and "true" or "false"
+    )
+    UI.setAttribute(
+        Config.ui.jsonPageId,
+        "active",
+        pageId == Config.ui.jsonPageId and "true" or "false"
+    )
+end
+
+local function requireAdmin(playerColor)
+    if isAdmin(playerColor) then
+        return true
+    end
+
+    broadcastToColor(
+        "Only an admin can change board settings.",
+        playerColor,
+        Config.colors.denied
+    )
+    return false
+end
+
+local function trim(value)
+    return (value:gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+local function findBoardByName(name)
+    local normalizedName = string.lower(name)
+
+    for index, savedBoard in ipairs(savedBoards) do
+        if string.lower(savedBoard.name) == normalizedName then
+            return index
+        end
+    end
+
+    return nil
+end
+
+local function getPageCount()
+    return math.max(
+        1,
+        math.ceil(#savedBoards / Config.boardListPageSize)
+    )
+end
+
+local function refreshBoardList(playerColor)
+    local pageCount = getPageCount()
+    boardListPage = math.max(1, math.min(boardListPage, pageCount))
+    local firstIndex = (boardListPage - 1)
+        * Config.boardListPageSize + 1
+
+    for row = 1, Config.boardListPageSize do
+        local boardIndex = firstIndex + row - 1
+        local savedBoard = savedBoards[boardIndex]
+        local buttonId = Config.ui.boardButtonPrefix .. row
+
+        if savedBoard ~= nil then
+            UI.setAttribute(buttonId, "active", "true")
+            UI.setAttribute(buttonId, "text", savedBoard.name)
+            UI.setAttribute(
+                buttonId,
+                "colors",
+                boardIndex == selectedBoardIndex
+                    and Config.uiColors.selectedBoard
+                    or Config.uiColors.board
+            )
+        else
+            UI.setAttribute(buttonId, "active", "false")
+        end
+    end
+
+    UI.setAttribute(
+        Config.ui.boardPageLabelId,
+        "text",
+        "Page " .. boardListPage .. " / " .. pageCount
+    )
+    UI.setAttribute(
+        Config.ui.previousPageButtonId,
+        "interactable",
+        boardListPage > 1 and "true" or "false"
+    )
+    UI.setAttribute(
+        Config.ui.nextPageButtonId,
+        "interactable",
+        boardListPage < pageCount and "true" or "false"
+    )
+
+    local selectedBoard = selectedBoardIndex ~= nil
+        and savedBoards[selectedBoardIndex] or nil
+
+    UI.setAttribute(
+        Config.ui.selectedBoardLabelId,
+        "text",
+        selectedBoard ~= nil
+            and "Selected: " .. selectedBoard.name
+            or "No saved board selected"
+    )
+
+    if playerColor ~= nil and nameDraftsByPlayerColor[playerColor] == nil then
+        nameDraftsByPlayerColor[playerColor] = selectedBoard ~= nil
+            and selectedBoard.name or ""
+    end
+end
+
+local function selectBoard(playerColor, boardIndex)
+    if savedBoards[boardIndex] == nil then
+        return
+    end
+
+    selectedBoardIndex = boardIndex
+    nameDraftsByPlayerColor[playerColor] = savedBoards[boardIndex].name
+    UI.setAttribute(
+        Config.ui.boardNameInputId,
+        "text",
+        savedBoards[boardIndex].name
+    )
+    refreshBoardList(playerColor)
+    setStatus("Board selected. Choose LOAD SELECTED to restore it.", "#CBD5E1")
+end
+
+local function open(playerColor)
+    activePlayerColor = playerColor
+    setPage(Config.ui.mainPageId)
+    refreshBoardList(playerColor)
+    UI.setAttribute(Config.ui.rootId, "visibility", playerColor)
+    UI.setAttribute(
+        Config.ui.boardNameInputId,
+        "text",
+        nameDraftsByPlayerColor[playerColor] or ""
+    )
+    setStatus(
+        "Name the current board to save it, or select a saved board to load.",
+        "#CBD5E1"
+    )
+    UI.setAttribute(Config.ui.rootId, "active", "true")
+end
+
+function SettingsMenu.initialize(parameters, savedState)
+    context.getBoardState = parameters.getBoardState
+    context.getBoardStateJson = parameters.getBoardStateJson
+    context.loadBoardState = parameters.loadBoardState
+    context.loadBoardStateJson = parameters.loadBoardStateJson
+    context.persistState = parameters.persistState
+    activePlayerColor = nil
+    jsonDraftsByPlayerColor = {}
+    nameDraftsByPlayerColor = {}
+    savedBoards = {}
+    selectedBoardIndex = nil
+    boardListPage = 1
+
+    if type(savedState) == "table"
+        and type(savedState.savedBoards) == "table"
+    then
+        for _, savedBoard in ipairs(savedState.savedBoards) do
+            if type(savedBoard) == "table"
+                and type(savedBoard.name) == "string"
+                and trim(savedBoard.name) ~= ""
+                and type(savedBoard.boardState) == "table"
+            then
+                savedBoards[#savedBoards + 1] = {
+                    name = trim(savedBoard.name),
+                    boardState = savedBoard.boardState
+                }
+            end
+        end
+    elseif type(savedState) == "table"
+        and type(savedState.boardStateJson) == "string"
+    then
+        local succeeded, legacyBoardState = pcall(
+            JSON.decode,
+            savedState.boardStateJson
+        )
+
+        if succeeded and type(legacyBoardState) == "table" then
+            savedBoards[1] = {
+                name = "Imported Saved Board",
+                boardState = legacyBoardState
+            }
+        end
+    end
+
+    if type(savedState) == "table"
+        and type(savedState.selectedBoardName) == "string"
+    then
+        selectedBoardIndex = findBoardByName(
+            savedState.selectedBoardName
+        )
+    end
+
+    if selectedBoardIndex == nil and #savedBoards > 0 then
+        selectedBoardIndex = 1
+    end
+
+    close()
+end
+
+function SettingsMenu.getSaveState()
+    local selectedBoard = selectedBoardIndex ~= nil
+        and savedBoards[selectedBoardIndex] or nil
+
+    return {
+        schemaVersion = Config.schemaVersion,
+        savedBoards = savedBoards,
+        selectedBoardName = selectedBoard ~= nil
+            and selectedBoard.name or nil
+    }
+end
+
+function SettingsMenu.handleAction(playerColor, action)
+    if action == "toggle" then
+        if not requireAdmin(playerColor) then
+            return
+        end
+
+        if activePlayerColor == playerColor then
+            close()
+        else
+            open(playerColor)
+        end
+
+        return
+    end
+
+    if activePlayerColor ~= playerColor or not requireAdmin(playerColor) then
+        return
+    end
+
+    if action == "close" then
+        close()
+        return
+    end
+
+    if action == "main" then
+        setPage(Config.ui.mainPageId)
+        refreshBoardList(playerColor)
+        return
+    end
+
+    if action == "json" then
+        if jsonDraftsByPlayerColor[playerColor] == nil
+            and context.getBoardStateJson ~= nil
+        then
+            jsonDraftsByPlayerColor[playerColor] =
+                context.getBoardStateJson()
+        end
+
+        UI.setAttribute(
+            Config.ui.jsonInputId,
+            "text",
+            jsonDraftsByPlayerColor[playerColor] or ""
+        )
+        setPage(Config.ui.jsonPageId)
+        setStatus(
+            "Export the current board or paste JSON to import it.",
+            "#CBD5E1"
+        )
+        return
+    end
+
+    if action == "previous" then
+        boardListPage = boardListPage - 1
+        refreshBoardList(playerColor)
+        return
+    end
+
+    if action == "next" then
+        boardListPage = boardListPage + 1
+        refreshBoardList(playerColor)
+        return
+    end
+
+    local selectedRow = tonumber(string.match(action, "^select(%d+)$"))
+
+    if selectedRow ~= nil then
+        selectBoard(
+            playerColor,
+            (boardListPage - 1) * Config.boardListPageSize + selectedRow
+        )
+        return
+    end
+
+    if action == "save" and context.getBoardState ~= nil then
+        local boardName = trim(nameDraftsByPlayerColor[playerColor] or "")
+
+        if boardName == "" then
+            setStatus("Enter a board name before saving.", "#FCA5A5")
+            return
+        end
+
+        local existingIndex = findBoardByName(boardName)
+        local savedBoard = {
+            name = boardName,
+            boardState = context.getBoardState()
+        }
+
+        if existingIndex ~= nil then
+            savedBoards[existingIndex] = savedBoard
+            selectedBoardIndex = existingIndex
+        else
+            savedBoards[#savedBoards + 1] = savedBoard
+            selectedBoardIndex = #savedBoards
+        end
+
+        nameDraftsByPlayerColor[playerColor] = boardName
+        UI.setAttribute(Config.ui.boardNameInputId, "text", boardName)
+        boardListPage = math.ceil(
+            selectedBoardIndex / Config.boardListPageSize
+        )
+        refreshBoardList(playerColor)
+        local persistedImmediately = context.persistState ~= nil
+            and context.persistState() or false
+        setStatus(
+            (existingIndex ~= nil
+                and "Saved board updated: " .. boardName
+                or "Board saved: " .. boardName)
+                .. (persistedImmediately
+                    and ""
+                    or " Save the TTS game to make it permanent."),
+            persistedImmediately and "#86EFAC" or "#FDE68A"
+        )
+        return
+    end
+
+    if action == "load" and context.loadBoardState ~= nil then
+        local savedBoard = selectedBoardIndex ~= nil
+            and savedBoards[selectedBoardIndex] or nil
+
+        if savedBoard == nil then
+            setStatus("Select a saved board before loading.", "#FCA5A5")
+            return
+        end
+
+        local succeeded, message = context.loadBoardState(
+            savedBoard.boardState,
+            playerColor
+        )
+
+        if succeeded then
+            message = "Loaded " .. savedBoard.name .. ". " .. message
+        end
+
+        setStatus(message, succeeded and "#86EFAC" or "#FCA5A5")
+        broadcastToColor(
+            message,
+            playerColor,
+            succeeded and Config.colors.success or Config.colors.failure
+        )
+        return
+    end
+
+    if action == "export" and context.getBoardStateJson ~= nil then
+        local boardStateJson = context.getBoardStateJson()
+        jsonDraftsByPlayerColor[playerColor] = boardStateJson
+        UI.setAttribute(Config.ui.jsonInputId, "text", boardStateJson)
+        setStatus("Current board exported to JSON.", "#86EFAC")
+        return
+    end
+
+    if action ~= "import" or context.loadBoardStateJson == nil then
+        return
+    end
+
+    local boardStateJson = jsonDraftsByPlayerColor[playerColor]
+
+    if type(boardStateJson) ~= "string" or boardStateJson == "" then
+        setStatus("Paste board-state JSON before importing.", "#FCA5A5")
+        return
+    end
+
+    local succeeded, message = context.loadBoardStateJson(
+        boardStateJson,
+        playerColor
+    )
+
+    if not succeeded then
+        setStatus(message, "#FCA5A5")
+        broadcastToColor(message, playerColor, Config.colors.failure)
+        return
+    end
+
+    local normalizedJson = context.getBoardStateJson()
+    jsonDraftsByPlayerColor[playerColor] = normalizedJson
+    UI.setAttribute(Config.ui.jsonInputId, "text", normalizedJson)
+    setStatus(message, "#86EFAC")
+    broadcastToColor(message, playerColor, Config.colors.success)
+end
+
+function SettingsMenu.onJsonEdited(playerColor, value)
+    if activePlayerColor ~= playerColor or not isAdmin(playerColor) then
+        return
+    end
+
+    jsonDraftsByPlayerColor[playerColor] = value
+    setStatus("JSON edited. Choose IMPORT JSON to apply it.", "#FDE68A")
+end
+
+function SettingsMenu.onBoardNameEdited(playerColor, value)
+    if activePlayerColor ~= playerColor or not isAdmin(playerColor) then
+        return
+    end
+
+    nameDraftsByPlayerColor[playerColor] = value
+end
+
+return SettingsMenu

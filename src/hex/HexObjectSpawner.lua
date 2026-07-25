@@ -2,6 +2,12 @@ local Config = require("src/config/HexSpawnConfig")
 
 local HexObjectSpawner = {}
 
+local function notify(playerColor, message, color, silent)
+    if not silent then
+        broadcastToColor(message, playerColor, color)
+    end
+end
+
 local function getRotatedOffset(offset, rotationY)
     local positionOffset = offset or {}
     local radians = math.rad(rotationY or 0)
@@ -102,10 +108,11 @@ function HexObjectSpawner.spawn(parameters)
     local playerColor = parameters.playerColor
 
     if type(template.json) ~= "string" or template.json == "" then
-        broadcastToColor(
-            "No saved template exists for " .. template.label .. ".",
+        notify(
             playerColor,
-            Config.missingTemplateColor
+            "No saved template exists for " .. template.label .. ".",
+            Config.missingTemplateColor,
+            parameters.silent
         )
         return false
     end
@@ -130,27 +137,33 @@ function HexObjectSpawner.spawn(parameters)
                 spawnedObject.setLock(true)
                 applyRotation(spawnedObject, parameters.rotationY)
 
+                if parameters.onSpawned ~= nil then
+                    parameters.onSpawned(spawnedObject)
+                end
+
                 schedulePlacementCorrections(parameters, spawnedObject)
 
-                broadcastToColor(
+                notify(
+                    playerColor,
                     template.label .. " added at hex "
                         .. parameters.cell.row .. ", "
                         .. parameters.cell.column
                         .. " facing hex "
                         .. parameters.facingCell.row .. ", "
                         .. parameters.facingCell.column .. ".",
-                    playerColor,
-                    Config.successColor
+                    Config.successColor,
+                    parameters.silent
                 )
             end
         })
     end)
 
     if not succeeded then
-        broadcastToColor(
-            "Could not spawn the " .. template.label .. ".",
+        notify(
             playerColor,
-            Config.failureColor
+            "Could not spawn the " .. template.label .. ".",
+            Config.failureColor,
+            parameters.silent
         )
         return false
     end

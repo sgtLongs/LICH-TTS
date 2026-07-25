@@ -2,18 +2,28 @@ local Config = require("src/config/HexGridConfig")
 local HexGridBuilder = require("src/hex/HexGridBuilder")
 local HexGridMenu = require("src/hex/HexGridMenu")
 local HexObjectSpawner = require("src/hex/HexObjectSpawner")
+local SettingsConfig = require("src/config/SettingsConfig")
+local SpawnDefinitions = require("src/hex/HexSpawnDefinitions")
 
 local HexGrid = {}
 local board = nil
 local cells = {}
+local cellsByKey = {}
 local selectedCells = {}
 local hoveredCells = {}
 local menuTargetCell = nil
 local rotationCandidateCells = {}
 local pendingSpawn = nil
+local placedObjects = {}
+local pendingSavedPlacements = {}
 local resolvedSurfaceY = 0
 local hoverWaitId = nil
 local recentClickCells = {}
+local templatesByKey = {}
+
+for _, template in ipairs(SpawnDefinitions) do
+    templatesByKey[template.key] = template
+end
 
 local function drawGrid()
     HexGridBuilder.draw(board, cells, resolvedSurfaceY, {
@@ -35,7 +45,9 @@ local function spawnObject(
     facingCell,
     rotationY,
     localRotationY,
-    playerColor
+    playerColor,
+    onSpawned,
+    silent
 )
     return HexObjectSpawner.spawn({
         board = board,
@@ -45,7 +57,9 @@ local function spawnObject(
         facingCell = facingCell,
         rotationY = rotationY,
         localRotationY = localRotationY,
-        playerColor = playerColor
+        playerColor = playerColor,
+        onSpawned = onSpawned,
+        silent = silent
     })
 end
 
@@ -59,12 +73,7 @@ local adjacentOffsets = {
 }
 
 local function getAdjacentCells(targetCell)
-    local cellsByKey = {}
     local adjacentCells = {}
-
-    for _, cell in ipairs(cells) do
-        cellsByKey[HexGridBuilder.cellKey(cell.row, cell.column)] = cell
-    end
 
     for _, offset in ipairs(adjacentOffsets) do
         local key = HexGridBuilder.cellKey(
@@ -155,26 +164,107 @@ local function getFacingRotations(targetCell, facingCell, template)
         (localRotationY + 360) % 360
 end
 
+local function copyCell(cell)
+    return {
+        row = cell.row,
+        column = cell.column
+    }
+end
+
+local function removePlacement(targetPlacement)
+    for index = #placedObjects, 1, -1 do
+        if placedObjects[index] == targetPlacement then
+            table.remove(placedObjects, index)
+            return
+        end
+    end
+end
+
+local function hasPlacement(targetPlacement)
+    for _, placement in ipairs(placedObjects) do
+        if placement == targetPlacement then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function spawnPlacement(placement, playerColor, silent)
+    local template = templatesByKey[placement.templateKey]
+    local targetCell = cellsByKey[
+        HexGridBuilder.cellKey(
+            placement.cell.row,
+            placement.cell.column
+        )
+    ]
+    local facingCell = cellsByKey[
+        HexGridBuilder.cellKey(
+            placement.facingCell.row,
+            placement.facingCell.column
+        )
+    ]
+
+    local facingKey = facingCell ~= nil
+        and HexGridBuilder.cellKey(
+            facingCell.row,
+            facingCell.column
+        ) or nil
+
+    if template == nil
+        or targetCell == nil
+        or facingCell == nil
+        or getAdjacentCells(targetCell)[facingKey] == nil
+    then
+        return false
+    end
+
+    local rotationY, localRotationY = getFacingRotations(
+        targetCell,
+        facingCell,
+        template
+    )
+
+    placedObjects[#placedObjects + 1] = placement
+
+    local accepted = spawnObject(
+        template,
+        targetCell,
+        facingCell,
+        rotationY,
+        localRotationY,
+        playerColor,
+        function(spawnedObject)
+            if not hasPlacement(placement) then
+                destroyObject(spawnedObject)
+                return
+            end
+
+            placement.guid = spawnedObject.getGUID()
+            spawnedObject.addTag(SettingsConfig.placedObjectTag)
+        end,
+        silent
+    )
+
+    if not accepted then
+        removePlacement(placement)
+    end
+
+    return accepted
+end
+
 local function completePendingSpawn(facingCell)
     local spawn = pendingSpawn
-    local rotationY, localRotationY = getFacingRotations(
-        spawn.targetCell,
-        facingCell,
-        spawn.template
-    )
 
     pendingSpawn = nil
     rotationCandidateCells = {}
     HexGridMenu.close()
 
-    return spawnObject(
-        spawn.template,
-        spawn.targetCell,
-        facingCell,
-        rotationY,
-        localRotationY,
-        spawn.playerColor
-    )
+    return spawnPlacement({
+        templateKey = spawn.template.key,
+        cell = copyCell(spawn.targetCell),
+        facingCell = copyCell(facingCell)
+    }, spawn.playerColor, false)
 end
 
 local function updateHoveredCells()
@@ -229,6 +319,14 @@ local function buildGrid()
 
     local buildResult = HexGridBuilder.build(board)
     cells = buildResult.cells
+    cellsByKey = {}
+
+    for _, cell in ipairs(cells) do
+        cellsByKey[
+            HexGridBuilder.cellKey(cell.row, cell.column)
+        ] = cell
+    end
+
     resolvedSurfaceY = buildResult.surfaceY
     menuTargetCell = nil
     pendingSpawn = nil
@@ -248,6 +346,67 @@ local function buildGrid()
             cancelPendingSpawn(playerColor, false)
         end
     })
+
+    placedObjects = {}
+
+    for index, savedPlacement in ipairs(pendingSavedPlacements) do
+        local templateKey = savedPlacement.templateKey
+            or savedPlacement.type
+        local cell = savedPlacement.cell or savedPlacement.hex
+        local facingCell = savedPlacement.facingCell
+            or savedPlacement.facing
+        local guid = savedPlacement.guid
+        local existingObject = type(guid) == "string"
+            and getObjectFromGUID(guid) or nil
+        local row = type(cell) == "table" and tonumber(cell.row) or nil
+        local column = type(cell) == "table"
+            and tonumber(cell.column) or nil
+        local facingRow = type(facingCell) == "table"
+            and tonumber(facingCell.row) or nil
+        local facingColumn = type(facingCell) == "table"
+            and tonumber(facingCell.column) or nil
+        local targetCell = row ~= nil and column ~= nil
+            and cellsByKey[HexGridBuilder.cellKey(row, column)] or nil
+        local targetFacingCell = facingRow ~= nil and facingColumn ~= nil
+            and cellsByKey[
+                HexGridBuilder.cellKey(facingRow, facingColumn)
+            ] or nil
+        local facingKey = targetFacingCell ~= nil
+            and HexGridBuilder.cellKey(
+                targetFacingCell.row,
+                targetFacingCell.column
+            ) or nil
+
+        if templatesByKey[templateKey] ~= nil
+            and targetCell ~= nil
+            and targetFacingCell ~= nil
+            and getAdjacentCells(targetCell)[facingKey] ~= nil
+        then
+            local placement = {
+                templateKey = templateKey,
+                cell = copyCell(targetCell),
+                facingCell = copyCell(targetFacingCell),
+                guid = guid
+            }
+
+            if existingObject ~= nil then
+                existingObject.addTag(SettingsConfig.placedObjectTag)
+                placedObjects[#placedObjects + 1] = placement
+            elseif not spawnPlacement(placement, nil, true) then
+                print(
+                    "HexGrid: could not restore saved object "
+                        .. tostring(index) .. "."
+                )
+            end
+        else
+            print(
+                "HexGrid: ignored invalid saved object "
+                    .. tostring(index) .. "."
+            )
+        end
+    end
+
+    pendingSavedPlacements = {}
 
     if hoverWaitId ~= nil then
         Wait.stop(hoverWaitId)
@@ -272,11 +431,19 @@ function HexGrid.onLoad(savedState)
     recentClickCells = {}
     rotationCandidateCells = {}
     pendingSpawn = nil
+    placedObjects = {}
+    pendingSavedPlacements = {}
 
     if type(savedState) == "table"
         and type(savedState.selectedCells) == "table"
     then
         selectedCells = savedState.selectedCells
+    end
+
+    if type(savedState) == "table"
+        and type(savedState.placedObjects) == "table"
+    then
+        pendingSavedPlacements = savedState.placedObjects
     end
 
     Wait.frames(buildGrid, 2)
@@ -287,9 +454,306 @@ function HexGrid.onObjectHover()
 end
 
 function HexGrid.getSaveState()
+    local savedPlacements = {}
+
+    for _, placement in ipairs(placedObjects) do
+        savedPlacements[#savedPlacements + 1] = {
+            templateKey = placement.templateKey,
+            cell = copyCell(placement.cell),
+            facingCell = copyCell(placement.facingCell),
+            guid = placement.guid
+        }
+    end
+
     return {
-        selectedCells = selectedCells
+        selectedCells = selectedCells,
+        placedObjects = savedPlacements
     }
+end
+
+local function normalizeCell(value, fieldName)
+    if type(value) ~= "table" then
+        return nil, fieldName .. " must be an object."
+    end
+
+    local row = tonumber(value.row)
+    local column = tonumber(value.column)
+
+    if row == nil or column == nil
+        or row ~= math.floor(row)
+        or column ~= math.floor(column)
+    then
+        return nil, fieldName .. " must contain integer row and column values."
+    end
+
+    local cell = cellsByKey[HexGridBuilder.cellKey(row, column)]
+
+    if cell == nil then
+        return nil, fieldName .. " is outside the hex grid."
+    end
+
+    return copyCell(cell)
+end
+
+local function getArrayLength(value, fieldName)
+    local entryCount = 0
+    local highestIndex = 0
+
+    for key, _ in pairs(value) do
+        if type(key) ~= "number"
+            or key < 1
+            or key ~= math.floor(key)
+        then
+            return nil, fieldName .. " must be an array."
+        end
+
+        entryCount = entryCount + 1
+        highestIndex = math.max(highestIndex, key)
+    end
+
+    if entryCount ~= highestIndex then
+        return nil, fieldName .. " must not contain missing entries."
+    end
+
+    return entryCount
+end
+
+local function normalizeBoardState(boardState)
+    if type(boardState) ~= "table" then
+        return nil, "Board-state JSON must contain an object."
+    end
+
+    if tonumber(boardState.schemaVersion) ~= SettingsConfig.schemaVersion then
+        return nil, "Unsupported board-state schema version."
+    end
+
+    if boardState.boardGuid ~= Config.boardGuid then
+        return nil, "This board state belongs to a different board."
+    end
+
+    if type(boardState.selectedHexes) ~= "table" then
+        return nil, "selectedHexes must be an array."
+    end
+
+    if type(boardState.hexObjects) ~= "table" then
+        return nil, "hexObjects must be an array."
+    end
+
+    local selectedHexCount, selectedHexesError = getArrayLength(
+        boardState.selectedHexes,
+        "selectedHexes"
+    )
+
+    if selectedHexCount == nil then
+        return nil, selectedHexesError
+    end
+
+    local hexObjectCount, hexObjectsError = getArrayLength(
+        boardState.hexObjects,
+        "hexObjects"
+    )
+
+    if hexObjectCount == nil then
+        return nil, hexObjectsError
+    end
+
+    local normalized = {
+        selectedCells = {},
+        selectedHexCount = 0,
+        placements = {}
+    }
+
+    for index = 1, selectedHexCount do
+        local selectedHex = boardState.selectedHexes[index]
+        local cell, cellError = normalizeCell(
+            selectedHex,
+            "selectedHexes[" .. index .. "]"
+        )
+
+        if cell == nil then
+            return nil, cellError
+        end
+
+        local key = HexGridBuilder.cellKey(cell.row, cell.column)
+
+        if not normalized.selectedCells[key] then
+            normalized.selectedCells[key] = true
+            normalized.selectedHexCount =
+                normalized.selectedHexCount + 1
+        end
+    end
+
+    for index = 1, hexObjectCount do
+        local objectState = boardState.hexObjects[index]
+        if type(objectState) ~= "table"
+            or type(objectState.type) ~= "string"
+            or templatesByKey[objectState.type] == nil
+        then
+            return nil,
+                "hexObjects[" .. index .. "] has an unknown object type."
+        end
+
+        local cell, cellError = normalizeCell(
+            objectState.hex,
+            "hexObjects[" .. index .. "].hex"
+        )
+
+        if cell == nil then
+            return nil, cellError
+        end
+
+        local facingCell, facingError = normalizeCell(
+            objectState.facing,
+            "hexObjects[" .. index .. "].facing"
+        )
+
+        if facingCell == nil then
+            return nil, facingError
+        end
+
+        local facingKey = HexGridBuilder.cellKey(
+            facingCell.row,
+            facingCell.column
+        )
+
+        if getAdjacentCells(cell)[facingKey] == nil then
+            return nil,
+                "hexObjects[" .. index
+                    .. "].facing must be adjacent to its hex."
+        end
+
+        normalized.placements[#normalized.placements + 1] = {
+            templateKey = objectState.type,
+            cell = cell,
+            facingCell = facingCell
+        }
+    end
+
+    return normalized
+end
+
+function HexGrid.getBoardState()
+    local selectedHexes = {}
+    local hexObjects = {}
+
+    for _, cell in ipairs(cells) do
+        local key = HexGridBuilder.cellKey(cell.row, cell.column)
+
+        if selectedCells[key] then
+            selectedHexes[#selectedHexes + 1] = copyCell(cell)
+        end
+    end
+
+    for _, placement in ipairs(placedObjects) do
+        hexObjects[#hexObjects + 1] = {
+            type = placement.templateKey,
+            hex = copyCell(placement.cell),
+            facing = copyCell(placement.facingCell)
+        }
+    end
+
+    return {
+        schemaVersion = SettingsConfig.schemaVersion,
+        boardGuid = Config.boardGuid,
+        selectedHexes = selectedHexes,
+        hexObjects = hexObjects
+    }
+end
+
+function HexGrid.getBoardStateJson()
+    return JSON.encode_pretty(HexGrid.getBoardState())
+end
+
+function HexGrid.loadBoardState(boardState, playerColor)
+    if board == nil or #cells == 0 then
+        return false, "The hex board is not ready yet."
+    end
+
+    local normalizedState, validationError = normalizeBoardState(boardState)
+
+    if normalizedState == nil then
+        return false, validationError
+    end
+
+    if pendingSpawn ~= nil then
+        pendingSpawn = nil
+        rotationCandidateCells = {}
+    end
+
+    HexGridMenu.close()
+
+    local objectsToDestroy = {}
+    local guidsToDestroy = {}
+
+    for _, object in ipairs(
+        getObjectsWithTag(SettingsConfig.placedObjectTag)
+    ) do
+        local guid = object.getGUID()
+        objectsToDestroy[#objectsToDestroy + 1] = object
+        guidsToDestroy[guid] = true
+    end
+
+    for _, placement in ipairs(placedObjects) do
+        if type(placement.guid) == "string"
+            and not guidsToDestroy[placement.guid]
+        then
+            local object = getObjectFromGUID(placement.guid)
+
+            if object ~= nil then
+                objectsToDestroy[#objectsToDestroy + 1] = object
+                guidsToDestroy[placement.guid] = true
+            end
+        end
+    end
+
+    placedObjects = {}
+
+    for _, object in ipairs(objectsToDestroy) do
+        destroyObject(object)
+    end
+
+    selectedCells = normalizedState.selectedCells
+    local spawnedCount = 0
+
+    for _, placement in ipairs(normalizedState.placements) do
+        if spawnPlacement(placement, playerColor, true) then
+            spawnedCount = spawnedCount + 1
+        end
+    end
+
+    drawGrid()
+
+    return true,
+        "Board setup loaded: "
+            .. normalizedState.selectedHexCount .. " selected hexes and "
+            .. spawnedCount .. " objects."
+end
+
+function HexGrid.loadBoardStateJson(boardStateJson, playerColor)
+    local decodedSuccessfully, boardState = pcall(
+        JSON.decode,
+        boardStateJson
+    )
+
+    if not decodedSuccessfully then
+        return false, "The board-state JSON is not valid JSON."
+    end
+
+    return HexGrid.loadBoardState(boardState, playerColor)
+end
+
+function HexGrid.onObjectDestroy(object)
+    if object == nil then
+        return
+    end
+
+    local guid = object.getGUID()
+
+    for index = #placedObjects, 1, -1 do
+        if placedObjects[index].guid == guid then
+            table.remove(placedObjects, index)
+        end
+    end
 end
 
 local function handlePointerClick(playerColor, altClick)

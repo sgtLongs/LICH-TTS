@@ -12,6 +12,301 @@
     />
 </Defaults>
 
+<Button
+    id="settingsButton"
+    text="SETTINGS"
+    rectAlignment="UpperLeft"
+    width="190"
+    height="58"
+    offsetXY="22 -22"
+    fontSize="25"
+    fontStyle="Bold"
+    colors="#26364D|#344A69|#192638|#192638"
+    onClick="onSettingsUiClicked(toggle)"
+    tooltip="Save or load the hex board setup"
+/>
+
+<Panel
+    id="settingsMenuRoot"
+    rectAlignment="UpperLeft"
+    width="680"
+    height="760"
+    offsetXY="22 -94"
+    color="#090C12F7"
+    padding="22 22 22 22"
+    active="false"
+>
+    <VerticalLayout spacing="10" childAlignment="UpperCenter">
+        <HorizontalLayout
+            preferredHeight="58"
+            spacing="12"
+            childAlignment="MiddleCenter"
+        >
+            <Text
+                text="BOARD SETTINGS"
+                fontSize="29"
+                fontStyle="Bold"
+                alignment="MiddleLeft"
+                preferredWidth="568"
+                preferredHeight="52"
+            />
+            <Button
+                text="X"
+                fontSize="28"
+                colors="#751D24|#A62A34|#5A151B|#5A151B"
+                onClick="onSettingsUiClicked(close)"
+                preferredWidth="56"
+                preferredHeight="52"
+                tooltip="Close"
+            />
+        </HorizontalLayout>
+
+        <VerticalLayout
+            id="settingsMainPage"
+            preferredHeight="570"
+            spacing="6"
+            childAlignment="UpperCenter"
+        >
+            <Text
+                text="Save under a new name, or use an existing name to update it. Select a saved board to restore."
+                fontSize="18"
+                color="#CBD5E1"
+                alignment="MiddleLeft"
+                preferredWidth="630"
+                preferredHeight="40"
+            />
+            <Text
+                text="BOARD NAME"
+                fontSize="17"
+                fontStyle="Bold"
+                alignment="MiddleLeft"
+                preferredWidth="630"
+                preferredHeight="22"
+            />
+            <InputField
+                id="settingsBoardName"
+                text=""
+                placeholder="Enter a board name"
+                onValueChanged="onSettingsBoardNameEdited"
+                characterLimit="60"
+                fontSize="20"
+                textColor="#E2E8F0"
+                colors="#111827|#172033|#111827|#111827"
+                caretColor="#FFFFFF"
+                selectionColor="#355E8A"
+                preferredWidth="630"
+                preferredHeight="44"
+            />
+            <Button
+                text="SAVE CURRENT BOARD"
+                fontSize="21"
+                fontStyle="Bold"
+                colors="#155E75|#0E7490|#164E63|#164E63"
+                onClick="onSettingsUiClicked(save)"
+                preferredWidth="420"
+                preferredHeight="48"
+                tooltip="Save the current setup under this name"
+            />
+
+            <Text
+                text="SAVED BOARDS"
+                fontSize="18"
+                fontStyle="Bold"
+                alignment="MiddleLeft"
+                preferredWidth="630"
+                preferredHeight="24"
+            />
+
+            <VerticalLayout
+                preferredHeight="200"
+                spacing="5"
+                childAlignment="UpperCenter"
+            >
+                <Button
+                    id="settingsSavedBoard1"
+                    text="Saved Board 1"
+                    fontSize="18"
+                    onClick="onSettingsUiClicked(select1)"
+                    preferredWidth="630"
+                    preferredHeight="36"
+                    active="false"
+                />
+                <Button
+                    id="settingsSavedBoard2"
+                    text="Saved Board 2"
+                    fontSize="18"
+                    onClick="onSettingsUiClicked(select2)"
+                    preferredWidth="630"
+                    preferredHeight="36"
+                    active="false"
+                />
+                <Button
+                    id="settingsSavedBoard3"
+                    text="Saved Board 3"
+                    fontSize="18"
+                    onClick="onSettingsUiClicked(select3)"
+                    preferredWidth="630"
+                    preferredHeight="36"
+                    active="false"
+                />
+                <Button
+                    id="settingsSavedBoard4"
+                    text="Saved Board 4"
+                    fontSize="18"
+                    onClick="onSettingsUiClicked(select4)"
+                    preferredWidth="630"
+                    preferredHeight="36"
+                    active="false"
+                />
+                <Button
+                    id="settingsSavedBoard5"
+                    text="Saved Board 5"
+                    fontSize="18"
+                    onClick="onSettingsUiClicked(select5)"
+                    preferredWidth="630"
+                    preferredHeight="36"
+                    active="false"
+                />
+            </VerticalLayout>
+
+            <HorizontalLayout
+                preferredHeight="36"
+                spacing="10"
+                childAlignment="MiddleCenter"
+            >
+                <Button
+                    id="settingsPreviousPage"
+                    text="&lt;"
+                    onClick="onSettingsUiClicked(previous)"
+                    preferredWidth="70"
+                    preferredHeight="34"
+                    interactable="false"
+                />
+                <Text
+                    id="settingsBoardPageLabel"
+                    text="Page 1 / 1"
+                    fontSize="17"
+                    color="#CBD5E1"
+                    preferredWidth="180"
+                    preferredHeight="34"
+                />
+                <Button
+                    id="settingsNextPage"
+                    text="&gt;"
+                    onClick="onSettingsUiClicked(next)"
+                    preferredWidth="70"
+                    preferredHeight="34"
+                    interactable="false"
+                />
+            </HorizontalLayout>
+
+            <Text
+                id="settingsSelectedBoard"
+                text="No saved board selected"
+                fontSize="17"
+                color="#CBD5E1"
+                preferredWidth="630"
+                preferredHeight="30"
+            />
+
+            <HorizontalLayout
+                preferredHeight="48"
+                spacing="14"
+                childAlignment="MiddleCenter"
+            >
+                <Button
+                    text="LOAD SELECTED"
+                    fontSize="20"
+                    fontStyle="Bold"
+                    colors="#166534|#15803D|#14532D|#14532D"
+                    onClick="onSettingsUiClicked(load)"
+                    preferredWidth="305"
+                    preferredHeight="46"
+                    tooltip="Replace the current setup with the selected board"
+                />
+                <Button
+                    text="JSON TOOLS"
+                    fontSize="20"
+                    colors="#5A189A|#7130A8|#42106F|#42106F"
+                    onClick="onSettingsUiClicked(json)"
+                    preferredWidth="305"
+                    preferredHeight="46"
+                />
+            </HorizontalLayout>
+        </VerticalLayout>
+
+        <VerticalLayout
+            id="settingsJsonPage"
+            active="false"
+            preferredHeight="570"
+            spacing="10"
+            childAlignment="UpperCenter"
+        >
+            <Text
+                text="Copy the current board as JSON, or paste JSON below to import a setup."
+                fontSize="19"
+                color="#CBD5E1"
+                alignment="MiddleLeft"
+                preferredWidth="630"
+                preferredHeight="52"
+            />
+            <InputField
+                id="settingsBoardStateJson"
+                text=""
+                placeholder="Board-state JSON"
+                lineType="MultiLineNewLine"
+                onValueChanged="onSettingsJsonEdited"
+                fontSize="17"
+                textAlignment="UpperLeft"
+                textColor="#E2E8F0"
+                colors="#111827|#172033|#111827|#111827"
+                caretColor="#FFFFFF"
+                selectionColor="#355E8A"
+                preferredWidth="630"
+                preferredHeight="380"
+            />
+            <HorizontalLayout
+                preferredHeight="56"
+                spacing="14"
+                childAlignment="MiddleCenter"
+            >
+                <Button
+                    text="EXPORT CURRENT"
+                    fontSize="20"
+                    colors="#155E75|#0E7490|#164E63|#164E63"
+                    onClick="onSettingsUiClicked(export)"
+                    preferredWidth="305"
+                    preferredHeight="52"
+                />
+                <Button
+                    text="IMPORT JSON"
+                    fontSize="20"
+                    colors="#166534|#15803D|#14532D|#14532D"
+                    onClick="onSettingsUiClicked(import)"
+                    preferredWidth="305"
+                    preferredHeight="52"
+                />
+            </HorizontalLayout>
+            <Button
+                text="BACK TO SAVED BOARDS"
+                fontSize="18"
+                onClick="onSettingsUiClicked(main)"
+                preferredWidth="320"
+                preferredHeight="44"
+            />
+        </VerticalLayout>
+
+        <Text
+            id="settingsMenuStatus"
+            text="Name the current board to save it, or select one to load."
+            fontSize="18"
+            color="#CBD5E1"
+            preferredWidth="630"
+            preferredHeight="42"
+        />
+    </VerticalLayout>
+</Panel>
+
 <Panel
     id="turnPanel"
     rectAlignment="UpperCenter"

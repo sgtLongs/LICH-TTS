@@ -28,8 +28,24 @@ function onHexGridMenuUiClicked(player, action, id)
     Game.onHexGridMenuUiClicked(player.color, action)
 end
 
+function onSettingsUiClicked(player, action, id)
+    Game.onSettingsUiClicked(player.color, action)
+end
+
+function onSettingsJsonEdited(player, value, id)
+    Game.onSettingsJsonEdited(player.color, value)
+end
+
+function onSettingsBoardNameEdited(player, value, id)
+    Game.onSettingsBoardNameEdited(player.color, value)
+end
+
 function onPlayerAction(player, action, targets)
     return Game.onPlayerAction(player, action, targets)
+end
+
+function onObjectDestroy(object)
+    Game.onObjectDestroy(object)
 end
 
 function onPlayerConnect(player)
