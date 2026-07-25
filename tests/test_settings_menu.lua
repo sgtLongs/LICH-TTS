@@ -38,16 +38,16 @@ Test.case("settings opens on the general tab", function()
 
     Test.equal("true", attributes["settingsGeneralPage.active"])
     Test.equal("false", attributes["settingsSavePage.active"])
-    Test.equal("false", attributes["settingsEditMode.isOn"])
+    Test.equal("true", attributes["settingsEditMode.isOn"])
 end)
 
 Test.case("edit mode is saved and forwarded to the hex grid", function()
     initialize(nil)
     SettingsMenu.handleAction("Red", "toggle")
-    SettingsMenu.onEditModeChanged("Red", "True")
+    SettingsMenu.onEditModeChanged("Red", "False")
 
-    Test.truthy(SettingsMenu.getSaveState().editMode)
-    Test.equal(true, editModeChanges[#editModeChanges])
+    Test.falsy(SettingsMenu.getSaveState().editMode)
+    Test.equal(false, editModeChanges[#editModeChanges])
     Test.equal(1, persistCalls)
 end)
 

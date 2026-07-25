@@ -113,11 +113,7 @@ function HexGridMenu.open(playerColor, player, cell, placement)
         "active",
         placement ~= nil and "true" or "false"
     )
-    setPage(
-        placement ~= nil
-            and Config.ui.objectPageId
-            or Config.ui.addPageId
-    )
+    setPage(Config.ui.objectPageId)
     UI.setAttribute(Config.ui.rootId, "active", "true")
     notifyTargetChanged(cell)
 end

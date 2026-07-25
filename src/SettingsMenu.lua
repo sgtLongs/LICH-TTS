@@ -367,7 +367,7 @@ function SettingsMenu.initialize(parameters, savedState)
     selectedBoardIndex = nil
     nextBoardId = 1
     boardListPage = 1
-    editMode = false
+    editMode = true
 
     if type(savedState) == "table"
         and savedState.schemaVersion ~= nil
@@ -380,8 +380,8 @@ function SettingsMenu.initialize(parameters, savedState)
         savedState = {}
     end
 
-    editMode = type(savedState) == "table"
-        and savedState.editMode == true
+    editMode = type(savedState) ~= "table"
+        or savedState.editMode ~= false
 
     if type(savedState) == "table"
         and type(savedState.savedBoards) == "table"

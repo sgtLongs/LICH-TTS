@@ -133,7 +133,7 @@
                     >
                         <Toggle
                             id="settingsEditMode"
-                            isOn="false"
+                            isOn="true"
                             onValueChanged="onSettingsEditModeChanged"
                             colors="#1E293B|#29384F|#172033|#172033"
                             toggleWidth="32"
