@@ -6,6 +6,7 @@ require("tests/test_hex_board_state")
 require("tests/test_dungeon_map_state")
 require("tests/test_turn_state")
 require("tests/test_turn_system")
+require("tests/test_settings_menu")
 require("tests/test_game")
 
 Test.run()

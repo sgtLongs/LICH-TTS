@@ -40,6 +40,8 @@ local HexGrid = {
     end,
     loadBoardStateJson = function()
     end,
+    setEditMode = function()
+    end,
     onObjectHover = function()
     end,
     onClicked = function()
@@ -70,6 +72,10 @@ local SettingsMenu = {
     onJsonEdited = function()
     end,
     onBoardNameEdited = function()
+    end,
+    onEditModeChanged = function(playerColor, value)
+        calls.editModePlayerColor = playerColor
+        calls.editModeValue = value
     end
 }
 local TurnSystem = {
@@ -143,9 +149,20 @@ Test.case("game load wires subsystems to saved state", function()
         calls.settingsContext.loadBoardState
     )
     Test.equal(
+        HexGrid.setEditMode,
+        calls.settingsContext.setEditMode
+    )
+    Test.equal(
         SettingsMenu.loadSavedBoardById,
         calls.dungeonContext.loadSavedBoardById
     )
+end)
+
+Test.case("game routes edit mode UI changes", function()
+    Game.onSettingsEditModeChanged("Red", "True")
+
+    Test.equal("Red", calls.editModePlayerColor)
+    Test.equal("True", calls.editModeValue)
 end)
 
 Test.case("game load tolerates invalid JSON", function()

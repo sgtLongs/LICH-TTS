@@ -23,7 +23,7 @@
     fontStyle="Bold"
     colors="#26364D|#344A69|#192638|#192638"
     onClick="onSettingsUiClicked(toggle)"
-    tooltip="Save or load the hex board setup"
+    tooltip="Configure the hex board"
 />
 
 <Button
@@ -42,50 +42,139 @@
 
 <Panel
     id="settingsMenuRoot"
-    rectAlignment="UpperLeft"
-    width="680"
-    height="760"
-    offsetXY="22 -94"
-    color="#090C12F7"
-    padding="22 22 22 22"
+    rectAlignment="MiddleCenter"
+    width="700"
+    height="800"
+    offsetXY="0 0"
+    color="#0B101AF9"
+    padding="24 24 24 24"
     active="false"
 >
     <VerticalLayout spacing="10" childAlignment="UpperCenter">
+        <!-- SETTINGS HEADER -->
         <HorizontalLayout
-            preferredHeight="58"
+            preferredHeight="54"
             spacing="12"
             childAlignment="MiddleCenter"
         >
             <Text
-                text="BOARD SETTINGS"
-                fontSize="29"
+                text="SETTINGS"
+                fontSize="27"
                 fontStyle="Bold"
-                alignment="MiddleLeft"
-                preferredWidth="568"
-                preferredHeight="52"
+                alignment="MiddleCenter"
+                preferredWidth="584"
+                preferredHeight="48"
             />
             <Button
-                text="X"
-                fontSize="28"
+                text="×"
+                fontSize="25"
                 colors="#751D24|#A62A34|#5A151B|#5A151B"
                 onClick="onSettingsUiClicked(close)"
-                preferredWidth="56"
-                preferredHeight="52"
+                preferredWidth="48"
+                preferredHeight="44"
                 tooltip="Close"
             />
         </HorizontalLayout>
 
+        <!-- TOP TABS -->
+        <HorizontalLayout
+            preferredHeight="46"
+            spacing="8"
+            childAlignment="MiddleCenter"
+        >
+            <Button
+                id="settingsGeneralTab"
+                text="GENERAL"
+                fontSize="20"
+                fontStyle="Bold"
+                colors="#155E75|#0E7490|#164E63|#164E63"
+                onClick="onSettingsUiClicked(generalTab)"
+                preferredWidth="318"
+                preferredHeight="42"
+            />
+            <Button
+                id="settingsSaveTab"
+                text="SAVE"
+                fontSize="20"
+                fontStyle="Bold"
+                colors="#26364D|#344A69|#192638|#192638"
+                onClick="onSettingsUiClicked(saveTab)"
+                preferredWidth="318"
+                preferredHeight="42"
+            />
+        </HorizontalLayout>
+
+        <!-- GENERAL TAB -->
         <VerticalLayout
-            id="settingsMainPage"
-            preferredHeight="570"
+            id="settingsGeneralPage"
+            preferredHeight="560"
+            spacing="18"
+            childAlignment="MiddleCenter"
+        >
+            <Text
+                text="BOARD EDITING"
+                fontSize="22"
+                fontStyle="Bold"
+                preferredWidth="620"
+                preferredHeight="40"
+            />
+            <Panel
+                color="#121A27"
+                padding="22 22 18 18"
+                preferredWidth="600"
+                preferredHeight="150"
+            >
+                <VerticalLayout spacing="10" childAlignment="MiddleCenter">
+                    <HorizontalLayout
+                        preferredWidth="550"
+                        preferredHeight="50"
+                        spacing="12"
+                        childAlignment="MiddleLeft"
+                    >
+                        <Toggle
+                            id="settingsEditMode"
+                            isOn="false"
+                            onValueChanged="onSettingsEditModeChanged"
+                            colors="#1E293B|#29384F|#172033|#172033"
+                            toggleWidth="32"
+                            toggleHeight="32"
+                            preferredWidth="40"
+                            preferredHeight="40"
+                        />
+                        <Text
+                            text="EDIT MODE"
+                            fontSize="21"
+                            fontStyle="Bold"
+                            color="#F8FAFC"
+                            alignment="MiddleLeft"
+                            preferredWidth="490"
+                            preferredHeight="40"
+                        />
+                    </HorizontalLayout>
+                    <Text
+                        text="Allow admins to add objects by clicking empty hexes."
+                        fontSize="17"
+                        color="#94A3B8"
+                        preferredWidth="550"
+                        preferredHeight="46"
+                    />
+                </VerticalLayout>
+            </Panel>
+        </VerticalLayout>
+
+        <!-- SAVE TAB -->
+        <VerticalLayout
+            id="settingsSavePage"
+            active="false"
+            preferredHeight="560"
             spacing="6"
             childAlignment="UpperCenter"
         >
             <Text
-                text="Save under a new name, or use an existing name to update it. Select a saved board to restore."
-                fontSize="18"
+                text="Save the current board or restore a saved board."
+                fontSize="17"
                 color="#CBD5E1"
-                alignment="MiddleLeft"
+                alignment="MiddleCenter"
                 preferredWidth="630"
                 preferredHeight="40"
             />
@@ -112,12 +201,12 @@
                 preferredHeight="44"
             />
             <Button
-                text="SAVE CURRENT BOARD"
-                fontSize="21"
+                text="SAVE BOARD"
+                fontSize="20"
                 fontStyle="Bold"
                 colors="#155E75|#0E7490|#164E63|#164E63"
                 onClick="onSettingsUiClicked(save)"
-                preferredWidth="420"
+                preferredWidth="320"
                 preferredHeight="48"
                 tooltip="Save the current setup under this name"
             />
@@ -229,7 +318,7 @@
                 childAlignment="MiddleCenter"
             >
                 <Button
-                    text="LOAD SELECTED"
+                    text="LOAD"
                     fontSize="20"
                     fontStyle="Bold"
                     colors="#166534|#15803D|#14532D|#14532D"
@@ -239,7 +328,7 @@
                     tooltip="Replace the current setup with the selected board"
                 />
                 <Button
-                    text="JSON TOOLS"
+                    text="JSON"
                     fontSize="20"
                     colors="#5A189A|#7130A8|#42106F|#42106F"
                     onClick="onSettingsUiClicked(json)"
@@ -249,10 +338,11 @@
             </HorizontalLayout>
         </VerticalLayout>
 
+        <!-- JSON VIEW (PART OF SAVE) -->
         <VerticalLayout
             id="settingsJsonPage"
             active="false"
-            preferredHeight="570"
+            preferredHeight="560"
             spacing="10"
             childAlignment="UpperCenter"
         >
@@ -302,21 +392,22 @@
                 />
             </HorizontalLayout>
             <Button
-                text="BACK TO SAVED BOARDS"
+                text="BACK"
                 fontSize="18"
-                onClick="onSettingsUiClicked(main)"
+                onClick="onSettingsUiClicked(saveTab)"
                 preferredWidth="320"
                 preferredHeight="44"
             />
         </VerticalLayout>
 
+        <!-- SHARED STATUS -->
         <Text
             id="settingsMenuStatus"
             text="Name the current board to save it, or select one to load."
-            fontSize="18"
-            color="#CBD5E1"
+            fontSize="17"
+            color="#94A3B8"
             preferredWidth="630"
-            preferredHeight="42"
+            preferredHeight="40"
         />
     </VerticalLayout>
 </Panel>

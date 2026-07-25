@@ -6,8 +6,12 @@ local SettingsConfig = {
     boardListPageSize = 5,
     ui = {
         rootId = "settingsMenuRoot",
-        mainPageId = "settingsMainPage",
+        generalPageId = "settingsGeneralPage",
+        savePageId = "settingsSavePage",
         jsonPageId = "settingsJsonPage",
+        editModeToggleId = "settingsEditMode",
+        generalTabButtonId = "settingsGeneralTab",
+        saveTabButtonId = "settingsSaveTab",
         boardNameInputId = "settingsBoardName",
         boardButtonPrefix = "settingsSavedBoard",
         boardPageLabelId = "settingsBoardPageLabel",
@@ -19,7 +23,9 @@ local SettingsConfig = {
     },
     uiColors = {
         board = "#26364D|#344A69|#192638|#192638",
-        selectedBoard = "#155E75|#0E7490|#164E63|#164E63"
+        selectedBoard = "#155E75|#0E7490|#164E63|#164E63",
+        tab = "#26364D|#344A69|#192638|#192638",
+        selectedTab = "#155E75|#0E7490|#164E63|#164E63"
     },
     colors = {
         denied = {1, 0.35, 0.35},

@@ -23,6 +23,7 @@ local resolvedSurfaceY = 0
 local hoverWaitId = nil
 local recentClickCells = {}
 local templatesByKey = {}
+local editMode = false
 
 for _, template in ipairs(SpawnDefinitions) do
     templatesByKey[template.key] = template
@@ -964,7 +965,7 @@ local function handlePointerClick(playerColor, altClick)
         return true
     end
 
-    if isAdmin(playerColor) then
+    if isAdmin(playerColor) and editMode then
         HexGridMenu.open(playerColor, player, cell)
         return true
     end
@@ -1049,6 +1050,20 @@ end
 
 function HexGrid.onMenuUiClicked(playerColor, action)
     HexGridMenu.handleAction(playerColor, action)
+end
+
+function HexGrid.setEditMode(enabled)
+    editMode = enabled == true
+
+    if not editMode then
+        pendingSpawn = nil
+        rotationCandidateCells = {}
+        HexGridMenu.close()
+
+        if board ~= nil then
+            drawGrid()
+        end
+    end
 end
 
 return HexGrid

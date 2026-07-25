@@ -44,6 +44,10 @@ function onSettingsBoardNameEdited(player, value, id)
     Game.onSettingsBoardNameEdited(player.color, value)
 end
 
+function onSettingsEditModeChanged(player, value, id)
+    Game.onSettingsEditModeChanged(player.color, value)
+end
+
 function onDungeonMapUiClicked(player, action, id)
     Game.onDungeonMapUiClicked(player.color, action)
 end

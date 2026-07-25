@@ -65,6 +65,7 @@ function Game.onLoad(saveState)
         onBoardLoadStarted = DungeonMap.onExternalBoardLoadStarted,
         onBoardLoadCompleted = DungeonMap.onExternalBoardLoadCompleted,
         onSavedBoardsChanged = DungeonMap.onSavedBoardsChanged,
+        setEditMode = HexGrid.setEditMode,
         persistState = Game.persistState
     }, savedGame.settings)
     DungeonMap.initialize({
@@ -112,6 +113,10 @@ end
 
 function Game.onSettingsBoardNameEdited(playerColor, value)
     SettingsMenu.onBoardNameEdited(playerColor, value)
+end
+
+function Game.onSettingsEditModeChanged(playerColor, value)
+    SettingsMenu.onEditModeChanged(playerColor, value)
 end
 
 function Game.onDungeonMapUiClicked(playerColor, action)

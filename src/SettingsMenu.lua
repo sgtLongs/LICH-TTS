@@ -8,6 +8,7 @@ local savedBoards = {}
 local selectedBoardIndex = nil
 local nextBoardId = 1
 local boardListPage = 1
+local editMode = false
 local context = {
     getBoardState = nil,
     getBoardStateJson = nil,
@@ -16,7 +17,8 @@ local context = {
     persistState = nil,
     onSavedBoardsChanged = nil,
     onBoardLoadStarted = nil,
-    onBoardLoadCompleted = nil
+    onBoardLoadCompleted = nil,
+    setEditMode = nil
 }
 
 local function isAdmin(playerColor)
@@ -39,14 +41,33 @@ end
 
 local function setPage(pageId)
     UI.setAttribute(
-        Config.ui.mainPageId,
+        Config.ui.generalPageId,
         "active",
-        pageId == Config.ui.mainPageId and "true" or "false"
+        pageId == Config.ui.generalPageId and "true" or "false"
+    )
+    UI.setAttribute(
+        Config.ui.savePageId,
+        "active",
+        pageId == Config.ui.savePageId and "true" or "false"
     )
     UI.setAttribute(
         Config.ui.jsonPageId,
         "active",
         pageId == Config.ui.jsonPageId and "true" or "false"
+    )
+    UI.setAttribute(
+        Config.ui.generalTabButtonId,
+        "colors",
+        pageId == Config.ui.generalPageId
+            and Config.uiColors.selectedTab
+            or Config.uiColors.tab
+    )
+    UI.setAttribute(
+        Config.ui.saveTabButtonId,
+        "colors",
+        pageId ~= Config.ui.generalPageId
+            and Config.uiColors.selectedTab
+            or Config.uiColors.tab
     )
 end
 
@@ -309,7 +330,7 @@ end
 
 local function open(playerColor)
     activePlayerColor = playerColor
-    setPage(Config.ui.mainPageId)
+    setPage(Config.ui.generalPageId)
     refreshBoardList(playerColor)
     UI.setAttribute(Config.ui.rootId, "visibility", playerColor)
     UI.setAttribute(
@@ -317,8 +338,13 @@ local function open(playerColor)
         "text",
         nameDraftsByPlayerColor[playerColor] or ""
     )
+    UI.setAttribute(
+        Config.ui.editModeToggleId,
+        "isOn",
+        editMode and "true" or "false"
+    )
     setStatus(
-        "Name the current board to save it, or select a saved board to load.",
+        "Enable Edit mode to add objects to the hex grid.",
         "#CBD5E1"
     )
     UI.setAttribute(Config.ui.rootId, "active", "true")
@@ -333,6 +359,7 @@ function SettingsMenu.initialize(parameters, savedState)
     context.onSavedBoardsChanged = parameters.onSavedBoardsChanged
     context.onBoardLoadStarted = parameters.onBoardLoadStarted
     context.onBoardLoadCompleted = parameters.onBoardLoadCompleted
+    context.setEditMode = parameters.setEditMode
     activePlayerColor = nil
     jsonDraftsByPlayerColor = {}
     nameDraftsByPlayerColor = {}
@@ -340,6 +367,7 @@ function SettingsMenu.initialize(parameters, savedState)
     selectedBoardIndex = nil
     nextBoardId = 1
     boardListPage = 1
+    editMode = false
 
     if type(savedState) == "table"
         and savedState.schemaVersion ~= nil
@@ -351,6 +379,9 @@ function SettingsMenu.initialize(parameters, savedState)
         print("SettingsMenu: ignored an unsupported saved-state version.")
         savedState = {}
     end
+
+    editMode = type(savedState) == "table"
+        and savedState.editMode == true
 
     if type(savedState) == "table"
         and type(savedState.savedBoards) == "table"
@@ -424,6 +455,10 @@ function SettingsMenu.initialize(parameters, savedState)
         selectedBoardIndex = 1
     end
 
+    if context.setEditMode ~= nil then
+        context.setEditMode(editMode)
+    end
+
     close()
 end
 
@@ -435,6 +470,7 @@ function SettingsMenu.getSaveState()
         schemaVersion = Config.settingsSchemaVersion,
         savedBoards = savedBoards,
         nextBoardId = nextBoardId,
+        editMode = editMode,
         selectedBoardId = selectedBoard ~= nil
             and selectedBoard.id or nil,
         selectedBoardName = selectedBoard ~= nil
@@ -512,9 +548,22 @@ function SettingsMenu.handleAction(playerColor, action)
         return
     end
 
-    if action == "main" then
-        setPage(Config.ui.mainPageId)
+    if action == "generalTab" then
+        setPage(Config.ui.generalPageId)
+        setStatus(
+            "Enable Edit mode to add objects to the hex grid.",
+            "#CBD5E1"
+        )
+        return
+    end
+
+    if action == "saveTab" or action == "main" then
+        setPage(Config.ui.savePageId)
         refreshBoardList(playerColor)
+        setStatus(
+            "Name the current board to save it, or select one to load.",
+            "#CBD5E1"
+        )
         return
     end
 
@@ -695,6 +744,35 @@ function SettingsMenu.onBoardNameEdited(playerColor, value)
     end
 
     nameDraftsByPlayerColor[playerColor] = value
+end
+
+function SettingsMenu.onEditModeChanged(playerColor, value)
+    if activePlayerColor ~= playerColor or not requireAdmin(playerColor) then
+        return
+    end
+
+    local enabled = value == true
+        or value == "true"
+        or value == "True"
+
+    if editMode == enabled then
+        return
+    end
+
+    editMode = enabled
+
+    if context.setEditMode ~= nil then
+        context.setEditMode(editMode)
+    end
+
+    local persistedImmediately = context.persistState ~= nil
+        and context.persistState() or false
+    setStatus(
+        editMode
+            and "Edit mode enabled. Click an empty hex to add an object."
+            or "Edit mode disabled.",
+        persistedImmediately and "#86EFAC" or "#FDE68A"
+    )
 end
 
 return SettingsMenu
