@@ -1,4 +1,5 @@
 local HexGrid = {}
+local HexGridMenu = require("src/HexGridMenu")
 
 -- Hex-grid alignment config for board GUID 068885.
 -- All distances are in the board object's local coordinates.
@@ -21,19 +22,27 @@ local CONFIG = {
     lineColor = {0, 0.8, 1},
     hoverColor = {1, 1, 0},
     selectedColor = {1, 0.75, 0.1},
+    menuTargetColor = {0.95, 0.2, 1},
     lineThickness = 0.10,
     hoverLineThickness = 0.28,
     hoverSurfaceOffset = 0.04,
-    selectedLineThickness = 0.18
+    selectedLineThickness = 0.18,
+    menuTargetLineThickness = 0.34,
+    menuTargetSurfaceOffset = 0.07,
+    spawnedObjectSurfaceOffset = 0.03
 }
+
+local GRID_CLICK_FUNCTION = "onHexGridClicked"
 
 local SQRT_3 = math.sqrt(3)
 local board = nil
 local cells = {}
 local selectedCells = {}
 local hoveredCells = {}
+local menuTargetCell = nil
 local resolvedSurfaceY = 0
 local hoverWaitId = nil
+local spawnObjectFromTemplate = nil
 
 local function cellKey(row, column)
     return tostring(row) .. ":" .. tostring(column)
@@ -124,46 +133,91 @@ local function drawLines()
                 )
             )
         end
+
+        if menuTargetCell ~= nil
+            and menuTargetCell.row == cell.row
+            and menuTargetCell.column == cell.column
+        then
+            table.insert(
+                lines,
+                makeHexLine(
+                    cell,
+                    CONFIG.menuTargetColor,
+                    CONFIG.menuTargetLineThickness,
+                    CONFIG.menuTargetSurfaceOffset
+                )
+            )
+        end
     end
 
     board.setVectorLines(lines)
 end
 
-local function createButtons()
-    -- Remove only controls created by this grid, preserving any board controls.
+local function removeGridButtons()
     local existingButtons = board.getButtons() or {}
 
     for index = #existingButtons, 1, -1 do
         local button = existingButtons[index]
 
-        if button.click_function == "onHexGridClicked" then
+        if button.click_function == GRID_CLICK_FUNCTION then
             board.removeButton(button.index)
         end
     end
+end
 
-    local gridRadius = CONFIG.sideLength - 1
+local function createButtons()
+    -- Remove only controls created by this grid, preserving any board controls.
+    removeGridButtons()
 
-    -- One control spans the whole grid. Per-cell bounding boxes overlap at
-    -- every sloped edge, which makes TTS choose controls inconsistently.
-    -- The callback below performs the exact per-hex hit test.
-    board.createButton({
-        label = "",
-        click_function = "onHexGridClicked",
-        function_owner = Global,
-        position = {CONFIG.offsetX, resolvedSurfaceY + 0.02, CONFIG.offsetZ},
-        rotation = {0, CONFIG.rotationDegrees, 0},
-        width = math.ceil(
-            SQRT_3 * CONFIG.hexRadius * (2 * gridRadius + 1) * 100
-        ),
-        height = math.ceil(
-            CONFIG.hexRadius * (3 * gridRadius + 2) * 100
-        ),
-        font_size = 1,
-        color = {0, 0, 0, 0},
-        hover_color = {0, 0, 0, 0},
-        press_color = {0, 0, 0, 0},
-        tooltip = "Hex grid"
+    -- Large TTS buttons stop receiving clicks reliably far from their center.
+    -- Give every cell its own inset control. The controls are slightly smaller
+    -- than the center-to-center spacing, so neighboring hit boxes do not
+    -- overlap and the pointer-based exact hex test remains deterministic.
+    for _, cell in ipairs(cells) do
+        board.createButton({
+            label = "",
+            click_function = GRID_CLICK_FUNCTION,
+            function_owner = Global,
+            position = {cell.x, resolvedSurfaceY + 0.02, cell.z},
+            rotation = {0, CONFIG.rotationDegrees, 0},
+            width = math.floor(SQRT_3 * CONFIG.hexRadius * 0.96 * 100),
+            height = math.floor(1.5 * CONFIG.hexRadius * 0.96 * 100),
+            font_size = 1,
+            color = {0, 0, 0, 0},
+            hover_color = {0, 0, 0, 0},
+            press_color = {0, 0, 0, 0},
+            tooltip = "Hex grid"
+        })
+    end
+end
+
+local function isAdmin(playerColor)
+    local player = Player[playerColor]
+    return player ~= nil and player.admin == true
+end
+
+local function placeSpawnedObject(spawnedObject, cell)
+    if spawnedObject == nil or board == nil then
+        return
+    end
+
+    local targetSurface = board.positionToWorld({
+        x = cell.x,
+        y = resolvedSurfaceY + CONFIG.spawnedObjectSurfaceOffset,
+        z = cell.z
     })
+    local currentPosition = spawnedObject.getPosition()
+    local bounds = spawnedObject.getBounds()
+    local boundsBottom = bounds.center.y - bounds.size.y * 0.5
+
+    spawnedObject.setPosition({
+        x = targetSurface.x,
+        y = currentPosition.y + targetSurface.y - boundsBottom,
+        z = targetSurface.z
+    })
+    spawnedObject.setLuaScript("")
+    spawnedObject.script_state = ""
+    spawnedObject.setLock(true)
 end
 
 local function pointIsInsideCell(localPointer, cell)
@@ -265,7 +319,18 @@ local function buildGrid()
 
     resolvedSurfaceY = resolveSurfaceY()
     makeCells()
+    menuTargetCell = nil
     drawLines()
+    HexGridMenu.initialize({
+        board = board,
+        isAdmin = isAdmin,
+        onObjectChoice = spawnObjectFromTemplate,
+        onTargetChanged = function(cell)
+            menuTargetCell = cell
+            drawLines()
+        end
+    })
+
     createButtons()
 
     if hoverWaitId ~= nil then
@@ -305,7 +370,7 @@ function HexGrid.getSaveState()
     }
 end
 
-function HexGrid.onClicked(playerColor)
+function HexGrid.onClicked(playerColor, altClick)
     if board == nil then
         return
     end
@@ -323,6 +388,18 @@ function HexGrid.onClicked(playerColor)
         return
     end
 
+    -- Leave right-click available for TTS's native object context menu.
+    if altClick then
+        return
+    end
+
+    if isAdmin(playerColor) then
+        HexGridMenu.open(playerColor, player, cell)
+        return
+    end
+
+    HexGridMenu.close()
+
     local key = cellKey(cell.row, cell.column)
     selectedCells[key] = not selectedCells[key] or nil
     drawLines()
@@ -333,6 +410,63 @@ function HexGrid.onClicked(playerColor)
         playerColor,
         CONFIG.selectedColor
     )
+end
+
+function HexGrid.onMenuUiClicked(playerColor, action)
+    HexGridMenu.handleAction(playerColor, action)
+end
+
+spawnObjectFromTemplate = function(template, targetCell, playerColor)
+    if type(template.json) ~= "string" or template.json == "" then
+        broadcastToColor(
+            "No saved template exists for " .. template.label .. ".",
+            playerColor,
+            {1, 0.35, 0.25}
+        )
+        return false
+    end
+
+    local spawnPosition = board.positionToWorld({
+        x = targetCell.x,
+        y = resolvedSurfaceY + 1,
+        z = targetCell.z
+    })
+
+    local spawnSucceeded = pcall(function()
+        spawnObjectJSON({
+            json = template.json,
+            position = spawnPosition,
+            callback_function = function(spawnedObject)
+                -- Templates contain no script fields. Reapply the runtime
+                -- guarantees after creation too.
+                spawnedObject.setLuaScript("")
+                spawnedObject.script_state = ""
+                spawnedObject.setLock(true)
+
+                Wait.frames(function()
+                    placeSpawnedObject(spawnedObject, targetCell)
+                end, 2)
+
+                broadcastToColor(
+                    template.label .. " added at hex "
+                        .. targetCell.row .. ", " .. targetCell.column .. ".",
+                    playerColor,
+                    {0.25, 0.9, 0.55}
+                )
+            end
+        })
+    end)
+
+    if not spawnSucceeded then
+        broadcastToColor(
+            "Could not spawn the " .. template.label .. ".",
+            playerColor,
+            {1, 0.35, 0.25}
+        )
+        return false
+    end
+
+    return true
 end
 
 return HexGrid

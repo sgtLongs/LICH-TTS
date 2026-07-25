@@ -17,7 +17,11 @@ function onEndTurnClicked(player, value, id)
 end
 
 function onHexGridClicked(object, playerColor, altClick)
-    Game.onHexGridClicked(playerColor)
+    Game.onHexGridClicked(playerColor, altClick)
+end
+
+function onHexGridMenuUiClicked(player, action, id)
+    Game.onHexGridMenuUiClicked(player.color, action)
 end
 
 function onPlayerConnect(player)

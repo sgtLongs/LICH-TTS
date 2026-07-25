@@ -92,3 +92,153 @@
         />
     </VerticalLayout>
 </Panel>
+
+<Panel
+    id="hexGridMenuRoot"
+    rectAlignment="MiddleRight"
+    width="430"
+    height="550"
+    offsetXY="-28 0"
+    color="#090C12F5"
+    padding="18 18 18 18"
+    active="false"
+>
+    <VerticalLayout spacing="14" childAlignment="UpperCenter">
+        <HorizontalLayout
+            preferredHeight="58"
+            spacing="12"
+            childAlignment="MiddleCenter"
+        >
+            <Text
+                id="hexGridMenuTitle"
+                text="Selected Hex"
+                fontSize="27"
+                fontStyle="Bold"
+                preferredWidth="330"
+                preferredHeight="52"
+            />
+            <Button
+                id="hexGridMenuClose"
+                text="X"
+                fontSize="28"
+                colors="#751D24|#A62A34|#5A151B|#5A151B"
+                onClick="onHexGridMenuUiClicked(close)"
+                preferredWidth="56"
+                preferredHeight="52"
+                tooltip="Close"
+            />
+        </HorizontalLayout>
+
+        <Panel
+            id="hexGridMenuAddPage"
+            color="#00000000"
+            preferredHeight="440"
+        >
+            <Button
+                id="hexGridMenuAddObject"
+                text="ADD OBJECT"
+                fontSize="32"
+                fontStyle="Bold"
+                colors="#1A6194|#2184BD|#124669|#124669"
+                onClick="onHexGridMenuUiClicked(add)"
+                rectAlignment="MiddleCenter"
+                width="310"
+                height="100"
+                tooltip="Open the object list"
+            />
+        </Panel>
+
+        <VerticalLayout
+            id="hexGridMenuObjectPage"
+            active="false"
+            preferredHeight="440"
+            spacing="12"
+            childAlignment="UpperCenter"
+        >
+            <HorizontalLayout
+                preferredHeight="72"
+                spacing="12"
+                childAlignment="MiddleCenter"
+            >
+                <Button
+                    text="Tree"
+                    onClick="onHexGridMenuUiClicked(tree)"
+                    preferredWidth="185"
+                    preferredHeight="64"
+                />
+                <Button
+                    text="Double Rock"
+                    onClick="onHexGridMenuUiClicked(doubleRock)"
+                    preferredWidth="185"
+                    preferredHeight="64"
+                />
+            </HorizontalLayout>
+            <HorizontalLayout
+                preferredHeight="72"
+                spacing="12"
+                childAlignment="MiddleCenter"
+            >
+                <Button
+                    text="Throne"
+                    onClick="onHexGridMenuUiClicked(throne)"
+                    preferredWidth="185"
+                    preferredHeight="64"
+                />
+                <Button
+                    text="Crystal"
+                    onClick="onHexGridMenuUiClicked(crystal)"
+                    preferredWidth="185"
+                    preferredHeight="64"
+                />
+            </HorizontalLayout>
+            <HorizontalLayout
+                preferredHeight="72"
+                spacing="12"
+                childAlignment="MiddleCenter"
+            >
+                <Button
+                    text="Rock 1"
+                    onClick="onHexGridMenuUiClicked(rock1)"
+                    preferredWidth="185"
+                    preferredHeight="64"
+                />
+                <Button
+                    text="Chest"
+                    onClick="onHexGridMenuUiClicked(chest)"
+                    preferredWidth="185"
+                    preferredHeight="64"
+                />
+            </HorizontalLayout>
+            <HorizontalLayout
+                preferredHeight="72"
+                spacing="12"
+                childAlignment="MiddleCenter"
+            >
+                <Button
+                    text="Rock 2"
+                    onClick="onHexGridMenuUiClicked(rock2)"
+                    preferredWidth="185"
+                    preferredHeight="64"
+                />
+                <Button
+                    text="Cage"
+                    onClick="onHexGridMenuUiClicked(cage)"
+                    preferredWidth="185"
+                    preferredHeight="64"
+                />
+            </HorizontalLayout>
+            <HorizontalLayout
+                preferredHeight="72"
+                spacing="12"
+                childAlignment="MiddleCenter"
+            >
+                <Button
+                    text="Source Stone"
+                    onClick="onHexGridMenuUiClicked(sourceStone)"
+                    preferredWidth="382"
+                    preferredHeight="64"
+                />
+            </HorizontalLayout>
+        </VerticalLayout>
+    </VerticalLayout>
+</Panel>

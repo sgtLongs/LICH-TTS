@@ -38,8 +38,12 @@ function Game.onEndTurnClicked(playerColor)
     TurnSystem.endTurn(playerColor)
 end
 
-function Game.onHexGridClicked(playerColor)
-    HexGrid.onClicked(playerColor)
+function Game.onHexGridClicked(playerColor, altClick)
+    HexGrid.onClicked(playerColor, altClick)
+end
+
+function Game.onHexGridMenuUiClicked(playerColor, action)
+    HexGrid.onMenuUiClicked(playerColor, action)
 end
 
 function Game.onPlayerConnect()
