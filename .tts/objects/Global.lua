@@ -8,6 +8,10 @@ function onSave()
     return Game.onSave()
 end
 
+function onObjectHover(playerColor, object)
+    Game.onObjectHover(playerColor, object)
+end
+
 function onSpeakerButtonClicked(data)
     Game.onSpeakerButtonClicked(data)
 end
@@ -22,6 +26,10 @@ end
 
 function onHexGridMenuUiClicked(player, action, id)
     Game.onHexGridMenuUiClicked(player.color, action)
+end
+
+function onPlayerAction(player, action, targets)
+    return Game.onPlayerAction(player, action, targets)
 end
 
 function onPlayerConnect(player)

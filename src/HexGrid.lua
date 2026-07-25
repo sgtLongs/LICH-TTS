@@ -1,5 +1,6 @@
 local HexGrid = {}
 local HexGridMenu = require("src/HexGridMenu")
+local HexGridConfig = require("src/HexGridConfig")
 
 -- Hex-grid alignment config for board GUID 068885.
 -- All distances are in the board object's local coordinates.
@@ -14,6 +15,15 @@ local CONFIG = {
     offsetX = 0,
     offsetZ = 0,
 
+    -- Three overlapping rectangular controls span the three pairs of opposing
+    -- sides. These are their exact dimensions in board-local units.
+    buttonLength = 12.8,
+    buttonThickness = 8,
+    buttonSurfaceOffset = 0.02,
+    buttonLayerSpacing = 0.002,
+
+    hitEdgePadding = 0.12,
+
     -- Leave nil to detect the top of the object automatically. Set a number
     -- here only if the model has unusual bounds and needs a manual override.
     surfaceY = nil,
@@ -21,11 +31,18 @@ local CONFIG = {
 
     lineColor = {0, 0.8, 1},
     hoverColor = {1, 1, 0},
+    hoverFillColor = {1, 1, 0, 0.18},
     selectedColor = {1, 0.75, 0.1},
     menuTargetColor = {0.95, 0.2, 1},
-    lineThickness = 0.10,
-    hoverLineThickness = 0.28,
+
+    lineThickness = 0.0,
+
+    hoverFillLineThickness = 0.12,
+    hoverFillSurfaceOffset = 0.02,
+    --hoverLineThickness = 0.28,
+    hoverLineThickness = 0.,
     hoverSurfaceOffset = 0.04,
+
     selectedLineThickness = 0.18,
     menuTargetLineThickness = 0.34,
     menuTargetSurfaceOffset = 0.07,
@@ -33,6 +50,30 @@ local CONFIG = {
 }
 
 local GRID_CLICK_FUNCTION = "onHexGridClicked"
+local INVISIBLE_BUTTON_COLOR = {0, 0, 0, 0}
+local GRID_BUTTONS = {
+    {
+        rotation = 0,
+        label = "0",
+        color = {1, 0.15, 0.15, 1},
+        hoverColor = {1, 0.35, 0.35, 0.62},
+        pressColor = {0.8, 0.05, 0.05, 0.72}
+    },
+    {
+        rotation = 60,
+        label = "60",
+        color = {0.15, 1, 0.25, 1},
+        hoverColor = {0.35, 1, 0.45, 0.62},
+        pressColor = {0.05, 0.8, 0.15, 0.72}
+    },
+    {
+        rotation = 120,
+        label = "120",
+        color = {0.2, 0.35, 1, 1},
+        hoverColor = {0.4, 0.55, 1, 0.62},
+        pressColor = {0.1, 0.2, 0.8, 0.72}
+    }
+}
 
 local SQRT_3 = math.sqrt(3)
 local board = nil
@@ -42,6 +83,7 @@ local hoveredCells = {}
 local menuTargetCell = nil
 local resolvedSurfaceY = 0
 local hoverWaitId = nil
+local recentClickCells = {}
 local spawnObjectFromTemplate = nil
 
 local function cellKey(row, column)
@@ -105,6 +147,59 @@ local function makeHexLine(cell, color, thickness, surfaceOffset)
     }
 end
 
+local function makeHexFillLines(cell)
+    local lines = {}
+    local thickness = CONFIG.hoverFillLineThickness
+    local fillY = resolvedSurfaceY + CONFIG.hoverFillSurfaceOffset
+    local radians = math.rad(CONFIG.rotationDegrees)
+    local cosine = math.cos(radians)
+    local sine = math.sin(radians)
+    local stripeCount = math.ceil(2 * CONFIG.hexRadius / thickness)
+    local stripeHeight = 2 * CONFIG.hexRadius / stripeCount
+
+    -- Horizontal scanlines clipped to a pointy-top regular hex create a
+    -- translucent interior fill without introducing clickable UI elements.
+    for stripe = 0, stripeCount - 1 do
+        local localZ = -CONFIG.hexRadius + (stripe + 0.5) * stripeHeight
+        local absoluteZ = math.abs(localZ)
+        local halfWidth = SQRT_3 * CONFIG.hexRadius * 0.5
+
+        if absoluteZ > CONFIG.hexRadius * 0.5 then
+            halfWidth = SQRT_3 * (CONFIG.hexRadius - absoluteZ)
+        end
+
+        local startX = -halfWidth
+        local endX = halfWidth
+
+        table.insert(lines, {
+            points = {
+                {
+                    x = cell.x + startX * cosine - localZ * sine,
+                    y = fillY,
+                    z = cell.z + startX * sine + localZ * cosine
+                },
+                {
+                    x = cell.x + endX * cosine - localZ * sine,
+                    y = fillY,
+                    z = cell.z + endX * sine + localZ * cosine
+                }
+            },
+            color = CONFIG.hoverFillColor,
+            thickness = stripeHeight
+        })
+    end
+
+    return lines
+end
+
+local function getButtonDimensions()
+    -- TTS accepts integer hundredths and clamps non-zero dimensions below 60.
+    return {
+        width = math.max(60, math.floor(CONFIG.buttonLength * 100 + 0.5)),
+        height = math.max(60, math.floor(CONFIG.buttonThickness * 100 + 0.5))
+    }
+end
+
 local function drawLines()
     if board == nil then
         return
@@ -123,6 +218,10 @@ local function drawLines()
         end
 
         if hoveredCells[cellKey(cell.row, cell.column)] then
+            for _, fillLine in ipairs(makeHexFillLines(cell)) do
+                table.insert(lines, fillLine)
+            end
+
             table.insert(
                 lines,
                 makeHexLine(
@@ -169,25 +268,44 @@ local function createButtons()
     -- Remove only controls created by this grid, preserving any board controls.
     removeGridButtons()
 
-    -- Large TTS buttons stop receiving clicks reliably far from their center.
-    -- Give every cell its own inset control. The controls are slightly smaller
-    -- than the center-to-center spacing, so neighboring hit boxes do not
-    -- overlap and the pointer-based exact hex test remains deterministic.
+    -- Three narrow rectangles rotated 60 degrees apart cover the hex. They all
+    -- invoke the same callback; the exact pointer test resolves neighboring
+    -- controls wherever their rectangular hitboxes overlap.
+    local dimensions = getButtonDimensions()
+    local showButtonDebug = HexGridConfig.showButtonDebug == true
+
     for _, cell in ipairs(cells) do
-        board.createButton({
-            label = "",
-            click_function = GRID_CLICK_FUNCTION,
-            function_owner = Global,
-            position = {cell.x, resolvedSurfaceY + 0.02, cell.z},
-            rotation = {0, CONFIG.rotationDegrees, 0},
-            width = math.floor(SQRT_3 * CONFIG.hexRadius * 0.96 * 100),
-            height = math.floor(1.5 * CONFIG.hexRadius * 0.96 * 100),
-            font_size = 1,
-            color = {0, 0, 0, 0},
-            hover_color = {0, 0, 0, 0},
-            press_color = {0, 0, 0, 0},
-            tooltip = "Hex grid"
-        })
+        for buttonIndex, buttonConfig in ipairs(GRID_BUTTONS) do
+            board.createButton({
+                label = showButtonDebug and buttonConfig.label or "",
+                click_function = GRID_CLICK_FUNCTION,
+                function_owner = Global,
+                position = {
+                    cell.x,
+                    resolvedSurfaceY + CONFIG.buttonSurfaceOffset
+                        + buttonIndex * CONFIG.buttonLayerSpacing,
+                    cell.z
+                },
+                rotation = {
+                    0,
+                    CONFIG.rotationDegrees + buttonConfig.rotation,
+                    0
+                },
+                width = dimensions.width,
+                height = dimensions.height,
+                font_size = showButtonDebug and 34 or 1,
+                color = showButtonDebug
+                    and buttonConfig.color or INVISIBLE_BUTTON_COLOR,
+                font_color = showButtonDebug
+                    and {1, 1, 1, 0.95} or INVISIBLE_BUTTON_COLOR,
+                hover_color = showButtonDebug
+                    and buttonConfig.hoverColor or INVISIBLE_BUTTON_COLOR,
+                press_color = showButtonDebug
+                    and buttonConfig.pressColor or INVISIBLE_BUTTON_COLOR,
+                tooltip = showButtonDebug
+                    and buttonConfig.label .. " degree hex button" or ""
+            })
+        end
     end
 end
 
@@ -227,9 +345,12 @@ local function pointIsInsideCell(localPointer, cell)
     local localX = math.abs(deltaX * math.cos(radians) - deltaZ * math.sin(radians))
     local localZ = math.abs(deltaX * math.sin(radians) + deltaZ * math.cos(radians))
 
-    -- Exact pointy-top regular-hex containment test.
-    return localX <= SQRT_3 * CONFIG.hexRadius * 0.5
-        and SQRT_3 * localZ + localX <= SQRT_3 * CONFIG.hexRadius
+    -- Pointy-top regular-hex containment test with a small tolerance so the
+    -- visibly thick border remains clickable all the way to its outer edge.
+    local hitRadius = CONFIG.hexRadius + CONFIG.hitEdgePadding
+
+    return localX <= SQRT_3 * hitRadius * 0.5
+        and SQRT_3 * localZ + localX <= SQRT_3 * hitRadius
 end
 
 local function findCellAt(localPointer)
@@ -351,6 +472,7 @@ end
 function HexGrid.onLoad(savedState)
     selectedCells = {}
     hoveredCells = {}
+    recentClickCells = {}
 
     if type(savedState) == "table" and type(savedState.selectedCells) == "table" then
         selectedCells = savedState.selectedCells
@@ -370,37 +492,52 @@ function HexGrid.getSaveState()
     }
 end
 
-function HexGrid.onClicked(playerColor, altClick)
+local function handlePointerClick(playerColor, altClick)
     if board == nil then
-        return
+        return false
     end
 
     local player = Player[playerColor]
 
     if player == nil then
-        return
+        return false
     end
 
     local localPointer = board.positionToLocal(player.getPointerPosition())
     local cell = findCellAt(localPointer)
 
     if cell == nil then
-        return
+        return false
     end
 
     -- Leave right-click available for TTS's native object context menu.
     if altClick then
-        return
+        return false
     end
+
+    -- A classic button click can also surface as a Select player action. Ignore
+    -- the duplicate if both callbacks arrive during the same couple of frames.
+    local key = cellKey(cell.row, cell.column)
+
+    if recentClickCells[playerColor] == key then
+        return true
+    end
+
+    recentClickCells[playerColor] = key
+
+    Wait.frames(function()
+        if recentClickCells[playerColor] == key then
+            recentClickCells[playerColor] = nil
+        end
+    end, 2)
 
     if isAdmin(playerColor) then
         HexGridMenu.open(playerColor, player, cell)
-        return
+        return true
     end
 
     HexGridMenu.close()
 
-    local key = cellKey(cell.row, cell.column)
     selectedCells[key] = not selectedCells[key] or nil
     drawLines()
 
@@ -410,6 +547,32 @@ function HexGrid.onClicked(playerColor, altClick)
         playerColor,
         CONFIG.selectedColor
     )
+
+    return true
+end
+
+function HexGrid.onClicked(playerColor, altClick)
+    handlePointerClick(playerColor, altClick)
+end
+
+function HexGrid.onPlayerAction(player, action, targets)
+    if board == nil
+        or action ~= Player.Action.Select
+        or type(targets) ~= "table"
+        or #targets ~= 1
+        or targets[1] == nil
+        or targets[1].getGUID() ~= CONFIG.boardGuid
+    then
+        return true
+    end
+
+    -- Clicking the board itself is a reliable fallback for the rounded and
+    -- overlapping edges of TTS's rectangular classic-button hitboxes.
+    if handlePointerClick(player.color, false) then
+        return false
+    end
+
+    return true
 end
 
 function HexGrid.onMenuUiClicked(playerColor, action)

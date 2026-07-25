@@ -28,6 +28,10 @@ function onHexGridMenuUiClicked(player, action, id)
     Game.onHexGridMenuUiClicked(player.color, action)
 end
 
+function onPlayerAction(player, action, targets)
+    return Game.onPlayerAction(player, action, targets)
+end
+
 function onPlayerConnect(player)
     Game.onPlayerConnect()
 end

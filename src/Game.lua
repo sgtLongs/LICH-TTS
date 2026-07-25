@@ -46,6 +46,10 @@ function Game.onHexGridMenuUiClicked(playerColor, action)
     HexGrid.onMenuUiClicked(playerColor, action)
 end
 
+function Game.onPlayerAction(player, action, targets)
+    return HexGrid.onPlayerAction(player, action, targets)
+end
+
 function Game.onPlayerConnect()
     TurnSystem.refreshUi()
 end
