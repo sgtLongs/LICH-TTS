@@ -8,6 +8,11 @@ local ChatService = {
     sayButtonClicked = function()
     end
 }
+local CardFields = {
+    onLoad = function()
+        calls.cardFieldsLoaded = true
+    end
+}
 local DungeonMap = {
     getSaveState = function()
         return {area = "dungeon"}
@@ -92,6 +97,7 @@ local TurnSystem = {
 }
 
 package.loaded["src/ChatService"] = ChatService
+package.loaded["src/card_fields/CardFields"] = CardFields
 package.loaded["src/dungeon/DungeonMap"] = DungeonMap
 package.loaded["src/hex/HexGrid"] = HexGrid
 package.loaded["src/SettingsMenu"] = SettingsMenu
@@ -140,6 +146,7 @@ Test.case("game load wires subsystems to saved state", function()
 
     Game.onLoad("valid")
 
+    Test.truthy(calls.cardFieldsLoaded)
     Test.equal("hex", calls.hexState.loaded)
     Test.equal("turn", calls.turnState.loaded)
     Test.equal("settings", calls.settingsState.loaded)

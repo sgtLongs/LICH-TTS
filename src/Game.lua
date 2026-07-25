@@ -1,4 +1,5 @@
 local ChatService = require("src/ChatService")
+local CardFields = require("src/card_fields/CardFields")
 local DungeonMap = require("src/dungeon/DungeonMap")
 local HexGrid = require("src/hex/HexGrid")
 local SettingsMenu = require("src/SettingsMenu")
@@ -55,6 +56,7 @@ function Game.onLoad(saveState)
         end
     end
 
+    CardFields.onLoad()
     HexGrid.onLoad(savedGame.hexGrid)
     TurnSystem.onLoad(savedGame.turnSystem)
     SettingsMenu.initialize({
