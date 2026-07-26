@@ -38,7 +38,7 @@ local function makeCardDefinitions(data)
             local typesString = ""
 
             if type(card.types) == "table" and #card.types > 0 then
-                typesString = table.concat(card.types, ", ") .. " "
+                typesString = table.concat(card.types, ", ")
             end
 
             definitions[#definitions + 1] = {
@@ -140,6 +140,134 @@ local function makeDeckData(definitions, deckSize)
     }
 end
 
+local function titleHasType(title, expectedType)
+    if type(title) ~= "string" then
+        return false
+    end
+
+    local types = string.match(title, "^.- | (.-)%s*$")
+
+    if types == nil then
+        return false
+    end
+
+    for cardType in string.gmatch(types, "[^,]+") do
+        local trimmed = string.match(cardType, "^%s*(.-)%s*$")
+
+        if trimmed == expectedType then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function findHeroCard(cards)
+    for _, card in ipairs(cards or {}) do
+        -- Container metadata exposes the visible card title as `name`.
+        -- `nickname` remains as a fallback for older TTS versions.
+        local title = card.name or card.nickname
+
+        if titleHasType(title, "Hero") then
+            return card
+        end
+    end
+
+    return nil
+end
+
+local function settleObject(object, position)
+    object.setPosition(position)
+    object.setVelocity({0, 0, 0})
+    object.setAngularVelocity({0, 0, 0})
+end
+
+local function placeHero(field, deck, rotation, heroCard)
+    if field.heroSlot == nil then
+        print("Card field did not contain a hero slot.")
+        finish(field)
+        return
+    end
+
+    local heroPosition = {
+        field.heroSlot.x,
+        field.heroSlot.y + Config.deckSlot.cardSpawnHeight,
+        field.heroSlot.z
+    }
+    local takeParameters = {
+        position = heroPosition,
+        rotation = rotation,
+        smooth = false,
+        callback_function = function(takenHero)
+            settleObject(takenHero, heroPosition)
+            finish(field)
+            print(
+                "Hero placed for " .. field.playerColor
+                    .. " at row " .. Config.heroSlot.row
+                    .. ", column " .. Config.heroSlot.column .. "."
+            )
+        end
+    }
+
+    if heroCard.guid ~= nil and heroCard.guid ~= "" then
+        takeParameters.guid = heroCard.guid
+    else
+        takeParameters.index = heroCard.index
+    end
+
+    local succeeded, hero = pcall(deck.takeObject, takeParameters)
+
+    if not succeeded or hero == nil then
+        print("Could not take the Hero card from the generated deck.")
+        finish(field)
+    end
+end
+
+local function waitForLoadedDeck(field, deck, rotation, deckSize)
+    local loadedHeroCard = nil
+
+    local function deckIsFullyLoaded()
+        if deck.spawning == true or deck.loading_custom == true then
+            return false
+        end
+
+        if type(deck.getObjects) ~= "function" then
+            return false
+        end
+
+        local succeeded, cards = pcall(deck.getObjects)
+
+        if not succeeded
+            or type(cards) ~= "table"
+            or #cards < deckSize
+        then
+            return false
+        end
+
+        loadedHeroCard = findHeroCard(cards)
+        return loadedHeroCard ~= nil
+            and (
+                loadedHeroCard.guid ~= nil
+                or loadedHeroCard.index ~= nil
+            )
+    end
+
+    Wait.condition(
+        function()
+            placeHero(field, deck, rotation, loadedHeroCard)
+        end,
+        deckIsFullyLoaded,
+        Config.heroSlot.loadTimeoutSeconds,
+        function()
+            print(
+                "Timed out waiting for the complete deck and its Hero card "
+                    .. "to load."
+            )
+            finish(field)
+        end
+    )
+end
+
 local function spawnDeck(field, spawnPosition, definitions, deckSize)
     local configuredRotation = Config.deckSlot.cardSpawnRotation
     local rotation = {
@@ -161,10 +289,8 @@ local function spawnDeck(field, spawnPosition, definitions, deckSize)
             -- Asset loading can slightly displace custom objects. Correct the
             -- one spawned deck after initialization rather than settling every
             -- card independently through the physics engine.
-            deck.setPosition(position)
-            deck.setVelocity({0, 0, 0})
-            deck.setAngularVelocity({0, 0, 0})
-            finish(field)
+            settleObject(deck, position)
+            waitForLoadedDeck(field, deck, rotation, deckSize)
             print("Deck generated for " .. field.playerColor .. ".")
         end
     })

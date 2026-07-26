@@ -50,6 +50,18 @@ local CardFieldConfig = {
         cardSpawnRotation = {0, 180, 0}
     },
 
+    -- Gameplay labels the seven-wide axis as rows and the three-deep axis as
+    -- columns. The hero starts in the opposite corner on the third column.
+    heroSlot = {
+        row = 7,
+        column = 3,
+        -- The cabinet deck button is mirrored when its deck spawn position is
+        -- calculated, so row 7 runs in the unmirrored direction to place the
+        -- hero directly opposite the spawned deck.
+        rowsRunRightToLeft = false,
+        loadTimeoutSeconds = 30
+    },
+
     -- Rectangles use inclusive, one-based grid coordinates. Keeping the
     -- layout here makes it easy to replace with the final CSV mapping.
     sections = {

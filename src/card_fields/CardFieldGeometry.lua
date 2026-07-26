@@ -59,6 +59,28 @@ local function addRectangle(
     )
 end
 
+local function makeCellPoint(
+    field,
+    config,
+    cellWidth,
+    cellHeight,
+    gridColumn,
+    gridRow,
+    runRightToLeft
+)
+    if runRightToLeft == true then
+        gridColumn = config.columns - gridColumn + 1
+    end
+
+    local left = -field.size.x * 0.5
+    local top = -field.size.z * 0.5
+    local localX = left + (gridColumn - 0.5) * cellWidth
+    local localZ = top + (gridRow - 0.5) * cellHeight
+    local point = rotatePoint(localX, localZ, field)
+    point.y = config.surfaceY
+    return point
+end
+
 function CardFieldGeometry.buildField(field, config)
     local lines = {}
     local cells = {}
@@ -68,20 +90,37 @@ function CardFieldGeometry.buildField(field, config)
     local top = -field.size.z * 0.5
     local deckSlot = config.deckSlot
     local deckSlotPoint = nil
+    local heroSlot = config.heroSlot
+    local heroSlotPoint = nil
 
     if deckSlot ~= nil then
-        local deckSlotColumn = deckSlot.column
-
-        if deckSlot.columnsRunRightToLeft == true then
-            deckSlotColumn = config.columns - deckSlot.column + 1
-        end
-
-        local deckSlotX = left + (deckSlotColumn - 0.5) * cellWidth
-        local deckSlotZ = top + (deckSlot.row - 0.5) * cellHeight
-        deckSlotPoint = rotatePoint(deckSlotX, deckSlotZ, field)
-        deckSlotPoint.y = config.surfaceY
+        deckSlotPoint = makeCellPoint(
+            field,
+            config,
+            cellWidth,
+            cellHeight,
+            deckSlot.column,
+            deckSlot.row,
+            deckSlot.columnsRunRightToLeft
+        )
         deckSlotPoint.row = deckSlot.row
         deckSlotPoint.column = deckSlot.column
+    end
+
+    if heroSlot ~= nil then
+        -- Player-facing coordinates call the seven-wide axis "row" and the
+        -- three-deep axis "column", opposite the geometry's internal names.
+        heroSlotPoint = makeCellPoint(
+            field,
+            config,
+            cellWidth,
+            cellHeight,
+            heroSlot.row,
+            heroSlot.column,
+            heroSlot.rowsRunRightToLeft
+        )
+        heroSlotPoint.row = heroSlot.row
+        heroSlotPoint.column = heroSlot.column
     end
 
     for boundary = 0, config.columns do
@@ -157,6 +196,7 @@ function CardFieldGeometry.buildField(field, config)
             z = field.position.z
         },
         deckSlot = deckSlotPoint,
+        heroSlot = heroSlotPoint,
         cellWidth = cellWidth,
         cellHeight = cellHeight
     }

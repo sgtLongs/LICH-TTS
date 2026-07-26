@@ -6,12 +6,34 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
     local originalWebRequest = WebRequest
     local originalJson = JSON
     local originalSpawnObjectData = spawnObjectData
+    local originalWait = Wait
     local requestedUrl = nil
     local requestCallback = nil
     local spawnParameters = nil
     local spawnedDeck = nil
+    local spawnedHero = nil
+    local takeParameters = nil
     local spawnCallCount = 0
     local decodedQuantity = 2
+    local includeHero = true
+    local loadedObjectCount = 0
+    local waitParameters = nil
+
+    Wait = {
+        condition = function(
+            callback,
+            condition,
+            timeout,
+            timeoutCallback
+        )
+            waitParameters = {
+                callback = callback,
+                condition = condition,
+                timeout = timeout,
+                timeoutCallback = timeoutCallback
+            }
+        end
+    }
 
     WebRequest = {
         get = function(url, callback)
@@ -21,17 +43,29 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
     }
     JSON = {
         decode = function()
+            local cards = {
+                {
+                    name = "Skeleton",
+                    description = "A test card",
+                    frontImageURL = "front.png",
+                    types = {"Undead"},
+                    quantity = decodedQuantity
+                }
+            }
+
+            if includeHero then
+                cards[#cards + 1] = {
+                    name = "Manfred",
+                    description = "The deck hero",
+                    frontImageURL = "hero.png",
+                    types = {"Undead", "Hero"},
+                    quantity = 1
+                }
+            end
+
             return {
                 backImageUrl = "back.png",
-                cards = {
-                    {
-                        name = "Skeleton",
-                        description = "A test card",
-                        frontImageURL = "front.png",
-                        types = {"Undead"},
-                        quantity = decodedQuantity
-                    }
-                }
+                cards = cards
             }
         end
     }
@@ -49,6 +83,54 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
         spawnedDeck.setAngularVelocity = function(velocity)
             spawnedDeck.angularVelocity = velocity
         end
+        spawnedDeck.spawning = false
+        spawnedDeck.loading_custom = true
+        spawnedDeck.getObjects = function()
+            if not includeHero then
+                return {}
+            end
+
+            local allObjects = {
+                {
+                    guid = "skeleton-one",
+                    name = "Skeleton | Undead"
+                },
+                {
+                    guid = "skeleton-two",
+                    name = "Skeleton | Undead"
+                },
+                {
+                    guid = "hero-guid",
+                    name = "Manfred | Undead, Hero"
+                }
+            }
+            local loadedObjects = {}
+
+            for index = 1, loadedObjectCount do
+                loadedObjects[index] = allObjects[index]
+            end
+
+            return loadedObjects
+        end
+        spawnedDeck.takeObject = function(parameters)
+            takeParameters = parameters
+            spawnedHero = {}
+            spawnedHero.setPosition = function(position)
+                spawnedHero.finishedPosition = position
+            end
+            spawnedHero.setVelocity = function(velocity)
+                spawnedHero.velocity = velocity
+            end
+            spawnedHero.setAngularVelocity = function(velocity)
+                spawnedHero.angularVelocity = velocity
+            end
+
+            if parameters.callback_function then
+                parameters.callback_function(spawnedHero)
+            end
+
+            return spawnedHero
+        end
 
         if parameters.callback_function then
             parameters.callback_function(spawnedDeck)
@@ -61,7 +143,8 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
         playerColor = "Green",
         surfaceObjectGuid = "test-field",
         downRotationDegrees = 180,
-        deckSlot = {x = 10, y = 2, z = 20}
+        deckSlot = {x = 10, y = 2, z = 20},
+        heroSlot = {x = 40, y = 4, z = 50}
     }
 
     Test.truthy(DeckGenerator.fetch(
@@ -79,8 +162,8 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
 
     Test.equal(1, spawnCallCount)
     Test.equal("DeckCustom", spawnParameters.data.Name)
-    Test.equal(2, #spawnParameters.data.DeckIDs)
-    Test.equal(2, #spawnParameters.data.ContainedObjects)
+    Test.equal(3, #spawnParameters.data.DeckIDs)
+    Test.equal(3, #spawnParameters.data.ContainedObjects)
     Test.equal(100, spawnParameters.data.DeckIDs[1])
     Test.equal(100, spawnParameters.data.DeckIDs[2])
     Test.equal(
@@ -92,7 +175,7 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
         spawnParameters.data.CustomDeck[1].BackURL
     )
     Test.equal(
-        "Skeleton | Undead ",
+        "Skeleton | Undead",
         spawnParameters.data.ContainedObjects[1].Nickname
     )
     Test.equal(
@@ -121,8 +204,37 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
     )
     Test.equal(70, spawnedDeck.finishedPosition[1])
     Test.equal(80, spawnedDeck.finishedPosition[3])
+    Test.falsy(takeParameters)
+    Test.equal(
+        Config.heroSlot.loadTimeoutSeconds,
+        waitParameters.timeout
+    )
+    Test.falsy(waitParameters.condition())
+
+    spawnedDeck.loading_custom = false
+    loadedObjectCount = 2
+    Test.falsy(waitParameters.condition())
+    Test.falsy(takeParameters)
+
+    loadedObjectCount = 3
+    Test.truthy(waitParameters.condition())
+    waitParameters.callback()
+
+    Test.equal("hero-guid", takeParameters.guid)
+    Test.equal(40, takeParameters.position[1])
+    Test.equal(6, takeParameters.position[2])
+    Test.equal(50, takeParameters.position[3])
+    Test.equal(false, takeParameters.smooth)
+    Test.equal(
+        Config.deckSlot.cardSpawnRotation[2] + 180,
+        takeParameters.rotation[2]
+    )
+    Test.equal(40, spawnedHero.finishedPosition[1])
+    Test.equal(50, spawnedHero.finishedPosition[3])
 
     decodedQuantity = 1
+    includeHero = false
+    loadedObjectCount = 0
     Test.truthy(DeckGenerator.fetch(field, nil, 10853))
     requestCallback({
         is_error = false,
@@ -136,4 +248,5 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
     WebRequest = originalWebRequest
     JSON = originalJson
     spawnObjectData = originalSpawnObjectData
+    Wait = originalWait
 end)
