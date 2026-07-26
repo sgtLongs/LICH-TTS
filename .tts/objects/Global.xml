@@ -1375,10 +1375,10 @@
 
 <Panel
     id="turnPanel"
-    rectAlignment="UpperCenter"
+    rectAlignment="LowerLeft"
     width="560"
     height="150"
-    offsetXY="0 -22"
+    offsetXY="22 22"
     color="#111827E8"
     padding="10 10 10 10"
 >
