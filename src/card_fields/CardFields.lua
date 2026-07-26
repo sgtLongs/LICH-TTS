@@ -32,6 +32,21 @@ local function addDeckSlotButton(field)
 
     removeDeckSlotButtons(surface)
 
+    if field.deckSpawned == true then
+        return true
+    end
+
+    field.onDeckSpawned = function()
+        field.deckSpawned = true
+
+        local currentSurface =
+            getObjectFromGUID(field.surfaceObjectGuid)
+
+        if currentSurface ~= nil then
+            removeDeckSlotButtons(currentSurface)
+        end
+    end
+
     local localPosition = surface.positionToLocal({
         x = field.deckSlot.x,
         y = field.deckSlot.y + Config.deckSlot.buttonSurfaceOffset,
@@ -118,6 +133,18 @@ function CardFields.onDeckSlotClicked(surface, playerColor)
 
     for _, field in ipairs(fields) do
         if field.surfaceObjectGuid == guid then
+            local ownerColor =
+                field.ownerColor or field.playerColor
+
+            if playerColor ~= ownerColor then
+                print(
+                    tostring(playerColor)
+                        .. " cannot spawn a deck on "
+                        .. ownerColor .. "'s field."
+                )
+                return false
+            end
+
             local spawnPosition = getButtonAlignedSpawnPosition(field)
             print(
                 "Deck slot clicked for " .. field.playerColor
@@ -127,12 +154,16 @@ function CardFields.onDeckSlotClicked(surface, playerColor)
                     .. " (row " .. Config.deckSlot.row
                     .. ", column " .. Config.deckSlot.column .. ")."
             )
-            DeckSelectionMenu.open(playerColor, field, spawnPosition)
-            return
+            return DeckSelectionMenu.open(
+                playerColor,
+                field,
+                spawnPosition
+            )
         end
     end
 
     print("CardFields: clicked deck slot did not match a card field.")
+    return false
 end
 
 function CardFields.onDeckMenuUiClicked(playerColor, action)

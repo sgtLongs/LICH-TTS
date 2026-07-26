@@ -14,6 +14,12 @@ Test.case("card fields build six 7 by 3 sectioned grids", function()
     Test.equal(Config.heroSlot.row, result.fields[1].heroSlot.row)
     Test.equal(Config.heroSlot.column, result.fields[1].heroSlot.column)
     Test.equal("3c4e81", result.fields[1].surfaceObjectGuid)
+    Test.equal("Red", result.fields[1].ownerColor)
+    Test.equal("Brown", result.fields[2].ownerColor)
+    Test.equal("White", result.fields[3].ownerColor)
+    Test.equal("Blue", result.fields[4].ownerColor)
+    Test.equal("Teal", result.fields[5].ownerColor)
+    Test.equal("Green", result.fields[6].ownerColor)
 
     local firstField = result.fields[1]
     local deckSpawnX =

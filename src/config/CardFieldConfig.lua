@@ -96,9 +96,13 @@ local CardFieldConfig = {
 
     -- Positions line up with the six cabinet/table-extension spaces.
     -- Size is the complete 7-by-3 field size in world units.
+    -- ownerColor follows the physical clockwise order around the table,
+    -- anchored at White's confirmed field: White, Brown, Red, Green, Teal,
+    -- Blue. The configuration list itself does not run in that direction.
     fields = {
         {
             playerColor = "White",
+            ownerColor = "Red",
             surfaceObjectGuid = "3c4e81",
             position = {x = -36, z = -41},
             rotationDegrees = 0,
@@ -106,6 +110,7 @@ local CardFieldConfig = {
         },
         {
             playerColor = "Brown",
+            ownerColor = "Brown",
             surfaceObjectGuid = "665355",
             position = {x = 0, z = -41},
             rotationDegrees = 0,
@@ -113,6 +118,7 @@ local CardFieldConfig = {
         },
         {
             playerColor = "Red",
+            ownerColor = "White",
             surfaceObjectGuid = "0c8d35",
             position = {x = 36, z = -41},
             rotationDegrees = 0,
@@ -120,6 +126,7 @@ local CardFieldConfig = {
         },
         {
             playerColor = "Green",
+            ownerColor = "Blue",
             surfaceObjectGuid = "5dd89b",
             position = {x = 36, z = 41},
             rotationDegrees = 180,
@@ -127,6 +134,7 @@ local CardFieldConfig = {
         },
         {
             playerColor = "Teal",
+            ownerColor = "Teal",
             surfaceObjectGuid = "661907",
             position = {x = 0, z = 41},
             rotationDegrees = 180,
@@ -134,6 +142,7 @@ local CardFieldConfig = {
         },
         {
             playerColor = "Blue",
+            ownerColor = "Green",
             surfaceObjectGuid = "88b8d6",
             position = {x = -36, z = 41},
             rotationDegrees = 180,

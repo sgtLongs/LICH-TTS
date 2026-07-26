@@ -187,6 +187,7 @@ function CardFieldGeometry.buildField(field, config)
         lines = lines,
         cells = cells,
         playerColor = field.playerColor,
+        ownerColor = field.ownerColor or field.playerColor,
         surfaceObjectGuid = field.surfaceObjectGuid,
         -- The field rotation also defines "down": from row 1 toward
         -- subsequent rows.

@@ -25,25 +25,34 @@ Test.case("deck menu opens for its player and generates their choice", function(
         return true
     end
 
-    local field = {playerColor = "Teal"}
+    local field = {
+        playerColor = "Teal",
+        ownerColor = "Red"
+    }
     local spawnPosition = {x = 1, y = 2, z = 3}
 
     DeckSelectionMenu.initialize()
-    Test.truthy(DeckSelectionMenu.open(
+    Test.falsy(DeckSelectionMenu.open(
         "Teal",
         field,
         spawnPosition
     ))
+    Test.falsy(DeckSelectionMenu.handleAction("Teal", "9636"))
+    Test.truthy(DeckSelectionMenu.open(
+        "Red",
+        field,
+        spawnPosition
+    ))
     Test.equal(
-        "Teal",
+        "Red",
         attributes[Config.deckSlot.menuRootId .. ".visibility"]
     )
     Test.equal(
         "true",
         attributes[Config.deckSlot.menuRootId .. ".active"]
     )
-    Test.falsy(DeckSelectionMenu.handleAction("Red", "9636"))
-    Test.truthy(DeckSelectionMenu.handleAction("Teal", "9636"))
+    Test.falsy(DeckSelectionMenu.handleAction("Teal", "9636"))
+    Test.truthy(DeckSelectionMenu.handleAction("Red", "9636"))
     Test.equal(field, fetched.field)
     Test.equal(spawnPosition, fetched.spawnPosition)
     Test.equal(9636, fetched.lootId)

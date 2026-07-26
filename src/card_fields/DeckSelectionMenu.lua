@@ -19,7 +19,13 @@ function DeckSelectionMenu.initialize()
 end
 
 function DeckSelectionMenu.open(playerColor, field, spawnPosition)
-    if playerColor == nil or field == nil then
+    local ownerColor = field ~= nil
+        and (field.ownerColor or field.playerColor)
+
+    if playerColor == nil
+        or field == nil
+        or playerColor ~= ownerColor
+    then
         return false
     end
 

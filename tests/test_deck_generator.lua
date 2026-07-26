@@ -18,6 +18,7 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
     local includeHero = true
     local loadedObjectCount = 0
     local waitParameters = nil
+    local deckSpawnedCallbackCount = 0
 
     Wait = {
         condition = function(
@@ -144,7 +145,12 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
         surfaceObjectGuid = "test-field",
         downRotationDegrees = 180,
         deckSlot = {x = 10, y = 2, z = 20},
-        heroSlot = {x = 40, y = 4, z = 50}
+        heroSlot = {x = 40, y = 4, z = 50},
+        onDeckSpawned = function(deck)
+            Test.equal(spawnedDeck, deck)
+            deckSpawnedCallbackCount =
+                deckSpawnedCallbackCount + 1
+        end
     }
 
     Test.truthy(DeckGenerator.fetch(
@@ -204,6 +210,7 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
     )
     Test.equal(70, spawnedDeck.finishedPosition[1])
     Test.equal(80, spawnedDeck.finishedPosition[3])
+    Test.equal(1, deckSpawnedCallbackCount)
     Test.falsy(takeParameters)
     Test.equal(
         Config.heroSlot.loadTimeoutSeconds,
@@ -242,6 +249,7 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
     })
 
     Test.equal(2, spawnCallCount)
+    Test.equal(2, deckSpawnedCallbackCount)
     Test.equal("CardCustom", spawnParameters.data.Name)
     Test.equal(1, spawnParameters.data.Transform.scaleX)
 

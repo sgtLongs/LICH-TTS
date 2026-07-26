@@ -290,6 +290,15 @@ local function spawnDeck(field, spawnPosition, definitions, deckSize)
             -- one spawned deck after initialization rather than settling every
             -- card independently through the physics engine.
             settleObject(deck, position)
+
+            if type(field.onDeckSpawned) == "function" then
+                local notified = pcall(field.onDeckSpawned, deck)
+
+                if not notified then
+                    print("Could not remove the used deck spawn button.")
+                end
+            end
+
             waitForLoadedDeck(field, deck, rotation, deckSize)
             print("Deck generated for " .. field.playerColor .. ".")
         end
