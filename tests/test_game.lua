@@ -15,6 +15,9 @@ local CardFields = {
     onDeckMenuUiClicked = function(playerColor, action)
         calls.deckMenuPlayerColor = playerColor
         calls.deckMenuAction = action
+    end,
+    renewDeckSlotButton = function()
+        return true
     end
 }
 local DungeonMap = {
@@ -161,6 +164,10 @@ Test.case("game load wires subsystems to saved state", function()
     Test.equal(
         HexGrid.setEditMode,
         calls.settingsContext.setEditMode
+    )
+    Test.equal(
+        CardFields.renewDeckSlotButton,
+        calls.settingsContext.renewDeckSlotButton
     )
     Test.equal(
         SettingsMenu.loadSavedBoardById,

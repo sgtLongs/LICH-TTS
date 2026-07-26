@@ -4,11 +4,13 @@ local SettingsMenu = require("src/SettingsMenu")
 local attributes = {}
 local editModeChanges = {}
 local persistCalls = 0
+local renewedPlayerColor = nil
 
 local function initialize(savedState)
     attributes = {}
     editModeChanges = {}
     persistCalls = 0
+    renewedPlayerColor = nil
     Player = {
         Red = {admin = true},
         Blue = {admin = false}
@@ -28,6 +30,10 @@ local function initialize(savedState)
         persistState = function()
             persistCalls = persistCalls + 1
             return true
+        end,
+        renewDeckSlotButton = function(playerColor)
+            renewedPlayerColor = playerColor
+            return true
         end
     }, savedState)
 end
@@ -39,6 +45,20 @@ Test.case("settings opens on the general tab", function()
     Test.equal("true", attributes["settingsGeneralPage.active"])
     Test.equal("false", attributes["settingsSavePage.active"])
     Test.equal("true", attributes["settingsEditMode.isOn"])
+end)
+
+Test.case("players can renew only their own deck spawn button", function()
+    initialize(nil)
+    SettingsMenu.handleAction("Blue", "toggle")
+    SettingsMenu.handleAction("Blue", "renewDeckSpawns")
+
+    Test.equal("Blue", renewedPlayerColor)
+    Test.equal(
+        "Your deck spawn button was renewed. You may spawn another deck.",
+        attributes["settingsMenuStatus.text"]
+    )
+    Test.equal("false", attributes["settingsEditMode.interactable"])
+    Test.equal("false", attributes["settingsSaveTab.interactable"])
 end)
 
 Test.case("edit mode is saved and forwarded to the hex grid", function()

@@ -160,6 +160,28 @@
                     />
                 </VerticalLayout>
             </Panel>
+            <Panel
+                color="#121A27"
+                padding="22 22 18 18"
+                preferredWidth="600"
+                preferredHeight="150"
+            >
+                <VerticalLayout spacing="10" childAlignment="MiddleCenter">
+                    <Button
+                        text="RENEW MY DECK SPAWN BUTTON"
+                        onClick="onSettingsUiClicked(renewDeckSpawns)"
+                        preferredWidth="550"
+                        preferredHeight="54"
+                    />
+                    <Text
+                        text="Restore your own deck spawn area for one more deck."
+                        fontSize="17"
+                        color="#94A3B8"
+                        preferredWidth="550"
+                        preferredHeight="46"
+                    />
+                </VerticalLayout>
+            </Panel>
         </VerticalLayout>
 
         <!-- SAVE TAB -->

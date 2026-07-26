@@ -67,6 +67,7 @@ function Game.onLoad(saveState)
         onBoardLoadCompleted = DungeonMap.onExternalBoardLoadCompleted,
         onSavedBoardsChanged = DungeonMap.onSavedBoardsChanged,
         setEditMode = HexGrid.setEditMode,
+        renewDeckSlotButton = CardFields.renewDeckSlotButton,
         persistState = Game.persistState
     }, savedGame.settings)
     DungeonMap.initialize({

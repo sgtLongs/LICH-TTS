@@ -19,7 +19,7 @@ local function removeDeckSlotButtons(surface)
     end
 end
 
-local function addDeckSlotButton(field)
+local function addDeckSlotButton(field, allowActivePlayer)
     local surface = getObjectFromGUID(field.surfaceObjectGuid)
 
     if surface == nil then
@@ -35,7 +35,7 @@ local function addDeckSlotButton(field)
 
     local ownerColor = field.ownerColor or field.playerColor
 
-    if TurnSystem.isPlayerActive(ownerColor) then
+    if not allowActivePlayer and TurnSystem.isPlayerActive(ownerColor) then
         field.deckSpawned = true
     end
 
@@ -93,6 +93,19 @@ local function refreshDeckSlotButtons()
     for _, field in ipairs(fields) do
         addDeckSlotButton(field)
     end
+end
+
+function CardFields.renewDeckSlotButton(playerColor)
+    for _, field in ipairs(fields) do
+        local ownerColor = field.ownerColor or field.playerColor
+
+        if ownerColor == playerColor then
+            field.deckSpawned = false
+            return addDeckSlotButton(field, true)
+        end
+    end
+
+    return false
 end
 
 function CardFields.onLoad()

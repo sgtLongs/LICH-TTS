@@ -18,7 +18,8 @@ local context = {
     onSavedBoardsChanged = nil,
     onBoardLoadStarted = nil,
     onBoardLoadCompleted = nil,
-    setEditMode = nil
+    setEditMode = nil,
+    renewDeckSlotButton = nil
 }
 
 local function isAdmin(playerColor)
@@ -330,6 +331,7 @@ end
 
 local function open(playerColor)
     activePlayerColor = playerColor
+    local playerIsAdmin = isAdmin(playerColor)
     setPage(Config.ui.generalPageId)
     refreshBoardList(playerColor)
     UI.setAttribute(Config.ui.rootId, "visibility", playerColor)
@@ -342,6 +344,16 @@ local function open(playerColor)
         Config.ui.editModeToggleId,
         "isOn",
         editMode and "true" or "false"
+    )
+    UI.setAttribute(
+        Config.ui.editModeToggleId,
+        "interactable",
+        playerIsAdmin and "true" or "false"
+    )
+    UI.setAttribute(
+        Config.ui.saveTabButtonId,
+        "interactable",
+        playerIsAdmin and "true" or "false"
     )
     setStatus(
         "Enable Edit mode to add objects to the hex grid.",
@@ -360,6 +372,7 @@ function SettingsMenu.initialize(parameters, savedState)
     context.onBoardLoadStarted = parameters.onBoardLoadStarted
     context.onBoardLoadCompleted = parameters.onBoardLoadCompleted
     context.setEditMode = parameters.setEditMode
+    context.renewDeckSlotButton = parameters.renewDeckSlotButton
     activePlayerColor = nil
     jsonDraftsByPlayerColor = {}
     nameDraftsByPlayerColor = {}
@@ -526,10 +539,6 @@ end
 
 function SettingsMenu.handleAction(playerColor, action)
     if action == "toggle" then
-        if not requireAdmin(playerColor) then
-            return
-        end
-
         if activePlayerColor == playerColor then
             close()
         else
@@ -539,7 +548,7 @@ function SettingsMenu.handleAction(playerColor, action)
         return
     end
 
-    if activePlayerColor ~= playerColor or not requireAdmin(playerColor) then
+    if activePlayerColor ~= playerColor then
         return
     end
 
@@ -554,6 +563,25 @@ function SettingsMenu.handleAction(playerColor, action)
             "Enable Edit mode to add objects to the hex grid.",
             "#CBD5E1"
         )
+        return
+    end
+
+    if action == "renewDeckSpawns" then
+        if context.renewDeckSlotButton == nil
+            or not context.renewDeckSlotButton(playerColor)
+        then
+            setStatus("Your deck spawn button could not be renewed.", "#FCA5A5")
+            return
+        end
+
+        setStatus(
+            "Your deck spawn button was renewed. You may spawn another deck.",
+            "#86EFAC"
+        )
+        return
+    end
+
+    if not requireAdmin(playerColor) then
         return
     end
 
