@@ -101,11 +101,9 @@ function CardFields.onLoad()
     local built = CardFieldGeometry.buildAll(Config)
     fields = built.fields
 
-    if DebugConfig.drawCardFields == true then
-        Global.setVectorLines(built.lines)
-    else
-        Global.setVectorLines({})
-    end
+    -- Zone outlines are part of the playable field rather than debug
+    -- geometry, so they are always visible.
+    Global.setVectorLines(built.lines)
 
     refreshDeckSlotButtons()
 

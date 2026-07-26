@@ -2,10 +2,12 @@ local CardFieldConfig = {
     columns = 7,
     rows = 3,
 
-    -- World-space height used for the debug lines.
-    surfaceY = -0.7,
-    lineThickness = 0.08,
-    sectionLineThickness = 0.18,
+    -- World-space height shared by every player card field.
+    fieldY = -1,
+    zoneLineThickness = 0.08,
+    -- Each zone is inset so adjacent outlines leave a visible gap rather
+    -- than sharing or touching an edge.
+    zoneInset = 0.12,
     gridColor = {0.75, 0.75, 0.75, 0.8},
 
     deckSlot = {
@@ -62,35 +64,81 @@ local CardFieldConfig = {
         loadTimeoutSeconds = 30
     },
 
-    -- Rectangles use inclusive, one-based grid coordinates. Keeping the
-    -- layout here makes it easy to replace with the final CSV mapping.
-    sections = {
+    -- Inclusive geometry coordinates. CSV rows are written from the player's
+    -- top to bottom, while geometry rows run from the player outward, so the
+    -- CSV's first row is geometry row 3.
+    zones = {
         {
-            key = "skillLeft",
-            label = "Skill 1",
+            key = "deck",
+            type = "deck",
+            label = "Deck",
             firstColumn = 1,
-            lastColumn = 2,
+            lastColumn = 1,
             firstRow = 1,
-            lastRow = 3,
-            color = {0.25, 0.75, 1, 1}
+            lastRow = 1
         },
         {
             key = "source",
+            type = "source",
             label = "Source",
-            firstColumn = 3,
-            lastColumn = 5,
+            firstColumn = 2,
+            lastColumn = 6,
             firstRow = 1,
-            lastRow = 3,
-            color = {0.9, 0.35, 0.95, 1}
+            lastRow = 2
         },
         {
-            key = "skillRight",
-            label = "Skill 2",
-            firstColumn = 6,
+            key = "skillBottom",
+            type = "skill",
+            label = "Skill",
+            firstColumn = 7,
             lastColumn = 7,
             firstRow = 1,
-            lastRow = 3,
-            color = {0.25, 0.75, 1, 1}
+            lastRow = 1
+        },
+        {
+            key = "purgatory",
+            type = "purgatory",
+            label = "Purgatory",
+            firstColumn = 1,
+            lastColumn = 1,
+            firstRow = 2,
+            lastRow = 2
+        },
+        {
+            key = "skillMiddle",
+            type = "skill",
+            label = "Skill",
+            firstColumn = 7,
+            lastColumn = 7,
+            firstRow = 2,
+            lastRow = 2
+        },
+        {
+            key = "abyss",
+            type = "abyss",
+            label = "Abyss",
+            firstColumn = 1,
+            lastColumn = 1,
+            firstRow = 3,
+            lastRow = 3
+        },
+        {
+            key = "action",
+            type = "action",
+            label = "Action",
+            firstColumn = 2,
+            lastColumn = 6,
+            firstRow = 3,
+            lastRow = 3
+        },
+        {
+            key = "hero",
+            type = "hero",
+            label = "Hero",
+            firstColumn = 7,
+            lastColumn = 7,
+            firstRow = 3,
+            lastRow = 3
         }
     },
 

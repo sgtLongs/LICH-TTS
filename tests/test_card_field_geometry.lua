@@ -8,7 +8,7 @@ Test.case("card fields build six 7 by 3 sectioned grids", function()
 
     Test.equal(6, #result.fields)
     Test.equal(21, #result.fields[1].cells)
-    Test.equal(144, #result.lines)
+    Test.equal(192, #result.lines)
     Test.equal(Config.deckSlot.row, result.fields[1].deckSlot.row)
     Test.equal(Config.deckSlot.column, result.fields[1].deckSlot.column)
     Test.equal(Config.heroSlot.row, result.fields[1].heroSlot.row)
@@ -36,16 +36,42 @@ Test.case("card fields build six 7 by 3 sectioned grids", function()
         0.0001
     )
 
-    local sectionCounts = {}
+    local zoneCounts = {}
+    local zonesByCell = {}
 
     for _, cell in ipairs(result.fields[1].cells) do
-        sectionCounts[cell.section] =
-            (sectionCounts[cell.section] or 0) + 1
+        zoneCounts[cell.zoneType] =
+            (zoneCounts[cell.zoneType] or 0) + 1
+        zonesByCell[cell.row .. ":" .. cell.column] =
+            cell.zoneType
     end
 
-    Test.equal(6, sectionCounts.skillLeft)
-    Test.equal(9, sectionCounts.source)
-    Test.equal(6, sectionCounts.skillRight)
+    Test.equal(1, zoneCounts.abyss)
+    Test.equal(5, zoneCounts.action)
+    Test.equal(1, zoneCounts.hero)
+    Test.equal(1, zoneCounts.purgatory)
+    Test.equal(10, zoneCounts.source)
+    Test.equal(2, zoneCounts.skill)
+    Test.equal(1, zoneCounts.deck)
+
+    -- Geometry rows run opposite the CSV's display order.
+    Test.equal("deck", zonesByCell["1:1"])
+    Test.equal("source", zonesByCell["1:2"])
+    Test.equal("skill", zonesByCell["1:7"])
+    Test.equal("purgatory", zonesByCell["2:1"])
+    Test.equal("abyss", zonesByCell["3:1"])
+    Test.equal("action", zonesByCell["3:2"])
+    Test.equal("hero", zonesByCell["3:7"])
+
+    local firstFieldLines = result.fields[1].lines
+    local deckRightX = firstFieldLines[2].points[1].x
+    local sourceLeftX = firstFieldLines[8].points[1].x
+
+    Test.near(
+        Config.zoneInset * 2,
+        sourceLeftX - deckRightX,
+        0.0001
+    )
 end)
 
 Test.case("card field position rotation and size affect drawing", function()
@@ -59,10 +85,18 @@ Test.case("card field position rotation and size affect drawing", function()
     local firstLine = result.lines[1]
 
     Test.equal(90, result.downRotationDegrees)
-    Test.near(7, firstLine.points[1].x, 0.0001)
-    Test.near(27, firstLine.points[1].z, 0.0001)
-    Test.near(13, firstLine.points[2].x, 0.0001)
-    Test.near(27, firstLine.points[2].z, 0.0001)
+    Test.equal(Config.fieldY, result.position.y)
+    Test.equal(Config.fieldY, result.deckSlot.y)
+    Test.equal(Config.fieldY, result.heroSlot.y)
+    Test.near(
+        Config.fieldY + 0.01,
+        firstLine.points[1].y,
+        0.0001
+    )
+    Test.near(7.12, firstLine.points[1].x, 0.0001)
+    Test.near(26.88, firstLine.points[1].z, 0.0001)
+    Test.near(7.12, firstLine.points[2].x, 0.0001)
+    Test.near(25.12, firstLine.points[2].z, 0.0001)
     Test.near(12, result.heroSlot.x, 0.0001)
     Test.near(14, result.heroSlot.z, 0.0001)
 end)

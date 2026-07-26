@@ -77,7 +77,7 @@ local function makeCellPoint(
     local localX = left + (gridColumn - 0.5) * cellWidth
     local localZ = top + (gridRow - 0.5) * cellHeight
     local point = rotatePoint(localX, localZ, field)
-    point.y = config.surfaceY
+    point.y = config.fieldY
     return point
 end
 
@@ -88,6 +88,7 @@ function CardFieldGeometry.buildField(field, config)
     local cellHeight = field.size.z / config.rows
     local left = -field.size.x * 0.5
     local top = -field.size.z * 0.5
+    local surfaceY = config.fieldY
     local deckSlot = config.deckSlot
     local deckSlotPoint = nil
     local heroSlot = config.heroSlot
@@ -123,60 +124,40 @@ function CardFieldGeometry.buildField(field, config)
         heroSlotPoint.column = heroSlot.column
     end
 
-    for boundary = 0, config.columns do
-        local x = left + boundary * cellWidth
-        lines[#lines + 1] = makeLine(
-            field,
-            config.surfaceY,
-            x,
-            top,
-            x,
-            top + field.size.z,
-            config.gridColor,
-            config.lineThickness
-        )
-    end
-
-    for boundary = 0, config.rows do
-        local z = top + boundary * cellHeight
-        lines[#lines + 1] = makeLine(
-            field,
-            config.surfaceY,
-            left,
-            z,
-            left + field.size.x,
-            z,
-            config.gridColor,
-            config.lineThickness
-        )
-    end
-
-    for _, section in ipairs(config.sections) do
-        local sectionLeft = left
-            + (section.firstColumn - 1) * cellWidth
-        local sectionTop = top
-            + (section.firstRow - 1) * cellHeight
-        local sectionRight = left + section.lastColumn * cellWidth
-        local sectionBottom = top + section.lastRow * cellHeight
+    for _, zone in ipairs(config.zones) do
+        local zoneLeft = left
+            + (zone.firstColumn - 1) * cellWidth
+            + config.zoneInset
+        local zoneTop = top
+            + (zone.firstRow - 1) * cellHeight
+            + config.zoneInset
+        local zoneRight = left
+            + zone.lastColumn * cellWidth
+            - config.zoneInset
+        local zoneBottom = top
+            + zone.lastRow * cellHeight
+            - config.zoneInset
 
         addRectangle(
             lines,
             field,
-            config.surfaceY + 0.01,
-            sectionLeft,
-            sectionTop,
-            sectionRight,
-            sectionBottom,
-            section.color,
-            config.sectionLineThickness
+            surfaceY + 0.01,
+            zoneLeft,
+            zoneTop,
+            zoneRight,
+            zoneBottom,
+            zone.color or config.gridColor,
+            config.zoneLineThickness
         )
 
-        for row = section.firstRow, section.lastRow do
-            for column = section.firstColumn, section.lastColumn do
+        for row = zone.firstRow, zone.lastRow do
+            for column = zone.firstColumn, zone.lastColumn do
                 cells[#cells + 1] = {
                     row = row,
                     column = column,
-                    section = section.key,
+                    section = zone.key,
+                    zone = zone.key,
+                    zoneType = zone.type or zone.key,
                     playerColor = field.playerColor
                 }
             end
@@ -194,6 +175,7 @@ function CardFieldGeometry.buildField(field, config)
         downRotationDegrees = field.rotationDegrees or 0,
         position = {
             x = field.position.x,
+            y = surfaceY,
             z = field.position.z
         },
         deckSlot = deckSlotPoint,
