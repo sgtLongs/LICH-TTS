@@ -2,6 +2,7 @@ local Config = require("src/config/CardFieldConfig")
 local DebugConfig = require("src/config/GlobalDebugConfig")
 local CardFieldGeometry = require("src/card_fields/CardFieldGeometry")
 local DeckSelectionMenu = require("src/card_fields/DeckSelectionMenu")
+local TurnSystem = require("src/turns/TurnSystem")
 
 local CardFields = {}
 local fields = {}
@@ -32,12 +33,19 @@ local function addDeckSlotButton(field)
 
     removeDeckSlotButtons(surface)
 
+    local ownerColor = field.ownerColor or field.playerColor
+
+    if TurnSystem.isPlayerActive(ownerColor) then
+        field.deckSpawned = true
+    end
+
     if field.deckSpawned == true then
         return true
     end
 
     field.onDeckSpawned = function()
         field.deckSpawned = true
+        TurnSystem.activatePlayer(ownerColor)
 
         local currentSurface =
             getObjectFromGUID(field.surfaceObjectGuid)

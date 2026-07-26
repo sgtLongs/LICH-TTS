@@ -35,3 +35,31 @@ Test.case("turn state advances and wraps", function()
     Test.truthy(TurnState.endTurn(state, "Blue"))
     Test.equal("White", TurnState.getCurrentColor(state))
 end)
+
+Test.case("turn state supports changing active players", function()
+    local state = TurnState.new({})
+
+    Test.equal(nil, TurnState.getCurrentColor(state))
+    Test.falsy(TurnState.endTurn(state, "White"))
+
+    TurnState.setPlayerColors(state, {"Red"})
+    Test.equal("Red", TurnState.getCurrentColor(state))
+
+    TurnState.setPlayerColors(state, {"White", "Red", "Blue"})
+    Test.equal("Red", TurnState.getCurrentColor(state))
+
+    TurnState.setPlayerColors(state, {"White", "Blue"})
+    Test.equal("White", TurnState.getCurrentColor(state))
+end)
+
+Test.case("turn state restores the active current color", function()
+    local state = TurnState.new(
+        {"White", "Red", "Blue"},
+        {
+            currentTurnIndex = 1,
+            currentTurnColor = "Blue"
+        }
+    )
+
+    Test.equal("Blue", TurnState.getCurrentColor(state))
+end)

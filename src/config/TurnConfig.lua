@@ -20,7 +20,9 @@ local TurnConfig = {
         colorNameId = "turnColorName",
         endTurnButtonPrefix = "endTurn",
         activeButtonText = "END MY TURN",
-        waitingButtonText = "WAITING..."
+        waitingButtonText = "WAITING...",
+        noPlayersText = "WAITING FOR DECKS",
+        noPlayersDetailText = "Spawn a deck to join"
     },
     invalidTurnColor = {1, 0.35, 0.35}
 }

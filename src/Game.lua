@@ -55,9 +55,9 @@ function Game.onLoad(saveState)
         end
     end
 
+    TurnSystem.onLoad(savedGame.turnSystem)
     CardFields.onLoad()
     HexGrid.onLoad(savedGame.hexGrid)
-    TurnSystem.onLoad(savedGame.turnSystem)
     SettingsMenu.initialize({
         getBoardState = HexGrid.getBoardState,
         getBoardStateJson = HexGrid.getBoardStateJson,

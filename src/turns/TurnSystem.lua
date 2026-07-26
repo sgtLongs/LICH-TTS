@@ -3,13 +3,18 @@ local Config = require("src/config/TurnConfig")
 local TurnState = require("src/turns/TurnState")
 
 local TurnSystem = {}
-local turnState = TurnState.new(Config.playerColors)
+local turnState = TurnState.new({})
+local activeByColor = {}
 
 local function getCurrentColor()
     return TurnState.getCurrentColor(turnState)
 end
 
 local function getPlayerName(playerColor)
+    if playerColor == nil then
+        return nil
+    end
+
     local player = Player[playerColor]
 
     if player ~= nil and player.steam_name ~= nil and player.steam_name ~= "" then
@@ -21,23 +26,42 @@ end
 
 local function updateUi()
     local currentColor = getCurrentColor()
-    local playerName = getPlayerName(currentColor)
 
-    UI.setAttribute(
-        Config.ui.playerNameId,
-        "text",
-        playerName .. "'s Turn"
-    )
-    UI.setAttribute(
-        Config.ui.playerNameId,
-        "color",
-        Config.playerHexColors[currentColor]
-    )
-    UI.setAttribute(
-        Config.ui.colorNameId,
-        "text",
-        currentColor .. " Player"
-    )
+    if currentColor == nil then
+        UI.setAttribute(
+            Config.ui.playerNameId,
+            "text",
+            Config.ui.noPlayersText
+        )
+        UI.setAttribute(
+            Config.ui.playerNameId,
+            "color",
+            "#FFFFFF"
+        )
+        UI.setAttribute(
+            Config.ui.colorNameId,
+            "text",
+            Config.ui.noPlayersDetailText
+        )
+    else
+        local playerName = getPlayerName(currentColor)
+
+        UI.setAttribute(
+            Config.ui.playerNameId,
+            "text",
+            playerName .. "'s Turn"
+        )
+        UI.setAttribute(
+            Config.ui.playerNameId,
+            "color",
+            Config.playerHexColors[currentColor]
+        )
+        UI.setAttribute(
+            Config.ui.colorNameId,
+            "text",
+            currentColor .. " Player"
+        )
+    end
 
     for _, playerColor in ipairs(Config.playerColors) do
         local buttonId = Config.ui.endTurnButtonPrefix .. playerColor
@@ -60,6 +84,11 @@ end
 
 local function announceTurn()
     local currentColor = getCurrentColor()
+
+    if currentColor == nil then
+        return
+    end
+
     local playerName = getPlayerName(currentColor)
 
     ChatService.sayToAll(
@@ -67,8 +96,38 @@ local function announceTurn()
     )
 end
 
+local function getActivePlayerColors()
+    local playerColors = {}
+
+    for _, playerColor in ipairs(Config.playerColors) do
+        if activeByColor[playerColor] == true then
+            playerColors[#playerColors + 1] = playerColor
+        end
+    end
+
+    return playerColors
+end
+
+local function restoreActivePlayers(savedTurnState)
+    activeByColor = {}
+
+    if type(savedTurnState) ~= "table"
+        or type(savedTurnState.activePlayerColors) ~= "table"
+    then
+        return
+    end
+
+    for _, playerColor in ipairs(savedTurnState.activePlayerColors) do
+        activeByColor[playerColor] = true
+    end
+end
+
 function TurnSystem.onLoad(savedTurnState)
-    turnState = TurnState.new(Config.playerColors, savedTurnState)
+    restoreActivePlayers(savedTurnState)
+    turnState = TurnState.new(
+        getActivePlayerColors(),
+        savedTurnState
+    )
 
     Wait.frames(function()
         updateUi()
@@ -77,11 +136,22 @@ function TurnSystem.onLoad(savedTurnState)
 end
 
 function TurnSystem.getSaveState()
-    return TurnState.getSaveState(turnState)
+    local saveState = TurnState.getSaveState(turnState)
+    saveState.activePlayerColors = getActivePlayerColors()
+    return saveState
 end
 
 function TurnSystem.endTurn(playerColor)
     local currentColor = getCurrentColor()
+
+    if currentColor == nil then
+        broadcastToColor(
+            "No players have spawned a deck yet.",
+            playerColor,
+            Config.invalidTurnColor
+        )
+        return false
+    end
 
     if playerColor ~= currentColor then
         broadcastToColor(
@@ -89,12 +159,36 @@ function TurnSystem.endTurn(playerColor)
             playerColor,
             Config.invalidTurnColor
         )
-        return
+        return false
     end
 
     TurnState.endTurn(turnState, playerColor)
     updateUi()
     announceTurn()
+    return true
+end
+
+function TurnSystem.activatePlayer(playerColor)
+    if activeByColor[playerColor] == true
+        or Config.playerHexColors[playerColor] == nil
+    then
+        return false
+    end
+
+    local hadCurrentPlayer = getCurrentColor() ~= nil
+    activeByColor[playerColor] = true
+    TurnState.setPlayerColors(turnState, getActivePlayerColors())
+    updateUi()
+
+    if not hadCurrentPlayer then
+        announceTurn()
+    end
+
+    return true
+end
+
+function TurnSystem.isPlayerActive(playerColor)
+    return activeByColor[playerColor] == true
 end
 
 function TurnSystem.refreshUi()
