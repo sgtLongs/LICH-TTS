@@ -3,12 +3,14 @@ local SettingsMenu = require("src/SettingsMenu")
 
 local attributes = {}
 local editModeChanges = {}
+local editModePlayerColors = {}
 local persistCalls = 0
 local renewedPlayerColor = nil
 
 local function initialize(savedState)
     attributes = {}
     editModeChanges = {}
+    editModePlayerColors = {}
     persistCalls = 0
     renewedPlayerColor = nil
     Player = {
@@ -24,8 +26,9 @@ local function initialize(savedState)
     end
 
     SettingsMenu.initialize({
-        setEditMode = function(enabled)
+        setEditMode = function(enabled, playerColor)
             editModeChanges[#editModeChanges + 1] = enabled
+            editModePlayerColors[#editModePlayerColors + 1] = playerColor
         end,
         persistState = function()
             persistCalls = persistCalls + 1
@@ -68,6 +71,7 @@ Test.case("edit mode is saved and forwarded to the hex grid", function()
 
     Test.falsy(SettingsMenu.getSaveState().editMode)
     Test.equal(false, editModeChanges[#editModeChanges])
+    Test.equal("Red", editModePlayerColors[#editModePlayerColors])
     Test.equal(1, persistCalls)
 end)
 

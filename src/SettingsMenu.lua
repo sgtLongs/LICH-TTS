@@ -35,6 +35,15 @@ local function setStatus(message, color)
     end
 end
 
+local function getEditModeStatus()
+    if editMode then
+        return "Edit mode: use number keys 1-9 to select an object, "
+            .. "then click an empty hex."
+    end
+
+    return "Enable Edit mode to add objects to the hex grid."
+end
+
 local function close()
     activePlayerColor = nil
     UI.setAttribute(Config.ui.rootId, "active", "false")
@@ -356,7 +365,7 @@ local function open(playerColor)
         playerIsAdmin and "true" or "false"
     )
     setStatus(
-        "Enable Edit mode to add objects to the hex grid.",
+        getEditModeStatus(),
         "#CBD5E1"
     )
     UI.setAttribute(Config.ui.rootId, "active", "true")
@@ -560,7 +569,7 @@ function SettingsMenu.handleAction(playerColor, action)
     if action == "generalTab" then
         setPage(Config.ui.generalPageId)
         setStatus(
-            "Enable Edit mode to add objects to the hex grid.",
+            getEditModeStatus(),
             "#CBD5E1"
         )
         return
@@ -790,14 +799,14 @@ function SettingsMenu.onEditModeChanged(playerColor, value)
     editMode = enabled
 
     if context.setEditMode ~= nil then
-        context.setEditMode(editMode)
+        context.setEditMode(editMode, playerColor)
     end
 
     local persistedImmediately = context.persistState ~= nil
         and context.persistState() or false
     setStatus(
         editMode
-            and "Edit mode enabled. Click an empty hex to add an object."
+            and getEditModeStatus()
             or "Edit mode disabled.",
         persistedImmediately and "#86EFAC" or "#FDE68A"
     )

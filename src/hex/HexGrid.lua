@@ -23,10 +23,21 @@ local resolvedSurfaceY = 0
 local hoverWaitId = nil
 local recentClickCells = {}
 local templatesByKey = {}
+local selectedTemplate = nil
 local editMode = false
 
 for _, template in ipairs(SpawnDefinitions) do
     templatesByKey[template.key] = template
+end
+
+local function getPlacementHotkeyHelp()
+    local choices = {}
+
+    for index, template in ipairs(SpawnDefinitions) do
+        choices[#choices + 1] = tostring(index) .. " " .. template.label
+    end
+
+    return table.concat(choices, ", ")
 end
 
 local function drawGrid()
@@ -98,7 +109,48 @@ local function beginRotationSelection(
     return true
 end
 
-local function cancelPendingSpawn(playerColor, closeMenu)
+local cancelPendingSpawn
+
+local function selectPlacementTemplate(index, playerColor)
+    if not editMode or not isAdmin(playerColor) then
+        return false
+    end
+
+    local hotkeyIndex = tonumber(index)
+
+    if hotkeyIndex == nil
+        or hotkeyIndex ~= math.floor(hotkeyIndex)
+    then
+        return false
+    end
+
+    local template = SpawnDefinitions[hotkeyIndex]
+
+    if template == nil then
+        return false
+    end
+
+    if pendingSpawn ~= nil
+        and pendingSpawn.playerColor == playerColor
+    then
+        cancelPendingSpawn(playerColor)
+    else
+        HexGridMenu.close()
+    end
+
+    selectedTemplate = template
+    HexGridMenu.showSpawnSelector(selectedTemplate)
+    broadcastToColor(
+        tostring(hotkeyIndex) .. ": " .. template.label
+            .. " selected. Click an empty hex to place it.",
+        playerColor,
+        Config.selectedColor
+    )
+
+    return true
+end
+
+cancelPendingSpawn = function(playerColor, closeMenu)
     if pendingSpawn == nil
         or pendingSpawn.playerColor ~= playerColor
     then
@@ -332,7 +384,7 @@ local function addObjectClickButton(object, placement)
                         press_color = showDebug
                             and debugColor
                             or Config.invisibleButtonColor,
-                        tooltip = "Edit object"
+                        tooltip = "Edit or delete object"
                     })
                 end
             end
@@ -591,6 +643,10 @@ local function buildGrid()
         end
     })
 
+    if editMode then
+        HexGridMenu.showSpawnSelector(selectedTemplate)
+    end
+
     placedObjects = {}
 
     for index, savedPlacement in ipairs(pendingSavedPlacements) do
@@ -672,6 +728,7 @@ end
 
 function HexGrid.onLoad(savedState)
     selectedCells = {}
+    selectedTemplate = nil
     hoveredCells = {}
     recentClickCells = {}
     rotationCandidateCells = {}
@@ -961,12 +1018,39 @@ local function handlePointerClick(playerColor, altClick)
     local placement = getPlacementAtCell(cell)
 
     if placement ~= nil then
-        openPlacementMenu(placement, playerColor)
+        if editMode and isAdmin(playerColor) then
+            deletePlacement(placement, playerColor)
+        else
+            openPlacementMenu(placement, playerColor)
+        end
+
         return true
     end
 
     if isAdmin(playerColor) and editMode then
-        HexGridMenu.open(playerColor, player, cell)
+        if selectedTemplate == nil then
+            HexGridMenu.showSpawnSelector(nil)
+            broadcastToColor(
+                "Choose an object with a number key first: "
+                    .. getPlacementHotkeyHelp() .. ".",
+                playerColor,
+                Config.rotationCancelColor
+            )
+            return true
+        end
+
+        beginRotationSelection(
+            selectedTemplate,
+            cell,
+            playerColor,
+            nil
+        )
+        broadcastToColor(
+            "Click a highlighted adjacent hex to choose which way "
+                .. selectedTemplate.label .. " faces.",
+            playerColor,
+            Config.rotationCandidateColor
+        )
         return true
     end
 
@@ -1002,6 +1086,15 @@ function HexGrid.onObjectClicked(object, playerColor, altClick)
     end
 
     local placement = getPlacementByGuid(object.getGUID())
+
+    if placement ~= nil
+        and editMode
+        and isAdmin(playerColor)
+    then
+        deletePlacement(placement, playerColor)
+        return
+    end
+
     openPlacementMenu(placement, playerColor)
 end
 
@@ -1045,6 +1138,11 @@ function HexGrid.onPlayerAction(player, action, targets)
         return true
     end
 
+    if editMode and isAdmin(player.color) then
+        deletePlacement(placement, player.color)
+        return false
+    end
+
     return not openPlacementMenu(placement, player.color)
 end
 
@@ -1052,16 +1150,57 @@ function HexGrid.onMenuUiClicked(playerColor, action)
     HexGridMenu.handleAction(playerColor, action)
 end
 
-function HexGrid.setEditMode(enabled)
+function HexGrid.onSpawnSelectorUiClicked(playerColor, action)
+    return selectPlacementTemplate(action, playerColor)
+end
+
+function HexGrid.onScriptingButtonDown(index, playerColor)
+    return selectPlacementTemplate(index, playerColor)
+end
+
+function HexGrid.onObjectNumberTyped(
+    object,
+    playerColor,
+    number
+)
+    if object == nil or board == nil then
+        return false
+    end
+
+    local guid = object.getGUID()
+
+    if guid ~= Config.boardGuid
+        and getPlacementByGuid(guid) == nil
+    then
+        return false
+    end
+
+    return selectPlacementTemplate(number, playerColor)
+end
+
+function HexGrid.setEditMode(enabled, playerColor)
     editMode = enabled == true
 
     if not editMode then
         pendingSpawn = nil
         rotationCandidateCells = {}
+        selectedTemplate = nil
         HexGridMenu.close()
+        HexGridMenu.hideSpawnSelector()
 
         if board ~= nil then
             drawGrid()
+        end
+    else
+        HexGridMenu.showSpawnSelector(selectedTemplate)
+
+        if playerColor ~= nil and isAdmin(playerColor) then
+            broadcastToColor(
+                "Edit mode object keys: " .. getPlacementHotkeyHelp()
+                    .. ". Select one, then click an empty hex.",
+                playerColor,
+                Config.selectedColor
+            )
         end
     end
 end

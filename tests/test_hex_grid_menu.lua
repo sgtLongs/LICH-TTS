@@ -1,7 +1,7 @@
 local Test = require("tests/support/Test")
 local HexGridMenu = require("src/hex/HexGridMenu")
 
-Test.case("empty hex opens the object picker immediately", function()
+Test.case("object editing opens the replacement picker", function()
     local attributes = {}
     local previousUi = UI
     local previousGetObjectsWithTag = getObjectsWithTag
@@ -27,7 +27,12 @@ Test.case("empty hex opens the object picker immediately", function()
             return true
         end
     })
-    HexGridMenu.open("Red", {}, {row = 2, column = 3})
+    HexGridMenu.open(
+        "Red",
+        {},
+        {row = 2, column = 3},
+        {templateKey = "tree"}
+    )
 
     local addPageActive = attributes["hexGridMenuAddPage.active"]
     local objectPageActive = attributes["hexGridMenuObjectPage.active"]

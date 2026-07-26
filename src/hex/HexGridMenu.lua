@@ -40,6 +40,10 @@ local function hideMenu()
     UI.setAttribute(Config.ui.rootId, "active", "false")
 end
 
+local function hideSpawnSelector()
+    UI.setAttribute(Config.ui.spawnSelectorRootId, "active", "false")
+end
+
 local function removeLegacyMenu()
     for _, existingAnchor in ipairs(
         getObjectsWithTag(Config.legacy.anchorTag)
@@ -85,8 +89,38 @@ function HexGridMenu.initialize(parameters)
     activeMenu = nil
 
     hideMenu()
+    hideSpawnSelector()
     notifyTargetChanged(nil)
     removeLegacyMenu()
+end
+
+function HexGridMenu.showSpawnSelector(selectedTemplate)
+    local selectedKey = selectedTemplate ~= nil
+        and selectedTemplate.key or nil
+
+    UI.setAttribute(
+        Config.ui.spawnSelectorStatusId,
+        "text",
+        selectedTemplate ~= nil
+            and "SELECTED: " .. string.upper(selectedTemplate.label)
+            or "PRESS 1-9 OR CHOOSE AN OBJECT"
+    )
+
+    for index, template in ipairs(SpawnDefinitions) do
+        UI.setAttribute(
+            Config.ui.spawnSelectorButtonPrefix .. tostring(index),
+            "colors",
+            template.key == selectedKey
+                and Config.ui.spawnSelectorSelectedColors
+                or Config.ui.spawnSelectorButtonColors
+        )
+    end
+
+    UI.setAttribute(Config.ui.spawnSelectorRootId, "active", "true")
+end
+
+function HexGridMenu.hideSpawnSelector()
+    hideSpawnSelector()
 end
 
 function HexGridMenu.open(playerColor, player, cell, placement)

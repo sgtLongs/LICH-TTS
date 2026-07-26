@@ -62,7 +62,24 @@ local HexGrid = {
     end,
     onMenuUiClicked = function()
     end,
+    onSpawnSelectorUiClicked = function(playerColor, action)
+        calls.spawnSelectorPlayerColor = playerColor
+        calls.spawnSelectorAction = action
+        return true
+    end,
     onPlayerAction = function()
+    end,
+    onScriptingButtonDown = function(index, playerColor)
+        calls.scriptingButtonIndex = index
+        calls.scriptingButtonPlayerColor = playerColor
+        return true
+    end,
+    onObjectNumberTyped = function(object, playerColor, number, alt)
+        calls.numberTypedObject = object
+        calls.numberTypedPlayerColor = playerColor
+        calls.numberTypedNumber = number
+        calls.numberTypedAlt = alt
+        return true
     end,
     onObjectDestroy = function()
     end
@@ -192,6 +209,27 @@ Test.case("game routes deck slot and deck menu choices", function()
     Test.equal("Blue", calls.deckSlotPlayerColor)
     Test.equal("Blue", calls.deckMenuPlayerColor)
     Test.equal("9636", calls.deckMenuAction)
+end)
+
+Test.case("game routes edit mode object number keys", function()
+    local object = {}
+
+    Test.truthy(Game.onScriptingButtonDown(4, "Red"))
+    Test.truthy(Game.onObjectNumberTyped(object, "Red", 7, false))
+
+    Test.equal(4, calls.scriptingButtonIndex)
+    Test.equal("Red", calls.scriptingButtonPlayerColor)
+    Test.equal(object, calls.numberTypedObject)
+    Test.equal("Red", calls.numberTypedPlayerColor)
+    Test.equal(7, calls.numberTypedNumber)
+    Test.falsy(calls.numberTypedAlt)
+end)
+
+Test.case("game routes spawn palette choices", function()
+    Test.truthy(Game.onHexGridSpawnSelectorUiClicked("Red", "9"))
+
+    Test.equal("Red", calls.spawnSelectorPlayerColor)
+    Test.equal("9", calls.spawnSelectorAction)
 end)
 
 Test.case("game load tolerates invalid JSON", function()

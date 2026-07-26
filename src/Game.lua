@@ -109,6 +109,10 @@ function Game.onHexGridMenuUiClicked(playerColor, action)
     HexGrid.onMenuUiClicked(playerColor, action)
 end
 
+function Game.onHexGridSpawnSelectorUiClicked(playerColor, action)
+    return HexGrid.onSpawnSelectorUiClicked(playerColor, action)
+end
+
 function Game.onSettingsUiClicked(playerColor, action)
     SettingsMenu.handleAction(playerColor, action)
 end
@@ -131,6 +135,19 @@ end
 
 function Game.onPlayerAction(player, action, targets)
     return HexGrid.onPlayerAction(player, action, targets)
+end
+
+function Game.onScriptingButtonDown(index, playerColor)
+    return HexGrid.onScriptingButtonDown(index, playerColor)
+end
+
+function Game.onObjectNumberTyped(object, playerColor, number, alt)
+    return HexGrid.onObjectNumberTyped(
+        object,
+        playerColor,
+        number,
+        alt
+    )
 end
 
 function Game.onObjectDestroy(object)

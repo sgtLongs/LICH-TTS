@@ -152,7 +152,7 @@
                         />
                     </HorizontalLayout>
                     <Text
-                        text="Allow admins to add objects by clicking empty hexes."
+                        text="Admins select an object with number keys 1-9, then click an empty hex."
                         fontSize="17"
                         color="#94A3B8"
                         preferredWidth="550"
@@ -1477,6 +1477,138 @@
 </Panel>
 
 <Panel
+    id="hexGridSpawnSelectorRoot"
+    rectAlignment="UpperCenter"
+    width="660"
+    height="235"
+    offsetXY="0 -24"
+    color="#090C12F2"
+    padding="14 14 12 12"
+    visibility="Admin"
+    active="false"
+>
+    <VerticalLayout spacing="8" childAlignment="UpperCenter">
+        <HorizontalLayout
+            preferredHeight="38"
+            spacing="12"
+            childAlignment="MiddleCenter"
+        >
+            <Text
+                text="SPAWN PALETTE"
+                fontSize="23"
+                fontStyle="Bold"
+                color="#F8FAFC"
+                preferredWidth="190"
+                preferredHeight="34"
+            />
+            <Text
+                id="hexGridSpawnSelectorStatus"
+                text="PRESS 1-9 OR CHOOSE AN OBJECT"
+                fontSize="19"
+                fontStyle="Bold"
+                color="#6EE7B7"
+                alignment="MiddleRight"
+                preferredWidth="410"
+                preferredHeight="34"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout
+            preferredHeight="58"
+            spacing="8"
+            childAlignment="MiddleCenter"
+        >
+            <Button
+                id="hexGridSpawnSelector1"
+                text="1  TREE"
+                fontSize="18"
+                onClick="onHexGridSpawnSelectorUiClicked(1)"
+                preferredWidth="116"
+                preferredHeight="52"
+            />
+            <Button
+                id="hexGridSpawnSelector2"
+                text="2  THRONE"
+                fontSize="18"
+                onClick="onHexGridSpawnSelectorUiClicked(2)"
+                preferredWidth="116"
+                preferredHeight="52"
+            />
+            <Button
+                id="hexGridSpawnSelector3"
+                text="3  ROCK 1"
+                fontSize="18"
+                onClick="onHexGridSpawnSelectorUiClicked(3)"
+                preferredWidth="116"
+                preferredHeight="52"
+            />
+            <Button
+                id="hexGridSpawnSelector4"
+                text="4  ROCK 2"
+                fontSize="18"
+                onClick="onHexGridSpawnSelectorUiClicked(4)"
+                preferredWidth="116"
+                preferredHeight="52"
+            />
+            <Button
+                id="hexGridSpawnSelector5"
+                text="5  DOUBLE"
+                fontSize="18"
+                onClick="onHexGridSpawnSelectorUiClicked(5)"
+                preferredWidth="116"
+                preferredHeight="52"
+                tooltip="Double Rock"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout
+            preferredHeight="58"
+            spacing="8"
+            childAlignment="MiddleCenter"
+        >
+            <Button
+                id="hexGridSpawnSelector6"
+                text="6  CRYSTAL"
+                fontSize="18"
+                onClick="onHexGridSpawnSelectorUiClicked(6)"
+                preferredWidth="140"
+                preferredHeight="52"
+            />
+            <Button
+                id="hexGridSpawnSelector7"
+                text="7  CHEST"
+                fontSize="18"
+                onClick="onHexGridSpawnSelectorUiClicked(7)"
+                preferredWidth="140"
+                preferredHeight="52"
+            />
+            <Button
+                id="hexGridSpawnSelector8"
+                text="8  CAGE"
+                fontSize="18"
+                onClick="onHexGridSpawnSelectorUiClicked(8)"
+                preferredWidth="140"
+                preferredHeight="52"
+            />
+            <Button
+                id="hexGridSpawnSelector9"
+                text="9  SOURCE"
+                fontSize="18"
+                onClick="onHexGridSpawnSelectorUiClicked(9)"
+                preferredWidth="140"
+                preferredHeight="52"
+                tooltip="Source Stone"
+            />
+        </HorizontalLayout>
+        <Text
+            text="Click an empty hex to spawn. Click a placed object to delete it."
+            fontSize="17"
+            color="#94A3B8"
+            preferredWidth="610"
+            preferredHeight="28"
+        />
+    </VerticalLayout>
+</Panel>
+
+<Panel
     id="hexGridMenuRoot"
     rectAlignment="MiddleRight"
     width="430"
@@ -1544,13 +1676,13 @@
                 childAlignment="MiddleCenter"
             >
                 <Button
-                    text="Tree"
+                    text="1  Tree"
                     onClick="onHexGridMenuUiClicked(tree)"
                     preferredWidth="185"
                     preferredHeight="64"
                 />
                 <Button
-                    text="Double Rock"
+                    text="5  Double Rock"
                     onClick="onHexGridMenuUiClicked(doubleRock)"
                     preferredWidth="185"
                     preferredHeight="64"
@@ -1562,13 +1694,13 @@
                 childAlignment="MiddleCenter"
             >
                 <Button
-                    text="Throne"
+                    text="2  Throne"
                     onClick="onHexGridMenuUiClicked(throne)"
                     preferredWidth="185"
                     preferredHeight="64"
                 />
                 <Button
-                    text="Crystal"
+                    text="6  Crystal"
                     onClick="onHexGridMenuUiClicked(crystal)"
                     preferredWidth="185"
                     preferredHeight="64"
@@ -1580,13 +1712,13 @@
                 childAlignment="MiddleCenter"
             >
                 <Button
-                    text="Rock 1"
+                    text="3  Rock 1"
                     onClick="onHexGridMenuUiClicked(rock1)"
                     preferredWidth="185"
                     preferredHeight="64"
                 />
                 <Button
-                    text="Chest"
+                    text="7  Chest"
                     onClick="onHexGridMenuUiClicked(chest)"
                     preferredWidth="185"
                     preferredHeight="64"
@@ -1598,13 +1730,13 @@
                 childAlignment="MiddleCenter"
             >
                 <Button
-                    text="Rock 2"
+                    text="4  Rock 2"
                     onClick="onHexGridMenuUiClicked(rock2)"
                     preferredWidth="185"
                     preferredHeight="64"
                 />
                 <Button
-                    text="Cage"
+                    text="8  Cage"
                     onClick="onHexGridMenuUiClicked(cage)"
                     preferredWidth="185"
                     preferredHeight="64"
@@ -1616,7 +1748,7 @@
                 childAlignment="MiddleCenter"
             >
                 <Button
-                    text="Source Stone"
+                    text="9  Source Stone"
                     onClick="onHexGridMenuUiClicked(sourceStone)"
                     preferredWidth="382"
                     preferredHeight="64"
