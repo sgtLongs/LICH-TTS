@@ -197,15 +197,15 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
     Test.equal(70, spawnParameters.position[1])
     Test.equal(80, spawnParameters.position[3])
     Test.equal(
-        Config.deckSlot.cardSpawnRotation[1],
+        Config.deckSlot.deckSpawnRotation[1],
         spawnParameters.rotation[1]
     )
     Test.equal(
-        Config.deckSlot.cardSpawnRotation[2] + 180,
+        Config.deckSlot.deckSpawnRotation[2] + 180,
         spawnParameters.rotation[2]
     )
     Test.equal(
-        Config.deckSlot.cardSpawnRotation[3],
+        Config.deckSlot.deckSpawnRotation[3],
         spawnParameters.rotation[3]
     )
     Test.equal(70, spawnedDeck.finishedPosition[1])
@@ -233,8 +233,12 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
     Test.equal(50, takeParameters.position[3])
     Test.equal(false, takeParameters.smooth)
     Test.equal(
-        Config.deckSlot.cardSpawnRotation[2] + 180,
+        Config.deckSlot.heroSpawnRotation[2] + 180,
         takeParameters.rotation[2]
+    )
+    Test.equal(
+        Config.deckSlot.heroSpawnRotation[3],
+        takeParameters.rotation[3]
     )
     Test.equal(40, spawnedHero.finishedPosition[1])
     Test.equal(50, spawnedHero.finishedPosition[3])

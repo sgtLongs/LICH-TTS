@@ -268,13 +268,23 @@ local function waitForLoadedDeck(field, deck, rotation, deckSize)
     )
 end
 
-local function spawnDeck(field, spawnPosition, definitions, deckSize)
-    local configuredRotation = Config.deckSlot.cardSpawnRotation
-    local rotation = {
+local function makeFieldRotation(configuredRotation, field)
+    return {
         configuredRotation[1],
         configuredRotation[2] + (field.downRotationDegrees or 0),
         configuredRotation[3]
     }
+end
+
+local function spawnDeck(field, spawnPosition, definitions, deckSize)
+    local deckRotation = makeFieldRotation(
+        Config.deckSlot.deckSpawnRotation,
+        field
+    )
+    local heroRotation = makeFieldRotation(
+        Config.deckSlot.heroSpawnRotation,
+        field
+    )
     local slot = spawnPosition
     local position = {
         slot.x,
@@ -284,7 +294,7 @@ local function spawnDeck(field, spawnPosition, definitions, deckSize)
     local succeeded, spawnedDeck = pcall(spawnObjectData, {
         data = makeDeckData(definitions, deckSize),
         position = position,
-        rotation = rotation,
+        rotation = deckRotation,
         callback_function = function(deck)
             -- Asset loading can slightly displace custom objects. Correct the
             -- one spawned deck after initialization rather than settling every
@@ -299,7 +309,7 @@ local function spawnDeck(field, spawnPosition, definitions, deckSize)
                 end
             end
 
-            waitForLoadedDeck(field, deck, rotation, deckSize)
+            waitForLoadedDeck(field, deck, heroRotation, deckSize)
             print("Deck generated for " .. field.playerColor .. ".")
         end
     })

@@ -47,9 +47,10 @@ local CardFieldConfig = {
             {lootId = 4373, name = "Yashlaegon, the Sinful"}
         },
         cardSpawnHeight = 2,
-        -- Rotation applied to every card spawned from the deck slot.
-        -- Values are Euler angles in degrees: {x, y, z}.
-        cardSpawnRotation = {0, 180, 0}
+        -- Euler rotations in degrees. The deck's 180-degree Z rotation makes
+        -- it spawn upside down; the extracted Hero remains face up.
+        deckSpawnRotation = {0, 180, 180},
+        heroSpawnRotation = {0, 180, 0}
     },
 
     -- Gameplay labels the seven-wide axis as rows and the three-deep axis as
