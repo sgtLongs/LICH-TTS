@@ -392,23 +392,70 @@ local function addObjectClickButton(object, placement)
     end
 end
 
-local function openPlacementMenu(placement, playerColor)
+local function getPlayerPointerCell(playerColor)
+    if board == nil then
+        return nil
+    end
+
+    local player = Player[playerColor]
+
+    if player == nil or player.getPointerPosition == nil then
+        return nil
+    end
+
+    local localPointer = board.positionToLocal(player.getPointerPosition())
+    return HexGridBuilder.findCellAt(cells, localPointer)
+end
+
+local function getPlacementTargetCell(placement, targetCell)
+    local cell = targetCell
+
+    if not placementOccupiesCell(placement, cell) then
+        cell = cellsByKey[
+            HexGridBuilder.cellKey(
+                placement.cell.row,
+                placement.cell.column
+            )
+        ]
+    end
+
+    return cell
+end
+
+local function toggleCellSelection(cell, playerColor)
+    if cell == nil then
+        return false
+    end
+
+    local key = HexGridBuilder.cellKey(cell.row, cell.column)
+
+    HexGridMenu.close()
+    selectedCells[key] = not selectedCells[key] or nil
+    drawGrid()
+
+    broadcastToColor(
+        "Hex " .. cell.row .. ", " .. cell.column
+            .. (selectedCells[key] and " selected." or " cleared."),
+        playerColor,
+        Config.selectedColor
+    )
+
+    return true
+end
+
+local function openPlacementMenu(placement, playerColor, targetCell)
     if placement == nil or not isAdmin(playerColor) then
         return false
     end
 
     local player = Player[playerColor]
-    local cell = cellsByKey[
-        HexGridBuilder.cellKey(
-            placement.cell.row,
-            placement.cell.column
-        )
-    ]
+    local cell = getPlacementTargetCell(placement, targetCell)
 
     if player == nil or cell == nil then
         return false
     end
 
+    selectedCells[HexGridBuilder.cellKey(cell.row, cell.column)] = true
     HexGridMenu.open(playerColor, player, cell, placement)
     return true
 end
@@ -974,8 +1021,7 @@ local function handlePointerClick(playerColor, altClick)
         return false
     end
 
-    local localPointer = board.positionToLocal(player.getPointerPosition())
-    local cell = HexGridBuilder.findCellAt(cells, localPointer)
+    local cell = getPlayerPointerCell(playerColor)
 
     local key = cell ~= nil
         and HexGridBuilder.cellKey(cell.row, cell.column) or nil
@@ -1019,9 +1065,9 @@ local function handlePointerClick(playerColor, altClick)
 
     if placement ~= nil then
         if editMode and isAdmin(playerColor) then
-            deletePlacement(placement, playerColor)
+            openPlacementMenu(placement, playerColor, cell)
         else
-            openPlacementMenu(placement, playerColor)
+            toggleCellSelection(cell, playerColor)
         end
 
         return true
@@ -1054,18 +1100,7 @@ local function handlePointerClick(playerColor, altClick)
         return true
     end
 
-    HexGridMenu.close()
-    selectedCells[key] = not selectedCells[key] or nil
-    drawGrid()
-
-    broadcastToColor(
-        "Hex " .. cell.row .. ", " .. cell.column
-            .. (selectedCells[key] and " selected." or " cleared."),
-        playerColor,
-        Config.selectedColor
-    )
-
-    return true
+    return toggleCellSelection(cell, playerColor)
 end
 
 function HexGrid.onClicked(playerColor, altClick)
@@ -1087,15 +1122,24 @@ function HexGrid.onObjectClicked(object, playerColor, altClick)
 
     local placement = getPlacementByGuid(object.getGUID())
 
-    if placement ~= nil
-        and editMode
-        and isAdmin(playerColor)
-    then
-        deletePlacement(placement, playerColor)
+    if placement == nil then
         return
     end
 
-    openPlacementMenu(placement, playerColor)
+    local targetCell = getPlacementTargetCell(
+        placement,
+        getPlayerPointerCell(playerColor)
+    )
+
+    if editMode and isAdmin(playerColor) then
+        openPlacementMenu(
+            placement,
+            playerColor,
+            targetCell
+        )
+    else
+        toggleCellSelection(targetCell, playerColor)
+    end
 end
 
 function HexGrid.onPlayerAction(player, action, targets)
@@ -1139,11 +1183,20 @@ function HexGrid.onPlayerAction(player, action, targets)
     end
 
     if editMode and isAdmin(player.color) then
-        deletePlacement(placement, player.color)
-        return false
+        return not openPlacementMenu(
+            placement,
+            player.color,
+            getPlayerPointerCell(player.color)
+        )
     end
 
-    return not openPlacementMenu(placement, player.color)
+    return not toggleCellSelection(
+        getPlacementTargetCell(
+            placement,
+            getPlayerPointerCell(player.color)
+        ),
+        player.color
+    )
 end
 
 function HexGrid.onMenuUiClicked(playerColor, action)

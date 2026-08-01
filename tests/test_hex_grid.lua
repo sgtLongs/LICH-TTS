@@ -142,7 +142,7 @@ Test.case("an empty hex directly starts the selected placement", function()
     Wait = previousWait
 end)
 
-Test.case("clicking a placed object in edit mode deletes it", function()
+Test.case("placed object edit menu is limited to edit mode", function()
     local previousBroadcastToColor = broadcastToColor
     local previousDestroyObject = destroyObject
     local previousGetObjectFromGuid = getObjectFromGUID
@@ -151,8 +151,8 @@ Test.case("clicking a placed object in edit mode deletes it", function()
     local previousPlayer = Player
     local previousUi = UI
     local previousWait = Wait
-    local destroyedObject = nil
-    local messages = {}
+    local attributes = {}
+    local vectorLines = {}
     local board = {
         createButton = function()
         end,
@@ -171,7 +171,8 @@ Test.case("clicking a placed object in edit mode deletes it", function()
         positionToWorld = function(position)
             return position
         end,
-        setVectorLines = function()
+        setVectorLines = function(lines)
+            vectorLines = lines
         end
     }
     local placedObject = {
@@ -197,10 +198,16 @@ Test.case("clicking a placed object in edit mode deletes it", function()
 
     Global = {}
     Player = {
-        Red = {admin = true}
+        Red = {
+            admin = true,
+            getPointerPosition = function()
+                return {x = 0, y = 0, z = 0}
+            end
+        }
     }
     UI = {
-        setAttribute = function()
+        setAttribute = function(id, attribute, value)
+            attributes[id .. "." .. attribute] = value
         end
     }
     Wait = {
@@ -213,11 +220,9 @@ Test.case("clicking a placed object in edit mode deletes it", function()
             return 1
         end
     }
-    broadcastToColor = function(message)
-        messages[#messages + 1] = message
+    broadcastToColor = function()
     end
     destroyObject = function(object)
-        destroyedObject = object
     end
     getObjectFromGUID = function(guid)
         if guid == "068885" then
@@ -242,12 +247,23 @@ Test.case("clicking a placed object in edit mode deletes it", function()
             }
         }
     })
+    HexGrid.setEditMode(false)
+    HexGrid.onObjectClicked(placedObject, "Red", false)
+
+    Test.equal("false", attributes["hexGridMenuRoot.active"])
+    Test.truthy(HexGrid.getSaveState().selectedCells["0:0"])
+
+    HexGrid.onObjectClicked(placedObject, "Red", false)
+    Test.falsy(HexGrid.getSaveState().selectedCells["0:0"])
+
     HexGrid.setEditMode(true)
     HexGrid.onObjectClicked(placedObject, "Red", false)
 
-    Test.equal(placedObject, destroyedObject)
-    Test.equal(0, #HexGrid.getSaveState().placedObjects)
-    Test.contains(messages[#messages], "Tree deleted")
+    Test.equal("true", attributes["hexGridMenuRoot.active"])
+    Test.equal("Edit Tree", attributes["hexGridMenuTitle.text"])
+    Test.equal(1, #HexGrid.getSaveState().placedObjects)
+    Test.truthy(HexGrid.getSaveState().selectedCells["0:0"])
+    Test.truthy(#vectorLines > 91)
 
     HexGrid.setEditMode(false)
     broadcastToColor = previousBroadcastToColor
