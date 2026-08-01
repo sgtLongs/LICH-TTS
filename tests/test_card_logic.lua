@@ -26,6 +26,19 @@ Test.case("standalone cards include the tap rotation feature", function()
     Test.contains(script, 'self.rotate({')
 end)
 
+Test.case("cards in player hands have no scripted buttons", function()
+    local script = CardLogic.build()
+
+    Test.contains(script, "local function isCardInHand()")
+    Test.contains(script, "player.getHandObjects()")
+    Test.contains(script, "if isCardInHand() then")
+    Test.contains(script, "if hasTapFeature and not isCardInHand() then")
+    Test.contains(script, "if actionButtonsVisible or isCardInHand() then")
+    Test.contains(script, "function onPickUp(playerColor)")
+    Test.contains(script, "function onDrop(playerColor)")
+    Test.contains(script, "Wait.frames(refreshCardButtons, 2)")
+end)
+
 Test.case("existing standalone cards receive button config refreshes", function()
     local originalGetAllObjects = getAllObjects
     local editedButtons = {}

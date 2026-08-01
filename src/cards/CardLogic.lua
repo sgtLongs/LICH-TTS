@@ -18,6 +18,24 @@ local function isSingleCard()
     return self ~= nil and self.tag == "Card"
 end
 
+local function isCardInHand()
+    if Player == nil or type(Player.getPlayers) ~= "function" then
+        return false
+    end
+
+    for _, player in ipairs(Player.getPlayers() or {}) do
+        if type(player.getHandObjects) == "function" then
+            for _, object in ipairs(player.getHandObjects() or {}) do
+                if object == self then
+                    return true
+                end
+            end
+        end
+    end
+
+    return false
+end
+
 local function removeExistingFeatureButtons()
     local buttons = self.getButtons() or {}
 
@@ -141,12 +159,29 @@ function refreshCardButtons()
 
     refreshButtonConfig()
 
+    if isCardInHand() then
+        removeExistingFeatureButtons()
+        return
+    end
+
+    local hasTapButton = false
+
     for _, button in ipairs(self.getButtons() or {}) do
         if button.click_function == "onCardTapped" then
+            hasTapButton = true
             local parameters = makeTapButtonParameters()
             parameters.index = button.index
             self.editButton(parameters)
             break
+        end
+    end
+
+    if not hasTapButton then
+        for _, feature in ipairs(cardFeatures) do
+            if type(feature.onTap) == "function" then
+                self.createButton(makeTapButtonParameters())
+                break
+            end
         end
     end
 
@@ -181,9 +216,25 @@ function onLoad(savedState)
             or type(feature.onTap) == "function"
     end
 
-    if hasTapFeature then
+    if hasTapFeature and not isCardInHand() then
         self.createButton(makeTapButtonParameters())
     end
+end
+
+local function refreshButtonsAfterMovement()
+    if Wait ~= nil and type(Wait.frames) == "function" then
+        Wait.frames(refreshCardButtons, 2)
+    else
+        refreshCardButtons()
+    end
+end
+
+function onPickUp(playerColor)
+    refreshButtonsAfterMovement()
+end
+
+function onDrop(playerColor)
+    refreshButtonsAfterMovement()
 end
 
 function onHover(playerColor)
@@ -526,7 +577,7 @@ local function makeActionButton(
 end
 
 local function showActionButtons()
-    if actionButtonsVisible then
+    if actionButtonsVisible or isCardInHand() then
         return
     end
 
