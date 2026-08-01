@@ -147,7 +147,8 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
         deckSlot = {x = 10, y = 2, z = 20},
         heroSlot = {x = 40, y = 4, z = 50},
         zoneCenters = {
-            purgatory = {x = 12, y = -1, z = 34}
+            purgatory = {x = 12, y = -1, z = 34},
+            abyss = {x = 16, y = -1, z = 34}
         },
         onDeckSpawned = function(deck)
             Test.equal(spawnedDeck, deck)
@@ -204,6 +205,16 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
         spawnParameters.data.ContainedObjects[1].LuaScript,
         "purgatoryPosition = {x = 12.000000, y = 1.000000, "
             .. "z = 34.000000}"
+    )
+    Test.contains(
+        spawnParameters.data.ContainedObjects[1].LuaScript,
+        "abyssPosition = {x = 16.000000, y = 1.000000, "
+            .. "z = 34.000000}"
+    )
+    Test.contains(
+        spawnParameters.data.ContainedObjects[1].LuaScript,
+        "deckPosition = {x = 70.000000, y = 5.000000, "
+            .. "z = 80.000000}"
     )
     Test.equal(
         1,

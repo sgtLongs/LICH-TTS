@@ -26,6 +26,9 @@ local function removeExistingFeatureButtons()
 
         if button.click_function == "onCardTapped"
             or button.click_function == "onDestroyCardClicked"
+            or button.click_function == "onDamnCardClicked"
+            or button.click_function == "onUnequipCardClicked"
+            or button.click_function == "onReturnCardClicked"
         then
             self.removeButton(button.index)
         end
@@ -87,6 +90,22 @@ local function refreshButtonConfig()
         cardContext.destroyButtonHeight = tonumber(config.destroy.height)
             or cardContext.destroyButtonHeight
     end
+
+    for _, actionName in ipairs({"damn", "unequip", "returnToHand"}) do
+        local actionConfig = config[actionName]
+
+        if type(actionConfig) == "table" then
+            cardContext[actionName .. "ButtonPosition"] =
+                actionConfig.position
+                or cardContext[actionName .. "ButtonPosition"]
+            cardContext[actionName .. "ButtonWidth"] =
+                tonumber(actionConfig.width)
+                or cardContext[actionName .. "ButtonWidth"]
+            cardContext[actionName .. "ButtonHeight"] =
+                tonumber(actionConfig.height)
+                or cardContext[actionName .. "ButtonHeight"]
+        end
+    end
 end
 ]=]
 
@@ -131,8 +150,8 @@ function refreshCardButtons()
         end
     end
 
-    if type(refreshDestroyCardButton) == "function" then
-        refreshDestroyCardButton()
+    if type(refreshCardActionButtons) == "function" then
+        refreshCardActionButtons()
     end
 end
 
@@ -234,6 +253,21 @@ function CardLogic.getButtonConfig()
             position = Config.buttons.destroy.position,
             width = Config.buttons.destroy.width,
             height = Config.buttons.destroy.height
+        },
+        damn = {
+            position = Config.buttons.damn.position,
+            width = Config.buttons.damn.width,
+            height = Config.buttons.damn.height
+        },
+        unequip = {
+            position = Config.buttons.unequip.position,
+            width = Config.buttons.unequip.width,
+            height = Config.buttons.unequip.height
+        },
+        returnToHand = {
+            position = Config.buttons.returnToHand.position,
+            width = Config.buttons.returnToHand.width,
+            height = Config.buttons.returnToHand.height
         }
     }
 end
@@ -272,12 +306,25 @@ function CardLogic.refreshExistingButtons()
                         })
                     elseif button.click_function
                         == "onDestroyCardClicked"
+                        or button.click_function == "onDamnCardClicked"
+                        or button.click_function == "onUnequipCardClicked"
+                        or button.click_function == "onReturnCardClicked"
                     then
+                        local configKeyByFunction = {
+                            onDestroyCardClicked = "destroy",
+                            onDamnCardClicked = "damn",
+                            onUnequipCardClicked = "unequip",
+                            onReturnCardClicked = "returnToHand"
+                        }
+                        local actionConfig = Config.buttons[
+                            configKeyByFunction[button.click_function]
+                        ]
+
                         pcall(object.editButton, {
                             index = button.index,
-                            position = Config.buttons.destroy.position,
-                            width = Config.buttons.destroy.width,
-                            height = Config.buttons.destroy.height
+                            position = actionConfig.position,
+                            width = actionConfig.width,
+                            height = actionConfig.height
                         })
                     end
                 end
@@ -313,15 +360,29 @@ end
 
 local function makeContextSource(context)
     local purgatoryPosition = context and context.purgatoryPosition
+    local abyssPosition = context and context.abyssPosition
+    local deckPosition = context and context.deckPosition
     local purgatoryLiteral = "nil"
+    local abyssLiteral = "nil"
+    local deckLiteral = "nil"
 
     if type(purgatoryPosition) == "table" then
         purgatoryLiteral = vectorLiteral(purgatoryPosition, {0, 0, 0})
     end
 
+    if type(abyssPosition) == "table" then
+        abyssLiteral = vectorLiteral(abyssPosition, {0, 0, 0})
+    end
+
+    if type(deckPosition) == "table" then
+        deckLiteral = vectorLiteral(deckPosition, {0, 0, 0})
+    end
+
     return table.concat({
         "local cardContext = {",
         "purgatoryPosition = " .. purgatoryLiteral .. ",",
+        "abyssPosition = " .. abyssLiteral .. ",",
+        "deckPosition = " .. deckLiteral .. ",",
         "drawButtons = "
             .. tostring(DebugConfig.drawCardButtons == true) .. ",",
         "tapButtonPosition = "
@@ -338,6 +399,31 @@ local function makeContextSource(context)
             .. tostring(tonumber(Config.buttons.destroy.width) or 900) .. ",",
         "destroyButtonHeight = "
             .. tostring(tonumber(Config.buttons.destroy.height) or 500) .. ",",
+        "damnButtonPosition = "
+            .. vectorLiteral(Config.buttons.damn.position, {1.8, 0.3, -0.3})
+            .. ",",
+        "damnButtonWidth = "
+            .. tostring(tonumber(Config.buttons.damn.width) or 900) .. ",",
+        "damnButtonHeight = "
+            .. tostring(tonumber(Config.buttons.damn.height) or 500) .. ",",
+        "unequipButtonPosition = "
+            .. vectorLiteral(Config.buttons.unequip.position, {1.8, 0.3, 0.3})
+            .. ",",
+        "unequipButtonWidth = "
+            .. tostring(tonumber(Config.buttons.unequip.width) or 900) .. ",",
+        "unequipButtonHeight = "
+            .. tostring(tonumber(Config.buttons.unequip.height) or 500) .. ",",
+        "returnToHandButtonPosition = "
+            .. vectorLiteral(
+                Config.buttons.returnToHand.position,
+                {1.8, 0.3, 0.9}
+            ) .. ",",
+        "returnToHandButtonWidth = "
+            .. tostring(tonumber(Config.buttons.returnToHand.width) or 900)
+            .. ",",
+        "returnToHandButtonHeight = "
+            .. tostring(tonumber(Config.buttons.returnToHand.height) or 500)
+            .. ",",
         "tapDebugLabel = " .. quoted(Config.debug.tapLabel) .. ",",
         "tapDebugColor = " .. colorLiteral(Config.debug.tapColor) .. ",",
         "tapDebugHoverColor = "
@@ -388,75 +474,154 @@ registerCardFeature({
 ]=], true)
 
 CardLogic.registerFeature("destroyToPurgatory", [=[
-local destroyButtonVisible = false
-local destroyHoverPlayers = {}
+local actionButtonsVisible = false
+local actionHoverPlayers = {}
+local actionButtonFunctions = {
+    onDestroyCardClicked = true,
+    onDamnCardClicked = true,
+    onUnequipCardClicked = true,
+    onReturnCardClicked = true
+}
 
-local function removeDestroyButton()
-    for _, button in ipairs(self.getButtons() or {}) do
-        if button.click_function == "onDestroyCardClicked" then
+local function removeActionButtons()
+    local buttons = self.getButtons() or {}
+
+    for index = #buttons, 1, -1 do
+        local button = buttons[index]
+
+        if actionButtonFunctions[button.click_function] then
             self.removeButton(button.index)
-            break
         end
     end
 
-    destroyButtonVisible = false
+    actionButtonsVisible = false
 end
 
-local function showDestroyButton()
-    if destroyButtonVisible then
-        return
-    end
-
-    self.createButton({
-        label = "destroy",
-        click_function = "onDestroyCardClicked",
+local function makeActionButton(
+    label,
+    clickFunction,
+    position,
+    width,
+    height,
+    color,
+    hoverColor,
+    pressColor,
+    tooltip
+)
+    return {
+        label = label,
+        click_function = clickFunction,
         function_owner = self,
-        position = cardContext.destroyButtonPosition,
+        position = position,
         rotation = {0, 0, 0},
-        width = cardContext.destroyButtonWidth,
-        height = cardContext.destroyButtonHeight,
+        width = width,
+        height = height,
         font_size = 180,
-        color = {0.65, 0.08, 0.08, 0.95},
+        color = color,
         font_color = {1, 1, 1, 1},
-        hover_color = {0.9, 0.12, 0.12, 1},
-        press_color = {0.45, 0.03, 0.03, 1},
-        tooltip = "Move to purgatory"
-    })
-    destroyButtonVisible = true
+        hover_color = hoverColor,
+        press_color = pressColor,
+        tooltip = tooltip
+    }
 end
 
-
-function refreshDestroyCardButton()
-    if not destroyButtonVisible then
+local function showActionButtons()
+    if actionButtonsVisible then
         return
     end
+
+    self.createButton(makeActionButton(
+        "destroy", "onDestroyCardClicked",
+        cardContext.destroyButtonPosition,
+        cardContext.destroyButtonWidth,
+        cardContext.destroyButtonHeight,
+        {0.65, 0.08, 0.08, 0.95},
+        {0.9, 0.12, 0.12, 1},
+        {0.45, 0.03, 0.03, 1},
+        "Move to purgatory"
+    ))
+    self.createButton(makeActionButton(
+        "damn", "onDamnCardClicked",
+        cardContext.damnButtonPosition,
+        cardContext.damnButtonWidth,
+        cardContext.damnButtonHeight,
+        {0.25, 0.06, 0.38, 0.95},
+        {0.42, 0.1, 0.62, 1},
+        {0.16, 0.03, 0.25, 1},
+        "Move to abyss"
+    ))
+    self.createButton(makeActionButton(
+        "unequip", "onUnequipCardClicked",
+        cardContext.unequipButtonPosition,
+        cardContext.unequipButtonWidth,
+        cardContext.unequipButtonHeight,
+        {0.5, 0.3, 0.05, 0.95},
+        {0.75, 0.48, 0.1, 1},
+        {0.32, 0.18, 0.02, 1},
+        "Return to bottom of deck"
+    ))
+    self.createButton(makeActionButton(
+        "return", "onReturnCardClicked",
+        cardContext.returnToHandButtonPosition,
+        cardContext.returnToHandButtonWidth,
+        cardContext.returnToHandButtonHeight,
+        {0.05, 0.35, 0.58, 0.95},
+        {0.08, 0.55, 0.85, 1},
+        {0.02, 0.22, 0.38, 1},
+        "Return to hand"
+    ))
+    actionButtonsVisible = true
+end
+
+function refreshCardActionButtons()
+    if not actionButtonsVisible then
+        return
+    end
+
+    local configByFunction = {
+        onDestroyCardClicked = {
+            cardContext.destroyButtonPosition,
+            cardContext.destroyButtonWidth,
+            cardContext.destroyButtonHeight
+        },
+        onDamnCardClicked = {
+            cardContext.damnButtonPosition,
+            cardContext.damnButtonWidth,
+            cardContext.damnButtonHeight
+        },
+        onUnequipCardClicked = {
+            cardContext.unequipButtonPosition,
+            cardContext.unequipButtonWidth,
+            cardContext.unequipButtonHeight
+        },
+        onReturnCardClicked = {
+            cardContext.returnToHandButtonPosition,
+            cardContext.returnToHandButtonWidth,
+            cardContext.returnToHandButtonHeight
+        }
+    }
 
     for _, button in ipairs(self.getButtons() or {}) do
-        if button.click_function == "onDestroyCardClicked" then
+        local config = configByFunction[button.click_function]
+
+        if config ~= nil then
             self.editButton({
                 index = button.index,
-                position = cardContext.destroyButtonPosition,
-                width = cardContext.destroyButtonWidth,
-                height = cardContext.destroyButtonHeight
+                position = config[1],
+                width = config[2],
+                height = config[3]
             })
-            break
         end
     end
 end
 
-function onDestroyCardClicked(object, playerColor, altClick)
-    if object ~= self or not isSingleCard() then
-        return
-    end
-
-    local destination = cardContext.purgatoryPosition
-
+local function moveCardTo(destination, missingMessage)
     if type(destination) ~= "table" then
-        print("This card does not have a purgatory destination.")
+        print(missingMessage)
         return
     end
 
-    removeDestroyButton()
+    removeActionButtons()
     self.setPositionSmooth({
         x = destination.x,
         y = destination.y,
@@ -464,19 +629,109 @@ function onDestroyCardClicked(object, playerColor, altClick)
     }, false, true)
 end
 
+function onDestroyCardClicked(object, playerColor, altClick)
+    if object ~= self or not isSingleCard() then
+        return
+    end
+
+    moveCardTo(
+        cardContext.purgatoryPosition,
+        "This card does not have a purgatory destination."
+    )
+end
+
+function onDamnCardClicked(object, playerColor, altClick)
+    if object ~= self or not isSingleCard() then
+        return
+    end
+
+    moveCardTo(
+        cardContext.abyssPosition,
+        "This card does not have an abyss destination."
+    )
+end
+
+local function findDeckAtDestination()
+    local destination = cardContext.deckPosition
+
+    if type(destination) ~= "table" then
+        return nil
+    end
+
+    local closest = nil
+    local closestDistanceSquared = 4
+
+    for _, object in ipairs(getAllObjects()) do
+        if object ~= self and (object.tag == "Deck" or object.tag == "Card") then
+            local position = object.getPosition()
+            local dx = position.x - destination.x
+            local dz = position.z - destination.z
+            local distanceSquared = dx * dx + dz * dz
+
+            if distanceSquared < closestDistanceSquared then
+                closest = object
+                closestDistanceSquared = distanceSquared
+            end
+        end
+    end
+
+    return closest
+end
+
+function onUnequipCardClicked(object, playerColor, altClick)
+    if object ~= self or not isSingleCard() then
+        return
+    end
+
+    local deck = findDeckAtDestination()
+
+    if deck == nil then
+        print("Could not find this card's deck.")
+        return
+    end
+
+    removeActionButtons()
+    local deckPosition = deck.getPosition()
+
+    -- putObject inserts at the end nearest the card's Y elevation. Moving
+    -- below the resting deck first guarantees insertion at the bottom.
+    self.setPosition({
+        x = deckPosition.x,
+        y = deckPosition.y - 1,
+        z = deckPosition.z
+    })
+    deck.putObject(self)
+end
+
+function onReturnCardClicked(object, playerColor, altClick)
+    if object ~= self or not isSingleCard() then
+        return
+    end
+
+    local player = Player[playerColor]
+
+    if player == nil then
+        print("Could not find the player's hand.")
+        return
+    end
+
+    removeActionButtons()
+    self.deal(1, playerColor)
+end
+
 registerCardFeature({
     id = "destroyToPurgatory",
 
     onHover = function(state, playerColor)
-        destroyHoverPlayers[playerColor] = true
-        showDestroyButton()
+        actionHoverPlayers[playerColor] = true
+        showActionButtons()
 
         Wait.condition(
             function()
-                destroyHoverPlayers[playerColor] = nil
+                actionHoverPlayers[playerColor] = nil
 
-                if next(destroyHoverPlayers) == nil then
-                    removeDestroyButton()
+                if next(actionHoverPlayers) == nil then
+                    removeActionButtons()
                 end
             end,
             function()

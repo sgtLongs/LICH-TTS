@@ -8,7 +8,22 @@ local CardLogicConfig = {
             height = 1600
         },
         destroy = {
-            position = {x = 1.8, y = 0.3, z = 0},
+            position = {x = 1.8, y = 0.3, z = -0.9},
+            width = 900,
+            height = 500
+        },
+        damn = {
+            position = {x = 1.8, y = 0.3, z = -0.3},
+            width = 900,
+            height = 500
+        },
+        unequip = {
+            position = {x = 1.8, y = 0.3, z = 0.3},
+            width = 900,
+            height = 500
+        },
+        returnToHand = {
+            position = {x = 1.8, y = 0.3, z = 0.9},
             width = 900,
             height = 500
         }

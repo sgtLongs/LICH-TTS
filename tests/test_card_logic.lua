@@ -40,6 +40,18 @@ Test.case("existing standalone cards receive button config refreshes", function(
                         {
                             index = 4,
                             click_function = "onDestroyCardClicked"
+                        },
+                        {
+                            index = 5,
+                            click_function = "onDamnCardClicked"
+                        },
+                        {
+                            index = 6,
+                            click_function = "onUnequipCardClicked"
+                        },
+                        {
+                            index = 7,
+                            click_function = "onReturnCardClicked"
                         }
                     }
                 end,
@@ -57,7 +69,7 @@ Test.case("existing standalone cards receive button config refreshes", function(
     end
 
     CardLogic.refreshExistingButtons()
-    Test.equal(2, #editedButtons)
+    Test.equal(5, #editedButtons)
     Test.equal(3, editedButtons[1].index)
     Test.equal(Config.buttons.tap.width, editedButtons[1].width)
     Test.equal(Config.buttons.tap.height, editedButtons[1].height)
@@ -65,6 +77,12 @@ Test.case("existing standalone cards receive button config refreshes", function(
     Test.equal(4, editedButtons[2].index)
     Test.equal(Config.buttons.destroy.width, editedButtons[2].width)
     Test.equal(Config.buttons.destroy.height, editedButtons[2].height)
+    Test.equal(Config.buttons.damn.position, editedButtons[3].position)
+    Test.equal(Config.buttons.unequip.width, editedButtons[4].width)
+    Test.equal(
+        Config.buttons.returnToHand.height,
+        editedButtons[5].height
+    )
     getAllObjects = originalGetAllObjects
 end)
 
@@ -75,6 +93,12 @@ Test.case("card button runtime config exposes current dimensions", function()
     Test.equal(Config.buttons.tap.height, config.tap.height)
     Test.equal(Config.buttons.destroy.width, config.destroy.width)
     Test.equal(Config.buttons.destroy.height, config.destroy.height)
+    Test.equal(Config.buttons.damn.position, config.damn.position)
+    Test.equal(Config.buttons.unequip.width, config.unequip.width)
+    Test.equal(
+        Config.buttons.returnToHand.height,
+        config.returnToHand.height
+    )
 end)
 
 Test.case("card logic can be extended with opt-in features", function()
@@ -91,15 +115,29 @@ end)
 
 Test.case("hovered cards offer movement to their purgatory", function()
     local script = CardLogic.build(nil, {
-        purgatoryPosition = {x = 11, y = -1, z = 29}
+        purgatoryPosition = {x = 11, y = -1, z = 29},
+        abyssPosition = {x = 14, y = -1, z = 29},
+        deckPosition = {x = 8, y = 1, z = 29}
     })
 
     Test.contains(script, "function onHover(playerColor)")
-    Test.contains(script, 'label = "destroy"')
-    Test.contains(script, "position = cardContext.destroyButtonPosition")
-    Test.contains(script, "width = cardContext.destroyButtonWidth")
-    Test.contains(script, "height = cardContext.destroyButtonHeight")
-    Test.contains(script, 'tooltip = "Move to purgatory"')
+    Test.contains(script, '"destroy", "onDestroyCardClicked"')
+    Test.contains(script, "cardContext.destroyButtonPosition")
+    Test.contains(script, "cardContext.destroyButtonWidth")
+    Test.contains(script, "cardContext.destroyButtonHeight")
+    Test.contains(script, '"Move to purgatory"')
+    Test.contains(script, '"damn", "onDamnCardClicked"')
+    Test.contains(script, '"Move to abyss"')
+    Test.contains(script, '"unequip", "onUnequipCardClicked"')
+    Test.contains(script, '"Return to bottom of deck"')
+    Test.contains(script, '"return", "onReturnCardClicked"')
+    Test.contains(script, '"Return to hand"')
+    Test.contains(script, "function onDamnCardClicked")
+    Test.contains(script, "cardContext.abyssPosition")
+    Test.contains(script, "function onUnequipCardClicked")
+    Test.contains(script, "deck.putObject(self)")
+    Test.contains(script, "function onReturnCardClicked")
+    Test.contains(script, "self.deal(1, playerColor)")
     Test.contains(script, "player.getHoverObject() ~= self")
     Test.contains(script, "x = destination.x")
     Test.contains(script, "y = destination.y")
@@ -107,6 +145,16 @@ Test.case("hovered cards offer movement to their purgatory", function()
     Test.contains(
         script,
         "purgatoryPosition = {x = 11.000000, y = -1.000000, "
+            .. "z = 29.000000}"
+    )
+    Test.contains(
+        script,
+        "abyssPosition = {x = 14.000000, y = -1.000000, "
+            .. "z = 29.000000}"
+    )
+    Test.contains(
+        script,
+        "deckPosition = {x = 8.000000, y = 1.000000, "
             .. "z = 29.000000}"
     )
 end)

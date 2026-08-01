@@ -303,7 +303,10 @@ local function spawnDeck(field, spawnPosition, definitions, deckSize)
     }
     local purgatoryCenter = field.zoneCenters
         and field.zoneCenters.purgatory or nil
+    local abyssCenter = field.zoneCenters
+        and field.zoneCenters.abyss or nil
     local purgatoryPosition = nil
+    local abyssPosition = nil
 
     if purgatoryCenter ~= nil then
         purgatoryPosition = {
@@ -313,8 +316,18 @@ local function spawnDeck(field, spawnPosition, definitions, deckSize)
         }
     end
 
+    if abyssCenter ~= nil then
+        abyssPosition = {
+            x = abyssCenter.x,
+            y = abyssCenter.y + Config.deckSlot.cardSpawnHeight,
+            z = abyssCenter.z
+        }
+    end
+
     local cardScript = CardLogic.build(nil, {
-        purgatoryPosition = purgatoryPosition
+        purgatoryPosition = purgatoryPosition,
+        abyssPosition = abyssPosition,
+        deckPosition = position
     })
     local succeeded, spawnedDeck = pcall(spawnObjectData, {
         data = makeDeckData(definitions, deckSize, cardScript),
