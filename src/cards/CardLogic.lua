@@ -47,6 +47,7 @@ local function removeExistingFeatureButtons()
             or button.click_function == "onDamnCardClicked"
             or button.click_function == "onUnequipCardClicked"
             or button.click_function == "onReturnCardClicked"
+            or button.click_function == "onActionButtonAreaClicked"
         then
             self.removeButton(button.index)
         end
@@ -293,6 +294,8 @@ function CardLogic.registerFeature(name, source, enabledByDefault)
 end
 
 function CardLogic.getButtonConfig()
+    local actionList = Config.buttons.actionList
+
     return {
         drawButtons = DebugConfig.drawCardButtons == true,
         tap = {
@@ -302,23 +305,23 @@ function CardLogic.getButtonConfig()
         },
         destroy = {
             position = Config.buttons.destroy.position,
-            width = Config.buttons.destroy.width,
-            height = Config.buttons.destroy.height
+            width = actionList.width,
+            height = actionList.height
         },
         damn = {
             position = Config.buttons.damn.position,
-            width = Config.buttons.damn.width,
-            height = Config.buttons.damn.height
+            width = actionList.width,
+            height = actionList.height
         },
         unequip = {
             position = Config.buttons.unequip.position,
-            width = Config.buttons.unequip.width,
-            height = Config.buttons.unequip.height
+            width = actionList.width,
+            height = actionList.height
         },
         returnToHand = {
             position = Config.buttons.returnToHand.position,
-            width = Config.buttons.returnToHand.width,
-            height = Config.buttons.returnToHand.height
+            width = actionList.width,
+            height = actionList.height
         }
     }
 end
@@ -330,7 +333,11 @@ function CardLogic.refreshExistingButtons()
 
             if succeeded and type(buttons) == "table" then
                 for _, button in ipairs(buttons) do
-                    if button.click_function == "onCardTapped" then
+                    if button.click_function
+                        == "onActionButtonAreaClicked"
+                    then
+                        pcall(object.removeButton, button.index)
+                    elseif button.click_function == "onCardTapped" then
                         local showDebug =
                             DebugConfig.drawCardButtons == true
 
@@ -374,12 +381,13 @@ function CardLogic.refreshExistingButtons()
                         pcall(object.editButton, {
                             index = button.index,
                             position = actionConfig.position,
-                            width = actionConfig.width,
-                            height = actionConfig.height
+                            width = Config.buttons.actionList.width,
+                            height = Config.buttons.actionList.height
                         })
                     end
                 end
             end
+
         end
     end
 end
@@ -447,33 +455,33 @@ local function makeContextSource(context)
             .. vectorLiteral(Config.buttons.destroy.position, {1.8, 0.3, 0})
             .. ",",
         "destroyButtonWidth = "
-            .. tostring(tonumber(Config.buttons.destroy.width) or 900) .. ",",
+            .. tostring(tonumber(Config.buttons.actionList.width) or 900) .. ",",
         "destroyButtonHeight = "
-            .. tostring(tonumber(Config.buttons.destroy.height) or 500) .. ",",
+            .. tostring(tonumber(Config.buttons.actionList.height) or 500) .. ",",
         "damnButtonPosition = "
             .. vectorLiteral(Config.buttons.damn.position, {1.8, 0.3, -0.3})
             .. ",",
         "damnButtonWidth = "
-            .. tostring(tonumber(Config.buttons.damn.width) or 900) .. ",",
+            .. tostring(tonumber(Config.buttons.actionList.width) or 900) .. ",",
         "damnButtonHeight = "
-            .. tostring(tonumber(Config.buttons.damn.height) or 500) .. ",",
+            .. tostring(tonumber(Config.buttons.actionList.height) or 500) .. ",",
         "unequipButtonPosition = "
             .. vectorLiteral(Config.buttons.unequip.position, {1.8, 0.3, 0.3})
             .. ",",
         "unequipButtonWidth = "
-            .. tostring(tonumber(Config.buttons.unequip.width) or 900) .. ",",
+            .. tostring(tonumber(Config.buttons.actionList.width) or 900) .. ",",
         "unequipButtonHeight = "
-            .. tostring(tonumber(Config.buttons.unequip.height) or 500) .. ",",
+            .. tostring(tonumber(Config.buttons.actionList.height) or 500) .. ",",
         "returnToHandButtonPosition = "
             .. vectorLiteral(
                 Config.buttons.returnToHand.position,
                 {1.8, 0.3, 0.9}
             ) .. ",",
         "returnToHandButtonWidth = "
-            .. tostring(tonumber(Config.buttons.returnToHand.width) or 900)
+            .. tostring(tonumber(Config.buttons.actionList.width) or 900)
             .. ",",
         "returnToHandButtonHeight = "
-            .. tostring(tonumber(Config.buttons.returnToHand.height) or 500)
+            .. tostring(tonumber(Config.buttons.actionList.height) or 500)
             .. ",",
         "tapDebugLabel = " .. quoted(Config.debug.tapLabel) .. ",",
         "tapDebugColor = " .. colorLiteral(Config.debug.tapColor) .. ",",
@@ -515,6 +523,11 @@ registerCardFeature({
 
     onTap = function(state)
         state.rotated = not state.rotated
+
+        if type(hideActionButtonsDuringCardRotation) == "function" then
+            hideActionButtonsDuringCardRotation()
+        end
+
         self.rotate({
             x = 0,
             y = state.rotated and 90 or -90,
@@ -531,7 +544,8 @@ local actionButtonFunctions = {
     onDestroyCardClicked = true,
     onDamnCardClicked = true,
     onUnequipCardClicked = true,
-    onReturnCardClicked = true
+    onReturnCardClicked = true,
+    onActionButtonAreaClicked = true
 }
 
 local function removeActionButtons()
@@ -546,6 +560,30 @@ local function removeActionButtons()
     end
 
     actionButtonsVisible = false
+end
+
+local function isCardTapRotated()
+    local rotateState = cardState.features.rotate90
+    return type(rotateState) == "table"
+        and rotateState.rotated == true
+end
+
+local function actionButtonPosition(position)
+    if not isCardTapRotated() then
+        return position
+    end
+
+    -- Counter-rotate the local offset so the card's 90-degree rotation
+    -- leaves the button in the same world-facing layout.
+    return {
+        x = position.z,
+        y = position.y,
+        z = -position.x
+    }
+end
+
+local function actionButtonRotation()
+    return isCardTapRotated() and {0, -90, 0} or {0, 0, 0}
 end
 
 local function makeActionButton(
@@ -563,8 +601,8 @@ local function makeActionButton(
         label = label,
         click_function = clickFunction,
         function_owner = self,
-        position = position,
-        rotation = {0, 0, 0},
+        position = actionButtonPosition(position),
+        rotation = actionButtonRotation(),
         width = width,
         height = height,
         font_size = 180,
@@ -624,6 +662,34 @@ local function showActionButtons()
     actionButtonsVisible = true
 end
 
+function hideActionButtonsDuringCardRotation()
+    local shouldRestore = actionButtonsVisible
+    removeActionButtons()
+
+    if not shouldRestore then
+        return
+    end
+
+    local function restoreAfterRotation()
+        Wait.condition(
+            function()
+                if next(actionHoverPlayers) ~= nil
+                    and not isCardInHand()
+                then
+                    showActionButtons()
+                end
+            end,
+            function()
+                return not self.isSmoothMoving()
+            end
+        )
+    end
+
+    -- rotate() begins smooth movement after this callback returns, so wait
+    -- one frame before watching for its completion.
+    Wait.frames(restoreAfterRotation, 1)
+end
+
 function refreshCardActionButtons()
     if not actionButtonsVisible then
         return
@@ -658,7 +724,8 @@ function refreshCardActionButtons()
         if config ~= nil then
             self.editButton({
                 index = button.index,
-                position = config[1],
+                position = actionButtonPosition(config[1]),
+                rotation = actionButtonRotation(),
                 width = config[2],
                 height = config[3]
             })
