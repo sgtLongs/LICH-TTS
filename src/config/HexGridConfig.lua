@@ -23,21 +23,75 @@ local HexGridConfig = {
     objectButtonOpacity = 0.6,
     objectButtonSurfaces = {
         {
-            label = "VERTICAL 1",
+            label = "SIDE 1",
+            group = "side",
+            position = {x = -0.5, y = 0, z = 0.8660254},
             rotation = {60, 0, 90},
-            doubleSided = true,
+            colorName = "RED",
             debugColor = {1, 0.25, 0.25}
         },
         {
-            label = "VERTICAL 2",
+            label = "SIDE 2",
+            group = "side",
+            position = {x = 0.5, y = 0, z = 0.8660254},
             rotation = {120, 0, 90},
-            doubleSided = true,
+            colorName = "GREEN",
             debugColor = {0.25, 1, 0.35}
         },
         {
-            label = "VERTICAL 3",
+            label = "SIDE 3",
+            group = "side",
+            position = {x = 1, y = 0, z = 0},
+            rotation = {180, 0, 90},
+            colorName = "BLUE",
+            debugColor = {0.1, 0.7, 1}
+        },
+        {
+            label = "SIDE 4",
+            group = "side",
+            position = {x = 0.5, y = 0, z = -0.8660254},
+            rotation = {240, 0, 90},
+            colorName = "ORANGE",
+            debugColor = {1, 0.55, 0.1}
+        },
+        {
+            label = "SIDE 5",
+            group = "side",
+            position = {x = -0.5, y = 0, z = -0.8660254},
+            rotation = {300, 0, 90},
+            colorName = "PURPLE",
+            debugColor = {0.7, 0.25, 1}
+        },
+        {
+            label = "SIDE 6",
+            group = "side",
+            position = {x = -1, y = 0, z = 0},
             rotation = {0, 0, 90},
-            doubleSided = true,
+            colorName = "CYAN",
+            debugColor = {0.1, 0.9, 0.9}
+        },
+        {
+            label = "TOP 1",
+            group = "top",
+            position = {x = 0, y = 0, z = 0},
+            rotation = {0, 0, 0},
+            colorName = "RED",
+            debugColor = {1, 0.25, 0.25}
+        },
+        {
+            label = "TOP 2",
+            group = "top",
+            position = {x = 0, y = 0, z = 0},
+            rotation = {0, 60, 0},
+            colorName = "GREEN",
+            debugColor = {0.25, 1, 0.35}
+        },
+        {
+            label = "TOP 3",
+            group = "top",
+            position = {x = 0, y = 0, z = 0},
+            rotation = {0, 120, 0},
+            colorName = "BLUE",
             debugColor = {0.1, 0.7, 1}
         }
     },

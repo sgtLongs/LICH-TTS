@@ -1,5 +1,25 @@
 local Test = require("tests/support/Test")
 local HexGrid = require("src/hex/HexGrid")
+local SpawnDefinitions = require("src/hex/HexSpawnDefinitions")
+
+Test.case("source stone position offset only moves its buttons", function()
+    local sourceStone = nil
+
+    for _, definition in ipairs(SpawnDefinitions) do
+        if definition.key == "sourceStone" then
+            sourceStone = definition
+            break
+        end
+    end
+
+    Test.truthy(sourceStone ~= nil)
+    Test.nilValue(sourceStone.positionOffset)
+    Test.truthy(sourceStone.objectPositionOffset ~= nil)
+    Test.truthy(
+        sourceStone.editClickArea.side.positionOffset
+            == sourceStone.editClickArea.top.positionOffset
+    )
+end)
 
 Test.case("edit mode number keys select placement objects", function()
     local previousPlayer = Player
@@ -142,7 +162,7 @@ Test.case("an empty hex directly starts the selected placement", function()
     Wait = previousWait
 end)
 
-Test.case("placed object edit menu is limited to edit mode", function()
+Test.case("object and board clicks share hex behavior", function()
     local previousBroadcastToColor = broadcastToColor
     local previousDestroyObject = destroyObject
     local previousGetObjectFromGuid = getObjectFromGUID
@@ -153,6 +173,9 @@ Test.case("placed object edit menu is limited to edit mode", function()
     local previousWait = Wait
     local attributes = {}
     local vectorLines = {}
+    local objectButtons = {}
+    local placedPosition = nil
+    local objectWorldPosition = {x = 0, y = 1, z = 0}
     local board = {
         createButton = function()
         end,
@@ -178,11 +201,17 @@ Test.case("placed object edit menu is limited to edit mode", function()
     local placedObject = {
         addTag = function()
         end,
-        createButton = function()
+        createButton = function(parameters)
+            objectButtons[#objectButtons + 1] = parameters
         end,
         getBounds = function()
             return {
-                center = {x = 0, y = 1, z = 0}
+                center = {
+                    x = objectWorldPosition.x,
+                    y = objectWorldPosition.y,
+                    z = objectWorldPosition.z
+                },
+                size = {x = 2, y = 4, z = 2}
             }
         end,
         getButtons = function()
@@ -191,8 +220,28 @@ Test.case("placed object edit menu is limited to edit mode", function()
         getGUID = function()
             return "tree-guid"
         end,
+        getPosition = function()
+            return objectWorldPosition
+        end,
+        getScale = function()
+            return {x = 2, y = 0.5, z = 4}
+        end,
         positionToLocal = function(position)
-            return position
+            return {
+                x = position.x - objectWorldPosition.x,
+                y = position.y - objectWorldPosition.y,
+                z = position.z - objectWorldPosition.z
+            }
+        end,
+        setVectorLines = function()
+        end,
+        setLock = function()
+        end,
+        setLuaScript = function()
+        end,
+        setPosition = function(position)
+            placedPosition = position
+            objectWorldPosition = position
         end
     }
 
@@ -237,6 +286,8 @@ Test.case("placed object edit menu is limited to edit mode", function()
         return {}
     end
 
+    local treeClickArea = SpawnDefinitions[1].editClickArea
+
     HexGrid.onLoad({
         placedObjects = {
             {
@@ -248,12 +299,18 @@ Test.case("placed object edit menu is limited to edit mode", function()
         }
     })
     HexGrid.setEditMode(false)
+    Test.truthy(placedPosition ~= nil)
+    Test.equal(9, #objectButtons)
+    Test.equal(treeClickArea.side.height, objectButtons[1].width)
+    Test.equal(treeClickArea.side.width, objectButtons[1].height)
+    Test.equal(treeClickArea.top.width, objectButtons[7].width)
+    Test.equal(treeClickArea.top.height, objectButtons[7].height)
     HexGrid.onObjectClicked(placedObject, "Red", false)
 
     Test.equal("false", attributes["hexGridMenuRoot.active"])
     Test.truthy(HexGrid.getSaveState().selectedCells["0:0"])
 
-    HexGrid.onObjectClicked(placedObject, "Red", false)
+    HexGrid.onClicked("Red", false)
     Test.falsy(HexGrid.getSaveState().selectedCells["0:0"])
 
     HexGrid.setEditMode(true)
@@ -264,6 +321,49 @@ Test.case("placed object edit menu is limited to edit mode", function()
     Test.equal(1, #HexGrid.getSaveState().placedObjects)
     Test.truthy(HexGrid.getSaveState().selectedCells["0:0"])
     Test.truthy(#vectorLines > 91)
+
+    objectButtons = {}
+    HexGrid.onLoad({
+        placedObjects = {
+            {
+                templateKey = "doubleRock",
+                cell = {row = 0, column = 0},
+                facingCell = {row = 0, column = 1},
+                guid = "tree-guid"
+            }
+        }
+    })
+
+    Test.equal(18, #objectButtons)
+    Test.falsy(
+        objectButtons[1].position.x == objectButtons[10].position.x
+            and objectButtons[1].position.z
+                == objectButtons[10].position.z
+    )
+
+    local doubleRock = SpawnDefinitions[5]
+    local originalObjectOffset = doubleRock.objectPositionOffset
+    local firstPrismPosition = objectButtons[1].position
+    doubleRock.objectPositionOffset = {
+        x = originalObjectOffset.x + 1,
+        y = originalObjectOffset.y,
+        z = originalObjectOffset.z
+    }
+    objectButtons = {}
+    HexGrid.onLoad({
+        placedObjects = {
+            {
+                templateKey = "doubleRock",
+                cell = {row = 0, column = 0},
+                facingCell = {row = 0, column = 1},
+                guid = "tree-guid"
+            }
+        }
+    })
+    doubleRock.objectPositionOffset = originalObjectOffset
+
+    Test.near(firstPrismPosition.x, objectButtons[1].position.x, 0.0001)
+    Test.near(firstPrismPosition.z, objectButtons[1].position.z, 0.0001)
 
     HexGrid.setEditMode(false)
     broadcastToColor = previousBroadcastToColor

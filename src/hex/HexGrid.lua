@@ -306,89 +306,159 @@ local function addObjectClickButton(object, placement)
         end
     end
 
-    local boundsCenter = object.getBounds().center
+    local bounds = object.getBounds()
+    local boundsCenter = bounds.center
+    local boundsSize = bounds.size or {}
     local showDebug = DebugConfig.drawEditObjectButtons == true
     local template = templatesByKey[placement.templateKey]
     local clickArea = template ~= nil
         and template.editClickArea or {}
-    local clickAreaOffset = clickArea.positionOffset or {}
-
-    for groupIndex, occupiedCell in ipairs(
-        getPlacementOccupiedCells(placement)
-    ) do
-        local cell = cellsByKey[
-            HexGridBuilder.cellKey(
-                occupiedCell.row,
-                occupiedCell.column
+    local function createClickPrism(groupCenter, groupTop)
+        for _, surface in ipairs(Config.objectButtonSurfaces) do
+            local area = clickArea[surface.group] or {}
+            local areaPosition = area.positionOffset or {}
+            local surfacePosition = surface.position or {}
+            local rotationOffset = area.rotationOffset or {}
+            local positionRotation = math.rad(
+                area.positionRotationDegrees or 0
             )
-        ]
+            local positionCosine = math.cos(positionRotation)
+            local positionSine = math.sin(positionRotation)
+            local rotatedSurfaceX = (surfacePosition.x or 0)
+                    * positionCosine
+                + (surfacePosition.z or 0) * positionSine
+            local rotatedSurfaceZ = -(surfacePosition.x or 0)
+                    * positionSine
+                + (surfacePosition.z or 0) * positionCosine
+            local anchor = surface.group == "top"
+                and groupTop or groupCenter
+            local distance = area.distance or 0
+            local debugColor = {
+                surface.debugColor[1],
+                surface.debugColor[2],
+                surface.debugColor[3],
+                Config.objectButtonOpacity
+            }
+            local position = {
+                x = anchor.x + (areaPosition.x or 0)
+                    + rotatedSurfaceX * distance,
+                y = anchor.y + (areaPosition.y or 0)
+                    + (surfacePosition.y or 0) * distance,
+                z = anchor.z + (areaPosition.z or 0)
+                    + rotatedSurfaceZ * distance
+            }
+            local rotation = surface.rotation
+            rotation = {
+                (rotation[1] or 0) + (rotationOffset.x or 0)
+                    + (surface.group == "side"
+                        and (area.positionRotationDegrees or 0) or 0),
+                (rotation[2] or 0) + (rotationOffset.y or 0),
+                (rotation[3] or 0) + (rotationOffset.z or 0)
+            }
+            local buttonWidth = surface.group == "side"
+                and area.height or area.width
+            local buttonHeight = surface.group == "side"
+                and area.width or area.height
 
-        if cell ~= nil then
-            local cellWorldCenter = board.positionToWorld({
-                x = cell.x,
-                y = resolvedSurfaceY,
-                z = cell.z
+            object.createButton({
+                label = showDebug and surface.label .. " - "
+                    .. surface.colorName or "",
+                click_function = Config.objectButtonClickFunction,
+                function_owner = Global,
+                position = position,
+                rotation = rotation,
+                width = buttonWidth,
+                height = buttonHeight,
+                font_size = showDebug
+                    and Config.objectButtonDebugFontSize or 1,
+                color = showDebug
+                    and debugColor or Config.invisibleButtonColor,
+                font_color = showDebug
+                    and Config.buttonFontColor or Config.invisibleButtonColor,
+                hover_color = showDebug
+                    and debugColor or Config.invisibleButtonColor,
+                press_color = showDebug
+                    and debugColor or Config.invisibleButtonColor,
+                tooltip = "Select or edit hex"
             })
-            local groupCenter = object.positionToLocal({
-                x = cellWorldCenter.x,
-                y = boundsCenter.y,
-                z = cellWorldCenter.z
-            })
+        end
+    end
 
-            for _, surface in ipairs(Config.objectButtonSurfaces) do
-                local debugColor = {
-                    surface.debugColor[1],
-                    surface.debugColor[2],
-                    surface.debugColor[3],
-                    Config.objectButtonOpacity
-                }
-                local position = {
-                    x = groupCenter.x
-                        + (clickAreaOffset.x or 0),
-                    y = groupCenter.y
-                        + (clickAreaOffset.y or 0),
-                    z = groupCenter.z
-                        + (clickAreaOffset.z or 0)
-                }
-                local rotations = {surface.rotation}
+    local occupiedCells = getPlacementOccupiedCells(placement)
 
-                if surface.doubleSided then
-                    rotations[#rotations + 1] = {
-                        (surface.rotation[1] or 0) + 180,
-                        surface.rotation[2] or 0,
-                        surface.rotation[3] or 0
-                    }
-                end
+    if #occupiedCells > 1 then
+        local occupiedWorldCenters = {}
+        local centroid = {x = 0, y = 0, z = 0}
 
-                for faceIndex, rotation in ipairs(rotations) do
-                    object.createButton({
-                        label = showDebug and faceIndex == 1
-                            and surface.label .. " " .. groupIndex or "",
-                        click_function = Config.objectButtonClickFunction,
-                        function_owner = Global,
-                        position = position,
-                        rotation = rotation,
-                        width = clickArea.height,
-                        height = clickArea.width,
-                        font_size = showDebug
-                            and Config.objectButtonDebugFontSize or 1,
-                        color = showDebug
-                            and debugColor
-                            or Config.invisibleButtonColor,
-                        font_color = showDebug
-                            and Config.buttonFontColor
-                            or Config.invisibleButtonColor,
-                        hover_color = showDebug
-                            and debugColor
-                            or Config.invisibleButtonColor,
-                        press_color = showDebug
-                            and debugColor
-                            or Config.invisibleButtonColor,
-                        tooltip = "Edit or delete object"
-                    })
-                end
+        for _, occupiedCell in ipairs(occupiedCells) do
+            local cell = cellsByKey[
+                HexGridBuilder.cellKey(
+                    occupiedCell.row,
+                    occupiedCell.column
+                )
+            ]
+
+            if cell ~= nil then
+                local cellWorldCenter = board.positionToWorld({
+                    x = cell.x,
+                    y = resolvedSurfaceY,
+                    z = cell.z
+                })
+                occupiedWorldCenters[#occupiedWorldCenters + 1] =
+                    cellWorldCenter
+                centroid.x = centroid.x + cellWorldCenter.x
+                centroid.y = centroid.y + cellWorldCenter.y
+                centroid.z = centroid.z + cellWorldCenter.z
             end
         end
+
+        local centerCount = #occupiedWorldCenters
+
+        if centerCount > 0 then
+            centroid.x = centroid.x / centerCount
+            centroid.y = centroid.y / centerCount
+            centroid.z = centroid.z / centerCount
+
+            local centroidLocal = object.positionToLocal(centroid)
+            local objectCenterLocal = object.positionToLocal(boundsCenter)
+            local objectTopLocal = object.positionToLocal({
+                x = boundsCenter.x,
+                y = boundsCenter.y + (boundsSize.y or 0) * 0.5,
+                z = boundsCenter.z
+            })
+
+            for _, worldCenter in ipairs(occupiedWorldCenters) do
+                local cellLocal = object.positionToLocal(worldCenter)
+                local offsetX = cellLocal.x - centroidLocal.x
+                local offsetZ = cellLocal.z - centroidLocal.z
+
+                createClickPrism(
+                    {
+                        x = objectCenterLocal.x + offsetX,
+                        y = objectCenterLocal.y,
+                        z = objectCenterLocal.z + offsetZ
+                    },
+                    {
+                        x = objectTopLocal.x + offsetX,
+                        y = objectTopLocal.y,
+                        z = objectTopLocal.z + offsetZ
+                    }
+                )
+            end
+        end
+    else
+        createClickPrism(
+            object.positionToLocal(boundsCenter),
+            object.positionToLocal({
+                x = boundsCenter.x,
+                y = boundsCenter.y + (boundsSize.y or 0) * 0.5,
+                z = boundsCenter.z
+            })
+        )
+    end
+
+    if object.setVectorLines ~= nil then
+        object.setVectorLines({})
     end
 end
 
@@ -737,6 +807,20 @@ local function buildGrid()
             }
 
             if existingObject ~= nil then
+                local _, localRotationY = getFacingRotations(
+                    targetCell,
+                    targetFacingCell,
+                    templatesByKey[templateKey]
+                )
+
+                HexObjectSpawner.place({
+                    board = board,
+                    surfaceY = resolvedSurfaceY,
+                    object = existingObject,
+                    cell = targetCell,
+                    template = templatesByKey[templateKey],
+                    localRotationY = localRotationY
+                })
                 existingObject.addTag(SettingsConfig.placedObjectTag)
                 addObjectClickButton(existingObject, placement)
                 placedObjects[#placedObjects + 1] = placement
@@ -1112,46 +1196,24 @@ function HexGrid.onObjectClicked(object, playerColor, altClick)
         return
     end
 
-    if pendingSpawn ~= nil then
-        if pendingSpawn.playerColor == playerColor then
-            cancelPendingSpawn(playerColor)
-        end
-
+    if getPlacementByGuid(object.getGUID()) == nil then
         return
     end
 
-    local placement = getPlacementByGuid(object.getGUID())
-
-    if placement == nil then
-        return
-    end
-
-    local targetCell = getPlacementTargetCell(
-        placement,
-        getPlayerPointerCell(playerColor)
-    )
-
-    if editMode and isAdmin(playerColor) then
-        openPlacementMenu(
-            placement,
-            playerColor,
-            targetCell
-        )
-    else
-        toggleCellSelection(targetCell, playerColor)
-    end
+    handlePointerClick(playerColor, false)
 end
 
 function HexGrid.onPlayerAction(player, action, targets)
+    local target = type(targets) == "table"
+        and #targets == 1 and targets[1] or nil
+    local targetGuid = target ~= nil and target.getGUID() or nil
+    local targetsHex = targetGuid == Config.boardGuid
+        or getPlacementByGuid(targetGuid) ~= nil
+
     if pendingSpawn ~= nil
         and action == Player.Action.Select
         and player.color == pendingSpawn.playerColor
-        and (
-            type(targets) ~= "table"
-            or #targets ~= 1
-            or targets[1] == nil
-            or targets[1].getGUID() ~= Config.boardGuid
-        )
+        and not targetsHex
     then
         cancelPendingSpawn(player.color)
         return true
@@ -1159,44 +1221,16 @@ function HexGrid.onPlayerAction(player, action, targets)
 
     if board == nil
         or action ~= Player.Action.Select
-        or type(targets) ~= "table"
-        or #targets ~= 1
-        or targets[1] == nil
+        or not targetsHex
     then
         return true
     end
 
-    local targetGuid = targets[1].getGUID()
-
-    if targetGuid == Config.boardGuid then
-        if handlePointerClick(player.color, false) then
-            return false
-        end
-
-        return true
+    if handlePointerClick(player.color, false) then
+        return false
     end
 
-    local placement = getPlacementByGuid(targetGuid)
-
-    if placement == nil then
-        return true
-    end
-
-    if editMode and isAdmin(player.color) then
-        return not openPlacementMenu(
-            placement,
-            player.color,
-            getPlayerPointerCell(player.color)
-        )
-    end
-
-    return not toggleCellSelection(
-        getPlacementTargetCell(
-            placement,
-            getPlayerPointerCell(player.color)
-        ),
-        player.color
-    )
+    return true
 end
 
 function HexGrid.onMenuUiClicked(playerColor, action)

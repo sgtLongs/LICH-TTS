@@ -99,7 +99,7 @@ local function schedulePlacementCorrections(parameters, spawnedObject)
                 parameters.surfaceY,
                 spawnedObject,
                 parameters.cell,
-                parameters.template.positionOffset,
+                parameters.template.objectPositionOffset,
                 parameters.localRotationY
             )
 
@@ -110,6 +110,25 @@ local function schedulePlacementCorrections(parameters, spawnedObject)
             end
         end, frameCount)
     end
+end
+
+function HexObjectSpawner.place(parameters)
+    if type(parameters) ~= "table"
+        or parameters.object == nil
+        or parameters.template == nil
+    then
+        return false
+    end
+
+    placeObject(
+        parameters.board,
+        parameters.surfaceY,
+        parameters.object,
+        parameters.cell,
+        parameters.template.objectPositionOffset,
+        parameters.localRotationY
+    )
+    return true
 end
 
 function HexObjectSpawner.spawn(parameters)
@@ -131,7 +150,7 @@ function HexObjectSpawner.spawn(parameters)
             parameters.surfaceY,
             parameters.cell,
             Config.initialHeightAboveSurface,
-            template.positionOffset,
+            template.objectPositionOffset,
             parameters.localRotationY
         )
     )
