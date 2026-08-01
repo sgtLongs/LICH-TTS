@@ -16,6 +16,10 @@ function onEndTurnClicked(player, value, id)
     Game.onEndTurnClicked(player.color)
 end
 
+function onAdvancePhaseClicked(player, value, id)
+    Game.onAdvancePhaseClicked(player.color)
+end
+
 function onHexGridClicked(object, playerColor, altClick)
     Game.onHexGridClicked(playerColor, altClick)
 end

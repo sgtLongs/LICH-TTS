@@ -116,6 +116,10 @@ local TurnSystem = {
     end,
     endTurn = function()
     end,
+    advancePhase = function(playerColor)
+        calls.phasePlayerColor = playerColor
+        return true
+    end,
     refreshUi = function()
     end
 }
@@ -197,6 +201,11 @@ Test.case("game routes edit mode UI changes", function()
 
     Test.equal("Red", calls.editModePlayerColor)
     Test.equal("True", calls.editModeValue)
+end)
+
+Test.case("game routes phase advances", function()
+    Test.truthy(Game.onAdvancePhaseClicked("Teal"))
+    Test.equal("Teal", calls.phasePlayerColor)
 end)
 
 Test.case("game routes deck slot and deck menu choices", function()

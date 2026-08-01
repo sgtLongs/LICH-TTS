@@ -1,5 +1,13 @@
 local TurnState = {}
 
+local phases = {
+    "start",
+    "main",
+    "draw",
+    "status",
+    "end"
+}
+
 local function normalizeSavedIndex(savedState, playerColors)
     local playerCount = #playerColors
 
@@ -31,16 +39,69 @@ local function normalizeSavedIndex(savedState, playerColors)
     return math.floor(savedIndex)
 end
 
+local function normalizeSavedPhaseIndex(savedState)
+    if type(savedState) ~= "table" then
+        return 1
+    end
+
+    if type(savedState.currentPhase) == "string" then
+        for index, phase in ipairs(phases) do
+            if phase == savedState.currentPhase then
+                return index
+            end
+        end
+    end
+
+    local savedIndex = tonumber(savedState.currentPhaseIndex)
+
+    if savedIndex == nil
+        or savedIndex < 1
+        or savedIndex > #phases
+    then
+        return 1
+    end
+
+    return math.floor(savedIndex)
+end
+
 function TurnState.new(playerColors, savedState)
     local state = {
         playerColors = playerColors,
         currentTurnIndex = normalizeSavedIndex(
             savedState,
             playerColors
-        )
+        ),
+        currentPhaseIndex = normalizeSavedPhaseIndex(savedState)
     }
 
     return state
+end
+
+function TurnState.getCurrentPhase(state)
+    return phases[state.currentPhaseIndex]
+end
+
+function TurnState.getPhases()
+    local result = {}
+
+    for index, phase in ipairs(phases) do
+        result[index] = phase
+    end
+
+    return result
+end
+
+function TurnState.advancePhase(state, playerColor)
+    if playerColor ~= TurnState.getCurrentColor(state) then
+        return false
+    end
+
+    if state.currentPhaseIndex < #phases then
+        state.currentPhaseIndex = state.currentPhaseIndex + 1
+        return true
+    end
+
+    return TurnState.endTurn(state, playerColor)
 end
 
 function TurnState.getCurrentColor(state)
@@ -62,6 +123,7 @@ function TurnState.endTurn(state, playerColor)
 
     state.currentTurnIndex =
         (state.currentTurnIndex % playerCount) + 1
+    state.currentPhaseIndex = 1
     return true
 end
 
@@ -87,7 +149,9 @@ end
 function TurnState.getSaveState(state)
     return {
         currentTurnIndex = state.currentTurnIndex,
-        currentTurnColor = TurnState.getCurrentColor(state)
+        currentTurnColor = TurnState.getCurrentColor(state),
+        currentPhaseIndex = state.currentPhaseIndex,
+        currentPhase = TurnState.getCurrentPhase(state)
     }
 end
 

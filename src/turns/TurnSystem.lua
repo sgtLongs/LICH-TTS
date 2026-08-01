@@ -26,6 +26,7 @@ end
 
 local function updateUi()
     local currentColor = getCurrentColor()
+    local currentPhase = TurnState.getCurrentPhase(turnState)
 
     if currentColor == nil then
         UI.setAttribute(
@@ -63,15 +64,37 @@ local function updateUi()
         )
     end
 
+    for _, phase in ipairs(TurnState.getPhases()) do
+        local isCurrentPhase = phase == currentPhase
+
+        UI.setAttribute(
+            Config.ui.phaseIdPrefix .. phase,
+            "text",
+            (isCurrentPhase
+                and Config.ui.activePhasePrefix
+                or Config.ui.inactivePhasePrefix)
+                .. Config.phaseLabels[phase]
+        )
+        UI.setAttribute(
+            Config.ui.phaseIdPrefix .. phase,
+            "color",
+            isCurrentPhase
+                and Config.ui.activePhaseColor
+                or Config.ui.inactivePhaseColor
+        )
+    end
+
     for _, playerColor in ipairs(Config.playerColors) do
-        local buttonId = Config.ui.endTurnButtonPrefix .. playerColor
+        local buttonId = Config.ui.phaseButtonPrefix .. playerColor
         local isCurrentPlayer = playerColor == currentColor
+        local activeButtonText = currentPhase == "end"
+            and Config.ui.endPhaseButtonText
+            or Config.ui.activeButtonText
 
         UI.setAttribute(
             buttonId,
             "text",
-            isCurrentPlayer
-                and Config.ui.activeButtonText
+            isCurrentPlayer and activeButtonText
                 or Config.ui.waitingButtonText
         )
         UI.setAttribute(
@@ -94,6 +117,38 @@ local function announceTurn()
     ChatService.sayToAll(
         playerName .. " (" .. currentColor .. "), it is your turn!"
     )
+end
+
+function TurnSystem.advancePhase(playerColor)
+    local currentColor = getCurrentColor()
+
+    if currentColor == nil then
+        broadcastToColor(
+            "No players have spawned a deck yet.",
+            playerColor,
+            Config.invalidTurnColor
+        )
+        return false
+    end
+
+    if playerColor ~= currentColor then
+        broadcastToColor(
+            "It is " .. getPlayerName(currentColor) .. "'s turn.",
+            playerColor,
+            Config.invalidTurnColor
+        )
+        return false
+    end
+
+    local previousColor = currentColor
+    local advanced = TurnState.advancePhase(turnState, playerColor)
+    updateUi()
+
+    if advanced and getCurrentColor() ~= previousColor then
+        announceTurn()
+    end
+
+    return advanced
 end
 
 local function getActivePlayerColors()

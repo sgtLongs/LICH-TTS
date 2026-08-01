@@ -89,6 +89,10 @@ function Game.onEndTurnClicked(playerColor)
     TurnSystem.endTurn(playerColor)
 end
 
+function Game.onAdvancePhaseClicked(playerColor)
+    return TurnSystem.advancePhase(playerColor)
+end
+
 function Game.onHexGridClicked(playerColor, altClick)
     HexGrid.onClicked(playerColor, altClick)
 end

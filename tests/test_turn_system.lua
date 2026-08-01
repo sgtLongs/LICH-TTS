@@ -51,8 +51,42 @@ Test.case("turn system restores state and updates the TTS boundary", function()
 
     Test.equal(6, TurnSystem.getSaveState().currentTurnIndex)
     Test.equal("Ben's Turn", uiUpdates["turnPlayerName:text"])
-    Test.equal("true", uiUpdates["endTurnBlue:interactable"])
+    Test.equal("true", uiUpdates["advancePhaseBlue:interactable"])
+    Test.equal("> START PHASE", uiUpdates["turnPhasestart:text"])
     Test.equal("Ben (Blue), it is your turn!", announcements[1].message)
+end)
+
+Test.case("turn system advances phases and ends after end phase", function()
+    TurnSystem.onLoad({
+        currentTurnColor = "White",
+        activePlayerColors = {"White", "Blue"}
+    })
+
+    Test.truthy(TurnSystem.advancePhase("White"))
+    Test.equal("main", TurnSystem.getSaveState().currentPhase)
+    Test.equal("> MAIN PHASE", uiUpdates["turnPhasemain:text"])
+    Test.equal("NEXT PHASE", uiUpdates["advancePhaseWhite:text"])
+
+    Test.truthy(TurnSystem.advancePhase("White"))
+    Test.truthy(TurnSystem.advancePhase("White"))
+    Test.truthy(TurnSystem.advancePhase("White"))
+    Test.equal("end", TurnSystem.getSaveState().currentPhase)
+    Test.equal("END TURN", uiUpdates["advancePhaseWhite:text"])
+
+    Test.truthy(TurnSystem.advancePhase("White"))
+    Test.equal("Blue", TurnSystem.getSaveState().currentTurnColor)
+    Test.equal("start", TurnSystem.getSaveState().currentPhase)
+end)
+
+Test.case("turn system rejects a phase change from another player", function()
+    TurnSystem.onLoad({
+        currentTurnColor = "White",
+        activePlayerColors = {"White", "Blue"}
+    })
+
+    Test.falsy(TurnSystem.advancePhase("Blue"))
+    Test.equal("start", TurnSystem.getSaveState().currentPhase)
+    Test.equal("Blue", privateMessages[#privateMessages].playerColor)
 end)
 
 Test.case("turn system advances a valid turn", function()
@@ -66,8 +100,8 @@ Test.case("turn system reports an invalid turn without advancing", function()
     TurnSystem.endTurn("Red")
 
     Test.equal(1, TurnSystem.getSaveState().currentTurnIndex)
-    Test.equal("Red", privateMessages[1].playerColor)
-    Test.contains(privateMessages[1].message, "Wendy")
+    Test.equal("Red", privateMessages[#privateMessages].playerColor)
+    Test.contains(privateMessages[#privateMessages].message, "Wendy")
 end)
 
 Test.case("turn system includes only players with spawned decks", function()
@@ -82,7 +116,7 @@ Test.case("turn system includes only players with spawned decks", function()
     )
     Test.equal(
         "false",
-        uiUpdates["endTurnWhite:interactable"]
+        uiUpdates["advancePhaseWhite:interactable"]
     )
     Test.equal(announcementCount, #announcements)
     Test.falsy(TurnSystem.endTurn("White"))
@@ -97,7 +131,7 @@ Test.case("turn system includes only players with spawned decks", function()
     Test.equal("Red", TurnSystem.getSaveState().currentTurnColor)
     Test.equal(
         "true",
-        uiUpdates["endTurnRed:interactable"]
+        uiUpdates["advancePhaseRed:interactable"]
     )
 
     Test.truthy(TurnSystem.endTurn("Red"))

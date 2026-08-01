@@ -8,6 +8,42 @@ Test.case("turn state starts at the first player", function()
 
     Test.equal("White", TurnState.getCurrentColor(state))
     Test.equal(1, TurnState.getSaveState(state).currentTurnIndex)
+    Test.equal("start", TurnState.getCurrentPhase(state))
+end)
+
+Test.case("turn state advances through every phase in order", function()
+    local state = TurnState.new(colors)
+
+    Test.truthy(TurnState.advancePhase(state, "White"))
+    Test.equal("main", TurnState.getCurrentPhase(state))
+    Test.truthy(TurnState.advancePhase(state, "White"))
+    Test.equal("draw", TurnState.getCurrentPhase(state))
+    Test.truthy(TurnState.advancePhase(state, "White"))
+    Test.equal("status", TurnState.getCurrentPhase(state))
+    Test.truthy(TurnState.advancePhase(state, "White"))
+    Test.equal("end", TurnState.getCurrentPhase(state))
+
+    Test.truthy(TurnState.advancePhase(state, "White"))
+    Test.equal("Red", TurnState.getCurrentColor(state))
+    Test.equal("start", TurnState.getCurrentPhase(state))
+end)
+
+Test.case("turn state rejects phase changes from another player", function()
+    local state = TurnState.new(colors)
+
+    Test.falsy(TurnState.advancePhase(state, "Red"))
+    Test.equal("start", TurnState.getCurrentPhase(state))
+end)
+
+Test.case("turn state restores a saved phase", function()
+    local state = TurnState.new(colors, {
+        currentTurnColor = "Blue",
+        currentPhase = "status"
+    })
+
+    Test.equal("Blue", TurnState.getCurrentColor(state))
+    Test.equal("status", TurnState.getCurrentPhase(state))
+    Test.equal(4, TurnState.getSaveState(state).currentPhaseIndex)
 end)
 
 Test.case("turn state restores a saved turn", function()

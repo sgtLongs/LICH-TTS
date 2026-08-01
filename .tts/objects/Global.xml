@@ -1399,7 +1399,7 @@
     id="turnPanel"
     rectAlignment="LowerLeft"
     width="560"
-    height="150"
+    height="105"
     offsetXY="22 22"
     color="#111827E8"
     padding="10 10 10 10"
@@ -1420,57 +1420,124 @@
             preferredHeight="27"
         />
 
+    </VerticalLayout>
+</Panel>
+
+<Panel
+    id="turnPhasePanel"
+    rectAlignment="MiddleRight"
+    width="330"
+    height="420"
+    offsetXY="-22 0"
+    color="#111827F2"
+    padding="18 18 16 16"
+>
+    <VerticalLayout spacing="8" childAlignment="UpperCenter">
+        <Text
+            text="TURN PHASES"
+            fontSize="26"
+            fontStyle="Bold"
+            color="#E5E7EB"
+            preferredHeight="38"
+        />
+        <Text
+            id="turnPhasestart"
+            text="> START PHASE"
+            fontSize="22"
+            fontStyle="Bold"
+            color="#FBBF24"
+            alignment="MiddleLeft"
+            preferredWidth="280"
+            preferredHeight="38"
+        />
+        <Text
+            id="turnPhasemain"
+            text="  MAIN PHASE"
+            fontSize="22"
+            color="#9CA3AF"
+            alignment="MiddleLeft"
+            preferredWidth="280"
+            preferredHeight="38"
+        />
+        <Text
+            id="turnPhasedraw"
+            text="  DRAW PHASE"
+            fontSize="22"
+            color="#9CA3AF"
+            alignment="MiddleLeft"
+            preferredWidth="280"
+            preferredHeight="38"
+        />
+        <Text
+            id="turnPhasestatus"
+            text="  STATUS PHASE"
+            fontSize="22"
+            color="#9CA3AF"
+            alignment="MiddleLeft"
+            preferredWidth="280"
+            preferredHeight="38"
+        />
+        <Text
+            id="turnPhaseend"
+            text="  END PHASE"
+            fontSize="22"
+            color="#9CA3AF"
+            alignment="MiddleLeft"
+            preferredWidth="280"
+            preferredHeight="38"
+        />
+
         <Button
-            id="endTurnWhite"
-            text="END MY TURN"
+            id="advancePhaseWhite"
+            text="NEXT PHASE"
             visibility="White"
-            onClick="onEndTurnClicked"
-            preferredWidth="260"
-            preferredHeight="50"
+            onClick="onAdvancePhaseClicked"
+            preferredWidth="280"
+            preferredHeight="52"
         />
         <Button
-            id="endTurnBrown"
+            id="advancePhaseBrown"
             text="WAITING..."
             visibility="Brown"
-            onClick="onEndTurnClicked"
-            preferredWidth="260"
-            preferredHeight="50"
+            onClick="onAdvancePhaseClicked"
+            preferredWidth="280"
+            preferredHeight="52"
             interactable="false"
         />
         <Button
-            id="endTurnRed"
+            id="advancePhaseRed"
             text="WAITING..."
             visibility="Red"
-            onClick="onEndTurnClicked"
-            preferredWidth="260"
-            preferredHeight="50"
+            onClick="onAdvancePhaseClicked"
+            preferredWidth="280"
+            preferredHeight="52"
             interactable="false"
         />
         <Button
-            id="endTurnGreen"
+            id="advancePhaseGreen"
             text="WAITING..."
             visibility="Green"
-            onClick="onEndTurnClicked"
-            preferredWidth="260"
-            preferredHeight="50"
+            onClick="onAdvancePhaseClicked"
+            preferredWidth="280"
+            preferredHeight="52"
             interactable="false"
         />
         <Button
-            id="endTurnTeal"
+            id="advancePhaseTeal"
             text="WAITING..."
             visibility="Teal"
-            onClick="onEndTurnClicked"
-            preferredWidth="260"
-            preferredHeight="50"
+            onClick="onAdvancePhaseClicked"
+            preferredWidth="280"
+            preferredHeight="52"
             interactable="false"
         />
         <Button
-            id="endTurnBlue"
+            id="advancePhaseBlue"
             text="WAITING..."
             visibility="Blue"
-            onClick="onEndTurnClicked"
-            preferredWidth="260"
-            preferredHeight="50"
+            onClick="onAdvancePhaseClicked"
+            preferredWidth="280"
+            preferredHeight="52"
             interactable="false"
         />
     </VerticalLayout>
