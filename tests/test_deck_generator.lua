@@ -146,6 +146,9 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
         downRotationDegrees = 180,
         deckSlot = {x = 10, y = 2, z = 20},
         heroSlot = {x = 40, y = 4, z = 50},
+        zoneCenters = {
+            purgatory = {x = 12, y = -1, z = 34}
+        },
         onDeckSpawned = function(deck)
             Test.equal(spawnedDeck, deck)
             deckSpawnedCallbackCount =
@@ -189,6 +192,19 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
         spawnParameters.data.ContainedObjects[1].Description
     )
     Test.equal("Card", spawnParameters.data.ContainedObjects[1].Name)
+    Test.contains(
+        spawnParameters.data.ContainedObjects[1].LuaScript,
+        'id = "rotate90"'
+    )
+    Test.equal(
+        "",
+        spawnParameters.data.ContainedObjects[1].LuaScriptState
+    )
+    Test.contains(
+        spawnParameters.data.ContainedObjects[1].LuaScript,
+        "purgatoryPosition = {x = 12.000000, y = 1.000000, "
+            .. "z = 34.000000}"
+    )
     Test.equal(
         1,
         spawnParameters.data.ContainedObjects[1].Transform.scaleX
@@ -255,6 +271,7 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
     Test.equal(2, spawnCallCount)
     Test.equal(2, deckSpawnedCallbackCount)
     Test.equal("CardCustom", spawnParameters.data.Name)
+    Test.contains(spawnParameters.data.LuaScript, 'tooltip = "tap"')
     Test.equal(1, spawnParameters.data.Transform.scaleX)
 
     WebRequest = originalWebRequest

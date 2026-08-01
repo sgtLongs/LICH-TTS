@@ -19,7 +19,7 @@ local function removeDeckSlotButtons(surface)
     end
 end
 
-local function addDeckSlotButton(field, allowActivePlayer)
+local function addDeckSlotButton(field)
     local surface = getObjectFromGUID(field.surfaceObjectGuid)
 
     if surface == nil then
@@ -34,10 +34,6 @@ local function addDeckSlotButton(field, allowActivePlayer)
     removeDeckSlotButtons(surface)
 
     local ownerColor = field.ownerColor or field.playerColor
-
-    if not allowActivePlayer and TurnSystem.isPlayerActive(ownerColor) then
-        field.deckSpawned = true
-    end
 
     if field.deckSpawned == true then
         return true
@@ -101,18 +97,25 @@ function CardFields.renewDeckSlotButton(playerColor)
 
         if ownerColor == playerColor then
             field.deckSpawned = false
-            return addDeckSlotButton(field, true)
+            return addDeckSlotButton(field)
         end
     end
 
     return false
 end
 
-function CardFields.onLoad()
+function CardFields.onLoad(savedState)
     DeckSelectionMenu.initialize()
 
     local built = CardFieldGeometry.buildAll(Config)
     fields = built.fields
+    local spawnedByPlayer = type(savedState) == "table"
+        and savedState.deckSpawnedByPlayer or {}
+
+    for _, field in ipairs(fields) do
+        local ownerColor = field.ownerColor or field.playerColor
+        field.deckSpawned = spawnedByPlayer[ownerColor] == true
+    end
 
     -- Zone outlines are part of the playable field rather than debug
     -- geometry, so they are always visible.
@@ -130,6 +133,19 @@ function CardFields.onLoad()
             .. " player fields with "
             .. Config.columns .. "x" .. Config.rows .. " spaces."
     )
+end
+
+function CardFields.getSaveState()
+    local deckSpawnedByPlayer = {}
+
+    for _, field in ipairs(fields) do
+        local ownerColor = field.ownerColor or field.playerColor
+        deckSpawnedByPlayer[ownerColor] = field.deckSpawned == true
+    end
+
+    return {
+        deckSpawnedByPlayer = deckSpawnedByPlayer
+    }
 end
 
 function CardFields.getFields()

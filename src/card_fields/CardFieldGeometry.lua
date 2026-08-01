@@ -84,6 +84,7 @@ end
 function CardFieldGeometry.buildField(field, config)
     local lines = {}
     local cells = {}
+    local zoneCenters = {}
     local cellWidth = field.size.x / config.columns
     local cellHeight = field.size.z / config.rows
     local left = -field.size.x * 0.5
@@ -150,6 +151,16 @@ function CardFieldGeometry.buildField(field, config)
             config.zoneLineThickness
         )
 
+        zoneCenters[zone.key] = makeCellPoint(
+            field,
+            config,
+            cellWidth,
+            cellHeight,
+            (zone.firstColumn + zone.lastColumn) * 0.5,
+            (zone.firstRow + zone.lastRow) * 0.5,
+            false
+        )
+
         for row = zone.firstRow, zone.lastRow do
             for column = zone.firstColumn, zone.lastColumn do
                 cells[#cells + 1] = {
@@ -180,6 +191,7 @@ function CardFieldGeometry.buildField(field, config)
         },
         deckSlot = deckSlotPoint,
         heroSlot = heroSlotPoint,
+        zoneCenters = zoneCenters,
         cellWidth = cellWidth,
         cellHeight = cellHeight
     }

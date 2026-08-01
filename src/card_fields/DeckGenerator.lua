@@ -1,4 +1,5 @@
 local Config = require("src/config/CardFieldConfig")
+local CardLogic = require("src/cards/CardLogic")
 
 local DeckGenerator = {}
 local generatingByField = {}
@@ -86,7 +87,13 @@ local function makeCustomDeckEntry(card)
     }
 end
 
-local function makeCardData(card, cardId, deckId, customDeckEntry)
+local function makeCardData(
+    card,
+    cardId,
+    deckId,
+    customDeckEntry,
+    cardScript
+)
     return {
         -- Cards inside a DeckCustom use the built-in Card name. CardCustom is
         -- only the standalone custom-card object type.
@@ -96,13 +103,15 @@ local function makeCardData(card, cardId, deckId, customDeckEntry)
         Description = card.description,
         CardID = cardId,
         SidewaysCard = false,
+        LuaScript = cardScript,
+        LuaScriptState = "",
         CustomDeck = {
             [deckId] = customDeckEntry
         }
     }
 end
 
-local function makeDeckData(definitions, deckSize)
+local function makeDeckData(definitions, deckSize, cardScript)
     local customDeck = {}
     local deckIds = {}
     local containedObjects = {}
@@ -119,7 +128,8 @@ local function makeDeckData(definitions, deckSize)
                 definition,
                 cardId,
                 deckId,
-                customDeckEntry
+                customDeckEntry,
+                cardScript
             )
         end
     end
@@ -291,8 +301,23 @@ local function spawnDeck(field, spawnPosition, definitions, deckSize)
         slot.y + Config.deckSlot.cardSpawnHeight,
         slot.z
     }
+    local purgatoryCenter = field.zoneCenters
+        and field.zoneCenters.purgatory or nil
+    local purgatoryPosition = nil
+
+    if purgatoryCenter ~= nil then
+        purgatoryPosition = {
+            x = purgatoryCenter.x,
+            y = purgatoryCenter.y + Config.deckSlot.cardSpawnHeight,
+            z = purgatoryCenter.z
+        }
+    end
+
+    local cardScript = CardLogic.build(nil, {
+        purgatoryPosition = purgatoryPosition
+    })
     local succeeded, spawnedDeck = pcall(spawnObjectData, {
-        data = makeDeckData(definitions, deckSize),
+        data = makeDeckData(definitions, deckSize, cardScript),
         position = position,
         rotation = deckRotation,
         callback_function = function(deck)

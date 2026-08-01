@@ -2,10 +2,15 @@ local Game = require("src/Game")
 
 function onLoad(saveState)
     Game.onLoad(saveState)
+    Wait.time(Game.refreshCardButtons, 0.5)
 end
 
 function onSave()
     return Game.onSave()
+end
+
+function getCardButtonConfig()
+    return JSON.encode(Game.getCardButtonConfig())
 end
 
 function onObjectHover(playerColor, object)

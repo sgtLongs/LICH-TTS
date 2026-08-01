@@ -1,4 +1,5 @@
 local CardFields = require("src/card_fields/CardFields")
+local CardLogic = require("src/cards/CardLogic")
 local DungeonMap = require("src/dungeon/DungeonMap")
 local HexGrid = require("src/hex/HexGrid")
 local SettingsMenu = require("src/SettingsMenu")
@@ -8,6 +9,7 @@ local Game = {}
 
 local function getSaveState()
     return {
+        cardFields = CardFields.getSaveState(),
         dungeonMap = DungeonMap.getSaveState(),
         hexGrid = HexGrid.getSaveState(),
         settings = SettingsMenu.getSaveState(),
@@ -56,7 +58,7 @@ function Game.onLoad(saveState)
     end
 
     TurnSystem.onLoad(savedGame.turnSystem)
-    CardFields.onLoad()
+    CardFields.onLoad(savedGame.cardFields)
     HexGrid.onLoad(savedGame.hexGrid)
     SettingsMenu.initialize({
         getBoardState = HexGrid.getBoardState,
@@ -87,6 +89,14 @@ end
 
 function Game.onEndTurnClicked(playerColor)
     TurnSystem.endTurn(playerColor)
+end
+
+function Game.getCardButtonConfig()
+    return CardLogic.getButtonConfig()
+end
+
+function Game.refreshCardButtons()
+    CardLogic.refreshExistingButtons()
 end
 
 function Game.onAdvancePhaseClicked(playerColor)

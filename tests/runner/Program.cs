@@ -58,6 +58,18 @@ try
             relativePath);
     }
 
+    // Dynamic cards receive generated object scripts. Compile the default
+    // generated script as well as the ordinary source files so syntax errors
+    // in card features fail the automated suite before reaching TTS.
+    var cardLogic = script.DoString(
+        "return require('src/cards/CardLogic')");
+    var generatedCardScript = script.Call(
+        cardLogic.Table.Get("build"));
+    script.LoadString(
+        generatedCardScript.String,
+        null,
+        "generated-card.lua");
+
     script.DoFile(Path.Combine(repositoryRoot, "tests", "run.lua"));
     return 0;
 }

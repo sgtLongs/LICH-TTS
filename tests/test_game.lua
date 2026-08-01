@@ -5,8 +5,12 @@ local encodedValue = nil
 local decodedValue = nil
 
 local CardFields = {
-    onLoad = function()
+    getSaveState = function()
+        return {area = "cards"}
+    end,
+    onLoad = function(savedState)
         calls.cardFieldsLoaded = true
+        calls.cardFieldsState = savedState
     end,
     onDeckSlotClicked = function(object, playerColor)
         calls.deckSlotObject = object
@@ -157,6 +161,7 @@ Test.case("game save gathers state from each subsystem", function()
     local result = Game.onSave()
 
     Test.equal("encoded-state", result)
+    Test.equal("cards", encodedValue.cardFields.area)
     Test.equal("dungeon", encodedValue.dungeonMap.area)
     Test.equal("hex", encodedValue.hexGrid.area)
     Test.equal("settings", encodedValue.settings.area)
@@ -165,6 +170,7 @@ end)
 
 Test.case("game load wires subsystems to saved state", function()
     decodedValue = {
+        cardFields = {loaded = "cards"},
         dungeonMap = {loaded = "dungeon"},
         hexGrid = {loaded = "hex"},
         settings = {loaded = "settings"},
@@ -174,6 +180,7 @@ Test.case("game load wires subsystems to saved state", function()
     Game.onLoad("valid")
 
     Test.truthy(calls.cardFieldsLoaded)
+    Test.equal("cards", calls.cardFieldsState.loaded)
     Test.equal("hex", calls.hexState.loaded)
     Test.equal("turn", calls.turnState.loaded)
     Test.equal("settings", calls.settingsState.loaded)
@@ -201,6 +208,13 @@ Test.case("game routes edit mode UI changes", function()
 
     Test.equal("Red", calls.editModePlayerColor)
     Test.equal("True", calls.editModeValue)
+end)
+
+Test.case("game exposes card button runtime configuration", function()
+    local config = Game.getCardButtonConfig()
+
+    Test.truthy(config.tap)
+    Test.truthy(config.destroy)
 end)
 
 Test.case("game routes phase advances", function()
