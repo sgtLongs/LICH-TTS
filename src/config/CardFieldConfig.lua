@@ -82,6 +82,9 @@ local CardFieldConfig = {
             {lootId = 4373, name = "Yashlaegon, the Sinful"}
         },
         cardSpawnHeight = 2,
+        -- Canonical physical scale for generated cards and cards returning
+        -- from play. Hand zones may temporarily resize their contents.
+        cardScale = {x = 1, y = 1, z = 1},
         -- Euler rotations in degrees. The deck's 180-degree Z rotation makes
         -- it spawn upside down; the extracted Hero remains face up.
         deckSpawnRotation = {0, 180, 180},

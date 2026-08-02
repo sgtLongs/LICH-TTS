@@ -120,11 +120,41 @@ function Game.onObjectPickUp(playerColor, object)
 end
 
 function Game.onObjectDrop(playerColor, object)
-    return CardFields.onObjectDrop(object)
+    local handled = CardFields.onObjectDrop(object)
+    CardLogic.scheduleHandButtonCleanup(object)
+    return handled
+end
+
+function Game.onObjectLeaveContainer(container, object)
+    -- Keep older embedded card scripts from recreating their button while a
+    -- deck draw is still moving toward its destination.
+    CardLogic.suppressButtonsUntilPlaced(object)
+end
+
+function Game.onObjectEnterZone(zone, object)
+    if zone ~= nil and (zone.tag == "Hand" or zone.type == "Hand") then
+        -- The zone event is authoritative even before getZones() and the
+        -- player's hand-object list have updated for this frame.
+        CardLogic.removeAllButtons(object)
+    end
+
+    CardLogic.scheduleHandButtonCleanup(object)
+end
+
+function Game.returnCardToHandThroughDeck(card, deck, playerColor)
+    if deck == nil then
+        -- If the original deck is empty, moved, or no longer exists, reload
+        -- the card to discard the classic-button bounds cache before dealing.
+        return CardLogic.reloadAndReturnToHand(card, playerColor)
+    end
+
+    return CardLogic.returnToHandThroughDeck(card, deck, playerColor)
 end
 
 function Game.onCardLeavesActionZone(object)
-    return CardFields.onCardLeavesActionZone(object)
+    local handled = CardFields.onCardLeavesActionZone(object)
+    CardLogic.scheduleHandButtonCleanup(object)
+    return handled
 end
 
 function Game.onActionStackUpClicked(object)

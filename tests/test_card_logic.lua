@@ -37,14 +37,369 @@ Test.case("cards in player hands have no scripted buttons", function()
     local script = CardLogic.build()
 
     Test.contains(script, "local function isCardInHand()")
+    Test.contains(script, "local cardButtonsSuppressed = true")
+    Test.contains(script, 'type(self.getZones) == "function"')
+    Test.contains(script, "pcall(self.getZones)")
+    Test.contains(script, 'zone.tag == "Hand"')
     Test.contains(script, "player.getHandObjects()")
     Test.contains(script, "if isCardInHand() then")
-    Test.contains(script, "and actionZoneTapEnabled")
-    Test.contains(script, "and not isCardInHand()")
-    Test.contains(script, "if actionButtonsVisible or isCardInHand() then")
+    Test.contains(script, "local function removeAllCardButtons()")
+    Test.contains(script, "self.clearButtons()")
+    Test.contains(script, "if actionButtonsVisible")
+    Test.contains(script, "or cardButtonsSuppressed")
+    Test.contains(script, "or isCardInHand()")
     Test.contains(script, "function onPickUp(playerColor)")
     Test.contains(script, "function onDrop(playerColor)")
-    Test.contains(script, "Wait.frames(refreshCardButtons, 2)")
+    Test.contains(script, "local function cardIsReadyForButtons()")
+    Test.contains(script, "cardButtonsSuppressed = isCardInHand()")
+    Test.contains(script, "self.held_by_color ~= nil")
+    Test.contains(script, 'type(self.isSmoothMoving) ~= "function"')
+    Test.contains(script, "cardIsReadyForButtons,")
+    Test.contains(script, "if hasTapFeature then")
+    Test.contains(script, "refreshButtonsAfterMovement()")
+    Test.contains(script, "Wait.frames(completeRefresh, 10)")
+    Test.contains(script, "Wait.condition(")
+    Test.contains(script, 'button.click_function == "onActionStackUpClicked"')
+    Test.contains(script, 'button.click_function == "onActionStackDownClicked"')
+end)
+
+Test.case("hand zones are detected without waiting for player hand lists", function()
+    local previousPlayer = Player
+    local cleared = false
+    local card = {
+        tag = "Card",
+        getZones = function()
+            return {{tag = "Hand"}}
+        end,
+        clearButtons = function()
+            cleared = true
+        end
+    }
+
+    Player = nil
+    Test.truthy(CardLogic.removeButtonsIfInHand(card))
+    Test.truthy(cleared)
+    Player = previousPlayer
+end)
+
+Test.case("deck exit cleanup removes buttons before hand placement", function()
+    local cleared = false
+    local card = {
+        tag = "Card",
+        clearButtons = function()
+            cleared = true
+        end
+    }
+
+    Test.truthy(CardLogic.removeAllButtons(card))
+    Test.truthy(cleared)
+end)
+
+Test.case("deck draw suppression repeatedly clears buttons until hand entry", function()
+    local previousPlayer = Player
+    local previousWait = Wait
+    local clearCount = 0
+    local card = {
+        tag = "Card",
+        getZones = function()
+            return {{tag = "Hand"}}
+        end,
+        clearButtons = function()
+            clearCount = clearCount + 1
+        end
+    }
+
+    Player = nil
+    Wait = {
+        frames = function(callback)
+            callback()
+        end
+    }
+
+    CardLogic.suppressButtonsUntilPlaced(card)
+    Test.equal(2, clearCount)
+    Player = previousPlayer
+    Wait = previousWait
+end)
+
+Test.case("returned cards are dealt from the bottom of their original deck", function()
+    local previousWait = Wait
+    local movedPosition = nil
+    local dealtArguments = nil
+    local clearCount = 0
+    local events = {}
+    local card = {
+        tag = "Card",
+        getGUID = function()
+            return "return-guid"
+        end,
+        clearButtons = function()
+            clearCount = clearCount + 1
+            events[#events + 1] = "clear"
+        end,
+        setPosition = function(position)
+            movedPosition = position
+            events[#events + 1] = "move"
+        end
+    }
+    local resultingDeck = {
+        tag = "Deck",
+        spawning = false,
+        loading_custom = false,
+        getQuantity = function()
+            return 6
+        end,
+        getObjects = function()
+            return {{guid = "return-guid"}}
+        end,
+        deal = function(...)
+            dealtArguments = {...}
+            events[#events + 1] = "deal"
+            return true
+        end
+    }
+    local deck = {
+        tag = "Deck",
+        getQuantity = function()
+            return 5
+        end,
+        getPosition = function()
+            return {x = 4, y = 2, z = 9}
+        end,
+        putObject = function(insertedCard)
+            Test.equal(card, insertedCard)
+            events[#events + 1] = "put"
+            return resultingDeck
+        end
+    }
+
+    Wait = {
+        condition = function(callback, condition)
+            Test.truthy(condition())
+            callback()
+        end,
+        frames = function(callback)
+            callback()
+        end
+    }
+
+    Test.truthy(CardLogic.returnToHandThroughDeck(card, deck, "Blue"))
+    Test.equal(1, clearCount)
+    Test.equal(4, movedPosition.x)
+    Test.equal(1, movedPosition.y)
+    Test.equal(9, movedPosition.z)
+    Test.equal(1, dealtArguments[1])
+    Test.equal("Blue", dealtArguments[2])
+    Test.equal(1, dealtArguments[3])
+    Test.equal(true, dealtArguments[4])
+    Test.equal("clear", events[1])
+    Test.equal("move", events[2])
+    Test.equal("put", events[3])
+    Test.equal("deal", events[4])
+    Wait = previousWait
+end)
+
+Test.case("returning beside one remaining card uses the new deck object", function()
+    local previousWait = Wait
+    local dealCount = 0
+    local card = {
+        tag = "Card",
+        clearButtons = function()
+        end,
+        setPosition = function()
+        end
+    }
+    local newDeck = {
+        tag = "Deck",
+        getQuantity = function()
+            return 2
+        end,
+        deal = function(number, color, handIndex, fromBottom)
+            Test.equal(1, number)
+            Test.equal("Red", color)
+            Test.equal(1, handIndex)
+            Test.truthy(fromBottom)
+            dealCount = dealCount + 1
+            return true
+        end
+    }
+    local lastCard = {
+        tag = "Card",
+        getQuantity = function()
+            return -1
+        end,
+        getPosition = function()
+            return {x = 1, y = 1, z = 1}
+        end,
+        putObject = function()
+            return newDeck
+        end
+    }
+
+    Wait = {
+        condition = function(callback, condition)
+            Test.truthy(condition())
+            callback()
+        end,
+        frames = function(callback)
+            callback()
+        end
+    }
+
+    Test.truthy(CardLogic.returnToHandThroughDeck(card, lastCard, "Red"))
+    Test.equal(1, dealCount)
+    Wait = previousWait
+end)
+
+Test.case("return-through-deck refuses an unverified bottom insertion", function()
+    local putCount = 0
+    local card = {
+        tag = "Card",
+        clearButtons = function()
+        end,
+        setPosition = function()
+            return false
+        end
+    }
+    local deck = {
+        tag = "Deck",
+        getPosition = function()
+            return {x = 1, y = 2, z = 3}
+        end,
+        putObject = function()
+            putCount = putCount + 1
+        end
+    }
+
+    Test.falsy(CardLogic.returnToHandThroughDeck(card, deck, "Blue"))
+    Test.equal(0, putCount)
+end)
+
+Test.case("return-through-deck timeout makes a bottom-deal recovery", function()
+    local previousWait = Wait
+    local dealCount = 0
+    local card = {
+        tag = "Card",
+        clearButtons = function()
+        end,
+        setPosition = function()
+        end
+    }
+    local resultingDeck = {
+        tag = "Deck",
+        getQuantity = function()
+            return 1
+        end,
+        deal = function(number, color, handIndex, fromBottom)
+            Test.equal(1, number)
+            Test.equal("Blue", color)
+            Test.equal(1, handIndex)
+            Test.truthy(fromBottom)
+            dealCount = dealCount + 1
+            return true
+        end
+    }
+    local deck = {
+        tag = "Deck",
+        getQuantity = function()
+            return 5
+        end,
+        getPosition = function()
+            return {x = 1, y = 2, z = 3}
+        end,
+        putObject = function()
+            return resultingDeck
+        end
+    }
+
+    Wait = {
+        condition = function(callback, condition, timeout, timeoutCallback)
+            Test.falsy(condition())
+            timeoutCallback()
+        end,
+        frames = function(callback)
+            callback()
+        end
+    }
+
+    Test.truthy(CardLogic.returnToHandThroughDeck(card, deck, "Blue"))
+    Test.equal(1, dealCount)
+    Wait = previousWait
+end)
+
+Test.case("an absent deck reloads the card before returning it", function()
+    local previousWait = Wait
+    local dealtArguments = nil
+    local freshCard = {
+        tag = "Card",
+        getZones = function()
+            return {{tag = "Hand"}}
+        end,
+        clearButtons = function()
+        end,
+        setLock = function()
+        end,
+        setScale = function()
+        end,
+        deal = function(...)
+            dealtArguments = {...}
+            return true
+        end
+    }
+    local oldCard = {
+        tag = "Card",
+        clearButtons = function()
+        end,
+        reload = function()
+            return freshCard
+        end
+    }
+
+    Wait = {
+        frames = function(callback)
+            callback()
+        end
+    }
+
+    Test.truthy(CardLogic.reloadAndReturnToHand(oldCard, "Teal"))
+    Test.equal(1, dealtArguments[1])
+    Test.equal("Teal", dealtArguments[2])
+    Test.equal(1, dealtArguments[3])
+    Wait = previousWait
+end)
+
+Test.case("global cleanup clears every button from cards in hands", function()
+    local previousPlayer = Player
+    local previousWait = Wait
+    local cleared = false
+    local card = {
+        tag = "Card",
+        clearButtons = function()
+            cleared = true
+        end
+    }
+
+    Player = {
+        getPlayers = function()
+            return {
+                {
+                    getHandObjects = function()
+                        return {card}
+                    end
+                }
+            }
+        end
+    }
+    Wait = {
+        frames = function(callback)
+            callback()
+        end
+    }
+
+    CardLogic.scheduleHandButtonCleanup(card)
+    Test.truthy(cleared)
+    Player = previousPlayer
+    Wait = previousWait
 end)
 
 Test.case("existing standalone cards receive button config refreshes", function()
@@ -192,7 +547,51 @@ Test.case("hovered cards offer movement to their purgatory", function()
     Test.contains(script, "function onUnequipCardClicked")
     Test.contains(script, "deck.putObject(self)")
     Test.contains(script, "function onReturnCardClicked")
-    Test.contains(script, "self.deal(1, playerColor)")
+    Test.contains(script, "local returnToHandInProgress = false")
+    Test.contains(script, "or returnToHandInProgress")
+    Test.contains(script, "returnToHandInProgress = true")
+    Test.falsy(string.find(script, "self.deal(1, playerColor)", 1, true))
+    Test.contains(script, "local function normalizeCardBeforeHand()")
+    Test.contains(script, "self.setLock(false)")
+    Test.contains(script, "self.use_hands = true")
+    Test.contains(script, "self.setScale(cardContext.cardScale")
+    Test.contains(script, "self.setVelocity({0, 0, 0})")
+    Test.contains(script, "self.setAngularVelocity({0, 0, 0})")
+    Test.contains(script, '"returnCardToHandThroughDeck"')
+    Test.contains(script, "card = self")
+    Test.contains(script, "deck = deck")
+    Test.contains(script, "playerColor = playerColor")
+    Test.contains(script, "Wait.frames(returnAfterBoundsRefresh, 2)")
+    Test.contains(script, "local function resetCardTapRotation()")
+    Test.contains(script, "rotateState.rotated = false")
+    Test.contains(script, "y = rotation.y - 90")
+    local returnStart = string.find(
+        script,
+        "function onReturnCardClicked",
+        1,
+        true
+    )
+    local returnCleanup = string.find(
+        script,
+        "removeAllCardButtons()",
+        returnStart,
+        true
+    )
+    local returnSuppression = string.find(
+        script,
+        "cardButtonsSuppressed = true",
+        returnStart,
+        true
+    )
+    local returnRoute = string.find(
+        script,
+        '"returnCardToHandThroughDeck"',
+        returnStart,
+        true
+    )
+    Test.truthy(returnSuppression < returnCleanup)
+    Test.truthy(returnCleanup < returnRoute)
+    Test.contains(script, "or cardButtonsSuppressed")
     Test.contains(script, "local function notifyActionZoneCardLeaving()")
     Test.contains(script, '"onCardLeavesActionZone"')
     local _, actionZoneNotificationCount = string.gsub(

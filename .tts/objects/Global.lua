@@ -25,6 +25,26 @@ function onObjectDrop(playerColor, object)
     return Game.onObjectDrop(playerColor, object)
 end
 
+function onObjectLeaveContainer(container, object)
+    Game.onObjectLeaveContainer(container, object)
+end
+
+function onObjectEnterZone(zone, object)
+    Game.onObjectEnterZone(zone, object)
+end
+
+function returnCardToHandThroughDeck(parameters)
+    if type(parameters) ~= "table" then
+        return false
+    end
+
+    return Game.returnCardToHandThroughDeck(
+        parameters.card,
+        parameters.deck,
+        parameters.playerColor
+    )
+end
+
 function onCardLeavesActionZone(parameters)
     if type(parameters) ~= "table" then
         return false

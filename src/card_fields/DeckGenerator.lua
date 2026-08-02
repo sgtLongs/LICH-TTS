@@ -62,6 +62,8 @@ local function makeCardDefinitions(data)
 end
 
 local function makeTransform()
+    local scale = Config.deckSlot.cardScale or {x = 1, y = 1, z = 1}
+
     return {
         posX = 0,
         posY = 0,
@@ -69,9 +71,9 @@ local function makeTransform()
         rotX = 0,
         rotY = 0,
         rotZ = 0,
-        scaleX = 1,
-        scaleY = 1,
-        scaleZ = 1
+        scaleX = tonumber(scale.x or scale[1]) or 1,
+        scaleY = tonumber(scale.y or scale[2]) or 1,
+        scaleZ = tonumber(scale.z or scale[3]) or 1
     }
 end
 
@@ -327,7 +329,8 @@ local function spawnDeck(field, spawnPosition, definitions, deckSize)
     local cardScript = CardLogic.build(nil, {
         purgatoryPosition = purgatoryPosition,
         abyssPosition = abyssPosition,
-        deckPosition = position
+        deckPosition = position,
+        cardScale = Config.deckSlot.cardScale
     })
     local succeeded, spawnedDeck = pcall(spawnObjectData, {
         data = makeDeckData(definitions, deckSize, cardScript),

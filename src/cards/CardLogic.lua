@@ -6,10 +6,431 @@ local CardLogic = {}
 local featureSources = {}
 local defaultFeatures = {}
 
+local function isObjectInHand(object)
+    if object == nil then
+        return false
+    end
+
+    if type(object.getZones) == "function" then
+        local succeeded, zones = pcall(object.getZones)
+
+        if succeeded and type(zones) == "table" then
+            for _, zone in ipairs(zones) do
+                if zone ~= nil and zone.tag == "Hand" then
+                    return true
+                end
+            end
+        end
+    end
+
+    if Player == nil or type(Player.getPlayers) ~= "function" then
+        return false
+    end
+
+    for _, player in ipairs(Player.getPlayers() or {}) do
+        if type(player.getHandObjects) == "function" then
+            for _, handObject in ipairs(player.getHandObjects() or {}) do
+                if handObject == object then
+                    return true
+                end
+            end
+        end
+    end
+
+    return false
+end
+
+
+function CardLogic.removeAllButtons(object)
+    if object == nil or object.tag ~= "Card" then
+        return false
+    end
+
+    if type(object.clearButtons) == "function" then
+        pcall(object.clearButtons)
+        return true
+    end
+
+    if type(object.getButtons) == "function"
+        and type(object.removeButton) == "function"
+    then
+        local succeeded, buttons = pcall(object.getButtons)
+
+        if succeeded and type(buttons) == "table" then
+            for index = #buttons, 1, -1 do
+                pcall(object.removeButton, buttons[index].index)
+            end
+        end
+    end
+
+    return true
+end
+
+function CardLogic.removeButtonsIfInHand(object)
+    if not isObjectInHand(object) then
+        return false
+    end
+
+    return CardLogic.removeAllButtons(object)
+end
+
+
+function CardLogic.scheduleHandButtonCleanup(object)
+    if object == nil or object.tag ~= "Card" then
+        return
+    end
+
+    local function cleanup()
+        CardLogic.removeButtonsIfInHand(object)
+    end
+
+    if Wait ~= nil and type(Wait.frames) == "function" then
+        Wait.frames(cleanup, 2)
+        Wait.frames(cleanup, 10)
+
+        if type(Wait.condition) == "function" then
+            Wait.condition(
+                cleanup,
+                function()
+                    return isObjectInHand(object)
+                end,
+                5
+            )
+        else
+            Wait.frames(cleanup, 60)
+        end
+    else
+        cleanup()
+    end
+end
+
+function CardLogic.suppressButtonsUntilPlaced(object)
+    if object == nil or object.tag ~= "Card" then
+        return
+    end
+
+    CardLogic.removeAllButtons(object)
+
+    if Wait == nil or type(Wait.frames) ~= "function" then
+        return
+    end
+
+    local elapsedFrames = 0
+
+    local function isDestroyed()
+        if type(object.isDestroyed) ~= "function" then
+            return false
+        end
+
+        local succeeded, destroyed = pcall(object.isDestroyed)
+        return succeeded and destroyed == true
+    end
+
+    local function isStillMoving()
+        if object.spawning == true or object.loading_custom == true then
+            return true
+        end
+
+        if type(object.held_by_color) == "string"
+            and object.held_by_color ~= ""
+        then
+            return true
+        end
+
+        if type(object.isSmoothMoving) == "function" then
+            local succeeded, moving = pcall(object.isSmoothMoving)
+
+            if succeeded and moving == true then
+                return true
+            end
+        end
+
+        return false
+    end
+
+    local function refreshTableButtons()
+        if isObjectInHand(object) then
+            CardLogic.removeAllButtons(object)
+        elseif type(object.call) == "function" then
+            pcall(object.call, "refreshCardButtons")
+        end
+    end
+
+    local function suppress()
+        if isDestroyed() then
+            return
+        end
+
+        elapsedFrames = elapsedFrames + 1
+        CardLogic.removeAllButtons(object)
+
+        if isObjectInHand(object) then
+            return
+        end
+
+        -- Wait long enough for a deck draw to begin moving before deciding
+        -- that a programmatically extracted card was placed directly nearby.
+        if elapsedFrames >= 10 and not isStillMoving() then
+            Wait.frames(refreshTableButtons, 2)
+            return
+        end
+
+        if elapsedFrames < 600 then
+            Wait.frames(suppress, 1)
+        end
+    end
+
+    Wait.frames(suppress, 1)
+end
+
+function CardLogic.returnToHandThroughDeck(card, deck, playerColor)
+    if card == nil
+        or card.tag ~= "Card"
+        or deck == nil
+        or (deck.tag ~= "Deck" and deck.tag ~= "Card")
+        or type(deck.putObject) ~= "function"
+        or type(deck.getPosition) ~= "function"
+        or type(card.setPosition) ~= "function"
+        or type(playerColor) ~= "string"
+        or playerColor == ""
+    then
+        return false
+    end
+
+    local returnedCardGuid = nil
+
+    if type(card.getGUID) == "function" then
+        local succeeded, guid = pcall(card.getGUID)
+
+        if succeeded and type(guid) == "string" and guid ~= "" then
+            returnedCardGuid = guid
+        end
+    end
+
+    local expectedQuantity = 2
+
+    if type(deck.getQuantity) == "function" then
+        local succeeded, quantity = pcall(deck.getQuantity)
+
+        if succeeded and tonumber(quantity) ~= nil
+            and tonumber(quantity) >= 1
+        then
+            expectedQuantity = tonumber(quantity) + 1
+        end
+    end
+
+    CardLogic.removeAllButtons(card)
+
+    if type(deck.getScale) == "function"
+        and type(card.setScale) == "function"
+    then
+        local succeeded, scale = pcall(deck.getScale)
+
+        if succeeded and type(scale) == "table" then
+            pcall(card.setScale, scale)
+        end
+    end
+
+    local positionRead, position = pcall(deck.getPosition)
+
+    if not positionRead or type(position) ~= "table" then
+        return false
+    end
+
+    local x = tonumber(position.x or position[1])
+    local y = tonumber(position.y or position[2])
+    local z = tonumber(position.z or position[3])
+
+    if x == nil or y == nil or z == nil then
+        return false
+    end
+
+    -- putObject inserts a card into the deck end closest to its Y elevation.
+    -- A successful move below the deck is required before insertion; without
+    -- it, a bottom deal could remove a different card.
+    local moved, moveResult = pcall(
+        card.setPosition,
+        {x = x, y = y - 1, z = z}
+    )
+
+    if not moved or moveResult == false then
+        return false
+    end
+
+    local inserted, resultingDeck = pcall(deck.putObject, card)
+
+    if not inserted or resultingDeck == nil then
+        return false
+    end
+
+    local function deckIsReady()
+        if type(resultingDeck.isDestroyed) == "function" then
+            local succeeded, destroyed = pcall(resultingDeck.isDestroyed)
+
+            if succeeded and destroyed == true then
+                return false
+            end
+        end
+
+        if resultingDeck.spawning == true
+            or resultingDeck.loading_custom == true
+        then
+            return false
+        end
+
+        local quantityReady = nil
+
+        if type(resultingDeck.getQuantity) == "function" then
+            local succeeded, quantity = pcall(resultingDeck.getQuantity)
+            quantityReady = succeeded
+                and tonumber(quantity) ~= nil
+                and tonumber(quantity) >= expectedQuantity
+        end
+
+        if returnedCardGuid ~= nil
+            and type(resultingDeck.getObjects) == "function"
+        then
+            local succeeded, objects = pcall(resultingDeck.getObjects)
+
+            if not succeeded or type(objects) ~= "table" then
+                return false
+            end
+
+            for _, containedObject in ipairs(objects) do
+                if containedObject.guid == returnedCardGuid then
+                    return true
+                end
+            end
+
+            return false
+        end
+
+        if quantityReady ~= nil then
+            return quantityReady
+        end
+
+        return type(resultingDeck.deal) == "function"
+    end
+
+    local function dealReturnedCard(bestEffort)
+        if (bestEffort ~= true and not deckIsReady())
+            or type(resultingDeck.deal) ~= "function"
+        then
+            print("Could not deal the returned card from its deck.")
+            return
+        end
+
+        -- The returned card was inserted at the bottom. Dealing from the
+        -- bottom removes that exact card while preserving the old deck order.
+        local succeeded, dealt = pcall(
+            resultingDeck.deal,
+            1,
+            playerColor,
+            1,
+            true
+        )
+
+        if not succeeded or dealt == false then
+            print(
+                "Could not return the card through its deck: "
+                    .. tostring(dealt)
+            )
+        end
+    end
+
+    local function dealAfterDeckRefresh()
+        if Wait ~= nil and type(Wait.frames) == "function" then
+            -- Newly formed Deck objects need a frame before their methods are
+            -- reliable even after their quantity/contents become visible.
+            Wait.frames(dealReturnedCard, 1)
+        else
+            dealReturnedCard()
+        end
+    end
+
+    if Wait ~= nil and type(Wait.condition) == "function" then
+        Wait.condition(
+            dealAfterDeckRefresh,
+            deckIsReady,
+            5,
+            function()
+                print(
+                    "Timed out verifying the returned card; "
+                        .. "attempting the documented bottom deal."
+                )
+
+                if Wait ~= nil and type(Wait.frames) == "function" then
+                    Wait.frames(function()
+                        dealReturnedCard(true)
+                    end, 1)
+                else
+                    dealReturnedCard(true)
+                end
+            end
+        )
+    elseif Wait ~= nil and type(Wait.frames) == "function" then
+        Wait.frames(dealReturnedCard, 2)
+    else
+        dealReturnedCard()
+    end
+
+    return true
+end
+
+function CardLogic.reloadAndReturnToHand(card, playerColor)
+    if card == nil
+        or card.tag ~= "Card"
+        or type(card.reload) ~= "function"
+        or type(playerColor) ~= "string"
+        or playerColor == ""
+    then
+        return false
+    end
+
+    CardLogic.removeAllButtons(card)
+    local reloaded, freshCard = pcall(card.reload)
+
+    if not reloaded or freshCard == nil or freshCard.tag ~= "Card" then
+        return false
+    end
+
+    CardLogic.removeAllButtons(freshCard)
+
+    if type(freshCard.setLock) == "function" then
+        pcall(freshCard.setLock, false)
+    end
+
+    freshCard.use_hands = true
+
+    if type(freshCard.setScale) == "function" then
+        pcall(freshCard.setScale, {x = 1, y = 1, z = 1})
+    end
+
+    if type(freshCard.deal) ~= "function" then
+        return false
+    end
+
+    CardLogic.suppressButtonsUntilPlaced(freshCard)
+    local dealt, dealResult = pcall(
+        freshCard.deal,
+        1,
+        playerColor,
+        1
+    )
+
+    if not dealt or dealResult == false then
+        return false
+    end
+
+    CardLogic.scheduleHandButtonCleanup(freshCard)
+    return true
+end
+
 local bootstrap = [=[
 local cardFeatures = {}
 local cardState = {features = {}}
 local actionZoneTapEnabled = true
+local cardButtonsSuppressed = true
 
 local function registerCardFeature(feature)
     cardFeatures[#cardFeatures + 1] = feature
@@ -20,6 +441,18 @@ local function isSingleCard()
 end
 
 local function isCardInHand()
+    if type(self.getZones) == "function" then
+        local succeeded, zones = pcall(self.getZones)
+
+        if succeeded and type(zones) == "table" then
+            for _, zone in ipairs(zones) do
+                if zone ~= nil and zone.tag == "Hand" then
+                    return true
+                end
+            end
+        end
+    end
+
     if Player == nil or type(Player.getPlayers) ~= "function" then
         return false
     end
@@ -49,9 +482,24 @@ local function removeExistingFeatureButtons()
             or button.click_function == "onUnequipCardClicked"
             or button.click_function == "onReturnCardClicked"
             or button.click_function == "onActionButtonAreaClicked"
+            or button.click_function == "onActionStackUpClicked"
+            or button.click_function == "onActionStackDownClicked"
         then
             self.removeButton(button.index)
         end
+    end
+end
+
+local function removeAllCardButtons()
+    if type(self.clearButtons) == "function" then
+        self.clearButtons()
+        return
+    end
+
+    local buttons = self.getButtons() or {}
+
+    for index = #buttons, 1, -1 do
+        self.removeButton(buttons[index].index)
     end
 end
 
@@ -161,8 +609,8 @@ function refreshCardButtons()
 
     refreshButtonConfig()
 
-    if isCardInHand() then
-        removeExistingFeatureButtons()
+    if isCardInHand() or cardButtonsSuppressed then
+        removeAllCardButtons()
         return
     end
 
@@ -202,6 +650,43 @@ function setActionZoneTapEnabled(parameters)
     refreshCardButtons()
 end
 
+local function cardIsReadyForButtons()
+    if isCardInHand() then
+        return true
+    end
+
+    if self.spawning == true or self.loading_custom == true then
+        return false
+    end
+
+    if self.held_by_color ~= nil then
+        return false
+    end
+
+    return type(self.isSmoothMoving) ~= "function"
+        or not self.isSmoothMoving()
+end
+
+local function refreshButtonsAfterMovement()
+    local function completeRefresh()
+        cardButtonsSuppressed = isCardInHand()
+        refreshCardButtons()
+    end
+
+    if Wait ~= nil and type(Wait.condition) == "function" then
+        Wait.condition(
+            completeRefresh,
+            cardIsReadyForButtons,
+            5,
+            completeRefresh
+        )
+    elseif Wait ~= nil and type(Wait.frames) == "function" then
+        Wait.frames(completeRefresh, 10)
+    else
+        completeRefresh()
+    end
+end
+
 function getActionZoneTapRotation()
     local rotateState = cardState.features.rotate90
     return type(rotateState) == "table"
@@ -213,7 +698,8 @@ function onLoad(savedState)
         return
     end
 
-    removeExistingFeatureButtons()
+    cardButtonsSuppressed = true
+    removeAllCardButtons()
     refreshButtonConfig()
     cardState = decodeState(savedState)
     local hasTapFeature = false
@@ -234,23 +720,17 @@ function onLoad(savedState)
             or type(feature.onTap) == "function"
     end
 
-    if hasTapFeature
-        and actionZoneTapEnabled
-        and not isCardInHand()
-    then
-        self.createButton(makeTapButtonParameters())
-    end
-end
-
-local function refreshButtonsAfterMovement()
-    if Wait ~= nil and type(Wait.frames) == "function" then
-        Wait.frames(refreshCardButtons, 2)
-    else
-        refreshCardButtons()
+    -- Cards separated from a deck load before TTS has placed them in their
+    -- destination. Do not create a full-size button until that move finishes,
+    -- otherwise the hand layout can use the button's bounds for spacing.
+    if hasTapFeature then
+        refreshButtonsAfterMovement()
     end
 end
 
 function onPickUp(playerColor)
+    cardButtonsSuppressed = true
+    removeAllCardButtons()
     refreshButtonsAfterMovement()
 end
 
@@ -351,7 +831,9 @@ end
 
 function CardLogic.refreshExistingButtons()
     for _, object in ipairs(getAllObjects()) do
-        if object.tag == "Card" then
+        if object.tag == "Card"
+            and not CardLogic.removeButtonsIfInHand(object)
+        then
             local succeeded, buttons = pcall(object.getButtons)
 
             if succeeded and type(buttons) == "table" then
@@ -444,6 +926,7 @@ local function makeContextSource(context)
     local purgatoryPosition = context and context.purgatoryPosition
     local abyssPosition = context and context.abyssPosition
     local deckPosition = context and context.deckPosition
+    local cardScale = context and context.cardScale
     local purgatoryLiteral = "nil"
     local abyssLiteral = "nil"
     local deckLiteral = "nil"
@@ -465,6 +948,7 @@ local function makeContextSource(context)
         "purgatoryPosition = " .. purgatoryLiteral .. ",",
         "abyssPosition = " .. abyssLiteral .. ",",
         "deckPosition = " .. deckLiteral .. ",",
+        "cardScale = " .. vectorLiteral(cardScale, {1, 1, 1}) .. ",",
         "drawButtons = "
             .. tostring(DebugConfig.drawCardButtons == true) .. ",",
         "tapButtonPosition = "
@@ -588,6 +1072,7 @@ registerCardFeature({
 CardLogic.registerFeature("destroyToPurgatory", [=[
 local actionButtonsVisible = false
 local actionHoverPlayers = {}
+local returnToHandInProgress = false
 local actionButtonFunctions = {
     onDestroyCardClicked = true,
     onDamnCardClicked = true,
@@ -614,6 +1099,29 @@ local function isCardTapRotated()
     local rotateState = cardState.features.rotate90
     return type(rotateState) == "table"
         and rotateState.rotated == true
+end
+
+local function resetCardTapRotation()
+    local rotateState = cardState.features.rotate90
+
+    if type(rotateState) ~= "table" or rotateState.rotated ~= true then
+        return
+    end
+
+    rotateState.rotated = false
+
+    if type(self.getRotation) == "function"
+        and type(self.setRotation) == "function"
+    then
+        local rotation = self.getRotation()
+        self.setRotation({
+            x = rotation.x,
+            y = rotation.y - 90,
+            z = rotation.z
+        })
+    elseif type(self.rotate) == "function" then
+        self.rotate({x = 0, y = -90, z = 0})
+    end
 end
 
 local function actionButtonPosition(position)
@@ -663,7 +1171,10 @@ local function makeActionButton(
 end
 
 local function showActionButtons()
-    if actionButtonsVisible or isCardInHand() then
+    if actionButtonsVisible
+        or cardButtonsSuppressed
+        or isCardInHand()
+    then
         return
     end
 
@@ -791,6 +1302,29 @@ local function notifyActionZoneCardLeaving()
     end
 end
 
+local function normalizeCardBeforeHand()
+    cardButtonsSuppressed = true
+    removeAllCardButtons()
+
+    if type(self.setLock) == "function" then
+        self.setLock(false)
+    end
+
+    self.use_hands = true
+
+    if type(self.setScale) == "function" then
+        self.setScale(cardContext.cardScale or {x = 1, y = 1, z = 1})
+    end
+
+    if type(self.setVelocity) == "function" then
+        self.setVelocity({0, 0, 0})
+    end
+
+    if type(self.setAngularVelocity) == "function" then
+        self.setAngularVelocity({0, 0, 0})
+    end
+end
+
 local function moveCardTo(destination, missingMessage)
     if type(destination) ~= "table" then
         print(missingMessage)
@@ -867,8 +1401,12 @@ function onUnequipCardClicked(object, playerColor, altClick)
         return
     end
 
+    cardButtonsSuppressed = true
+    removeAllCardButtons()
     removeActionButtons()
+    resetCardTapRotation()
     notifyActionZoneCardLeaving()
+    removeAllCardButtons()
     local deckPosition = deck.getPosition()
 
     -- putObject inserts at the end nearest the card's Y elevation. Moving
@@ -882,7 +1420,10 @@ function onUnequipCardClicked(object, playerColor, altClick)
 end
 
 function onReturnCardClicked(object, playerColor, altClick)
-    if object ~= self or not isSingleCard() then
+    if object ~= self
+        or not isSingleCard()
+        or returnToHandInProgress
+    then
         return
     end
 
@@ -893,9 +1434,53 @@ function onReturnCardClicked(object, playerColor, altClick)
         return
     end
 
+    local deck = findDeckAtDestination()
+
+    returnToHandInProgress = true
+
+    -- Suppress first so delayed hover/movement callbacks cannot recreate a
+    -- button between this cleanup and the hand deal.
+    cardButtonsSuppressed = true
+    removeAllCardButtons()
     removeActionButtons()
+    resetCardTapRotation()
     notifyActionZoneCardLeaving()
-    self.deal(1, playerColor)
+    normalizeCardBeforeHand()
+
+    local function returnAfterBoundsRefresh()
+        -- Clear once more after the scale/rotation changes have propagated.
+        -- This is the final operation before entering the original deck.
+        normalizeCardBeforeHand()
+
+        if Global ~= nil and type(Global.call) == "function" then
+            local succeeded, started = pcall(
+                Global.call,
+                "returnCardToHandThroughDeck",
+                {
+                    card = self,
+                    deck = deck,
+                    playerColor = playerColor
+                }
+            )
+
+            if succeeded and started == true then
+                return
+            end
+        end
+
+        returnToHandInProgress = false
+        print("Could not return the card through its deck.")
+        cardButtonsSuppressed = false
+        refreshCardButtons()
+    end
+
+    -- Let Unity rebuild the collider after clearing UI, restoring scale, and
+    -- undoing a tap rotation before the hand system measures the card.
+    if Wait ~= nil and type(Wait.frames) == "function" then
+        Wait.frames(returnAfterBoundsRefresh, 2)
+    else
+        returnAfterBoundsRefresh()
+    end
 end
 
 registerCardFeature({

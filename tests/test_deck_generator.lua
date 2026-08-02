@@ -220,6 +220,14 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
         1,
         spawnParameters.data.ContainedObjects[1].Transform.scaleX
     )
+    Test.equal(
+        Config.deckSlot.cardScale.x,
+        spawnParameters.data.ContainedObjects[1].Transform.scaleX
+    )
+    Test.contains(
+        spawnParameters.data.ContainedObjects[1].LuaScript,
+        "cardScale = {x = 1.000000, y = 1.000000, z = 1.000000}"
+    )
     Test.equal(1, spawnParameters.data.Transform.scaleX)
     Test.equal(70, spawnParameters.position[1])
     Test.equal(80, spawnParameters.position[3])

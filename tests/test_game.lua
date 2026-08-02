@@ -265,6 +265,17 @@ Test.case("game routes card pickup and drop events", function()
     Test.equal(card, calls.droppedCard)
 end)
 
+Test.case("game handles cards leaving decks and entering zones", function()
+    local card = {tag = "Card"}
+
+    Game.onObjectLeaveContainer({}, card)
+    Game.onObjectEnterZone({tag = "Hand"}, card)
+end)
+
+Test.case("game rejects an invalid return-through-deck request", function()
+    Test.falsy(Game.returnCardToHandThroughDeck(nil, nil, "Blue"))
+end)
+
 Test.case("game routes scripted cards leaving action zones", function()
     local card = {}
 
