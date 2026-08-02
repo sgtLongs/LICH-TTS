@@ -208,6 +208,28 @@ local function countDeckButtons(surface)
     return count
 end
 
+local function findCreatedButton(surface, tooltip)
+    for _, button in ipairs(surface.createdButtons) do
+        if button.tooltip == tooltip then
+            return button
+        end
+    end
+
+    return nil
+end
+
+local function findCreatedButtonByClick(surface, clickFunction)
+    for index = #surface.createdButtons, 1, -1 do
+        local button = surface.createdButtons[index]
+
+        if button.click_function == clickFunction then
+            return button
+        end
+    end
+
+    return nil
+end
+
 local function withFixture(testFunction)
     local previousGlobal = Global
     local previousWait = Wait
@@ -310,6 +332,39 @@ Test.case("card fields load geometry, state, drawing, and action zones", functio
         Test.equal(1, records.waits[2].delay)
         Test.equal(0, countDeckButtons(redSurface))
         Test.equal(1, countDeckButtons(blueSurface))
+        Test.equal(
+            "INT :  --",
+            findCreatedButton(
+                redSurface,
+                Config.heroStatsDisplay.tooltipPrefix .. "intelligence"
+            ).label
+        )
+        Test.equal(
+            "HP  : --",
+            findCreatedButton(
+                redSurface,
+                Config.heroStatsDisplay.tooltipPrefix .. "health"
+            ).label
+        )
+        Test.equal(
+            "none",
+            findCreatedButton(
+                redSurface,
+                Config.heroStatsDisplay.tooltipPrefix .. "intelligence"
+            ).click_function
+        )
+        local arrowCallbacks = {
+            "onHeroIntelligenceIncreaseClicked",
+            "onHeroIntelligenceDecreaseClicked",
+            "onHeroHealthIncreaseClicked",
+            "onHeroHealthDecreaseClicked",
+            "onHeroHealthIncreaseFiveClicked",
+            "onHeroHealthDecreaseFiveClicked"
+        }
+
+        for _, callback in ipairs(arrowCallbacks) do
+            Test.truthy(findCreatedButtonByClick(redSurface, callback))
+        end
 
         records.waits[1].callback()
         Test.equal(fields, records.actionRefreshFields)
@@ -391,13 +446,13 @@ Test.case("card fields replace duplicate deck buttons with configured one", func
         CardFields.onLoad(nil)
 
         Test.equal(1, countDeckButtons(redSurface))
-        Test.equal(1, #redSurface.createdButtons)
+        Test.equal(9, #redSurface.createdButtons)
         Test.equal(2, #redSurface.removedButtonIndexes)
         Test.equal(8, redSurface.removedButtonIndexes[1])
         Test.equal(4, redSurface.removedButtonIndexes[2])
 
-        local button = redSurface.createdButtons[1]
-        local worldPosition = redSurface.localPositionInputs[1]
+        local button = redSurface.createdButtons[9]
+        local worldPosition = redSurface.localPositionInputs[9]
         Test.equal(Config.deckSlot.clickFunction, button.click_function)
         Test.equal(Global, button.function_owner)
         Test.equal(Config.deckSlot.buttonWidth * 100, button.width)
@@ -407,6 +462,115 @@ Test.case("card fields replace duplicate deck buttons with configured one", func
         Test.equal(22, worldPosition.z)
         Test.equal(106, button.position.x)
         Test.equal("Choose a deck", button.tooltip)
+    end)
+end)
+
+Test.case("Hero stat displays update and use configured geometry", function()
+    withFixture(function(environment)
+        local redSurface = environment.addSurface("red-surface")
+        environment.addSurface("blue-surface")
+        CardFields.onLoad(nil)
+        local field = CardFields.getFields()[1]
+
+        field.onHeroStatsAvailable({intelligence = 5, health = 60})
+
+        local intelligence = redSurface.createdButtons[10]
+        local intelligenceUp = redSurface.createdButtons[11]
+        local intelligenceDown = redSurface.createdButtons[12]
+        local health = redSurface.createdButtons[13]
+        local healthUp = redSurface.createdButtons[14]
+        local healthUpFive = redSurface.createdButtons[15]
+        local healthDown = redSurface.createdButtons[16]
+        local healthDownFive = redSurface.createdButtons[17]
+        local intelligenceWorld = redSurface.localPositionInputs[10]
+        Test.equal("INT :  5", intelligence.label)
+        Test.equal("HP  : 60", health.label)
+        Test.equal("none", intelligence.click_function)
+        Test.equal("none", health.click_function)
+        Test.equal("▲", intelligenceUp.label)
+        Test.equal("▼", intelligenceDown.label)
+        Test.equal("▲", healthUp.label)
+        Test.equal("▲▲", healthUpFive.label)
+        Test.equal("▼", healthDown.label)
+        Test.equal("▼▼", healthDownFive.label)
+        Test.equal(
+            "onHeroHealthIncreaseFiveClicked",
+            healthUpFive.click_function
+        )
+        Test.equal(
+            "onHeroHealthDecreaseFiveClicked",
+            healthDownFive.click_function
+        )
+        Test.equal(Config.heroStatsDisplay.size.width * 100, intelligence.width)
+        Test.equal(Config.heroStatsDisplay.size.height * 100, intelligence.height)
+        Test.equal(
+            Config.heroStatsDisplay.color,
+            intelligence.color
+        )
+        Test.equal(
+            Config.heroStatsDisplay.color,
+            health.color
+        )
+        Test.equal(
+            Config.heroStatsDisplay.intelligence.fontColor,
+            intelligence.font_color
+        )
+        Test.equal(
+            Config.heroStatsDisplay.health.fontColor,
+            health.font_color
+        )
+        Test.falsy(intelligence.font_color == health.font_color)
+        Test.equal(
+            field.position.x
+                + Config.heroStatsDisplay.intelligence.position.x,
+            intelligenceWorld.x
+        )
+        Test.equal(
+            Config.heroStatsDisplay.intelligence.position.y,
+            intelligenceWorld.y
+        )
+        Test.equal(
+            field.position.z
+                + Config.heroStatsDisplay.intelligence.position.z,
+            intelligenceWorld.z
+        )
+
+        local saved = CardFields.getSaveState()
+        Test.equal(5, saved.heroStatsByPlayer.Red.intelligence)
+        Test.equal(60, saved.heroStatsByPlayer.Red.health)
+    end)
+end)
+
+Test.case("Hero stat arrow buttons enforce ownership and adjust values", function()
+    withFixture(function(environment)
+        local redSurface = environment.addSurface("red-surface")
+        environment.addSurface("blue-surface")
+        CardFields.onLoad(nil)
+        local field = CardFields.getFields()[1]
+
+        Test.falsy(CardFields.onHeroHealthIncreaseClicked(
+            redSurface, "Red"
+        ))
+        field.onHeroStatsAvailable({intelligence = 1, health = 4})
+        Test.falsy(CardFields.onHeroHealthIncreaseFiveClicked(
+            redSurface, "Blue"
+        ))
+        Test.truthy(CardFields.onHeroHealthIncreaseFiveClicked(
+            redSurface, "Red"
+        ))
+        Test.truthy(CardFields.onHeroHealthDecreaseClicked(
+            redSurface, "Red"
+        ))
+        Test.truthy(CardFields.onHeroIntelligenceDecreaseClicked(
+            redSurface, "Red"
+        ))
+        Test.truthy(CardFields.onHeroIntelligenceDecreaseClicked(
+            redSurface, "Red"
+        ))
+
+        local saved = CardFields.getSaveState().heroStatsByPlayer.Red
+        Test.equal(0, saved.intelligence)
+        Test.equal(8, saved.health)
     end)
 end)
 
@@ -562,6 +726,25 @@ Test.case("card field state keeps field and owner identities separate", function
     local saved = RealCardFieldState.save(state, fields)
     Test.falsy(saved.deckSpawnedByPlayer.Red)
     Test.nilValue(saved.deckSpawnedByPlayer.White)
+    Test.nilValue(saved.heroStatsByPlayer.Red)
+end)
+
+Test.case("card field state restores valid Hero stats by owner", function()
+    local fields = {{
+        fieldId = "physical-red-field",
+        playerColor = "White",
+        ownerColor = "Red"
+    }}
+    local state = RealCardFieldState.new(fields, {
+        heroStatsByPlayer = {
+            Red = {intelligence = "7", health = 40}
+        }
+    })
+
+    Test.equal(7, fields[1].heroStats.intelligence)
+    Test.equal(40, fields[1].heroStats.health)
+    RealCardFieldState.setHeroStats(state, fields[1], nil)
+    Test.nilValue(RealCardFieldState.getHeroStats(state, fields[1]))
 end)
 
 Test.case("a registered zone handles events without facade changes", function()

@@ -894,6 +894,11 @@ Test.case("deck generator uses injected adapters in order", function()
     field.onDeckSpawned = function()
         events[#events + 1] = "field:onDeckSpawned"
     end
+    local displayedStats = nil
+    field.onHeroStatsAvailable = function(heroStats)
+        events[#events + 1] = "field:onHeroStatsAvailable"
+        displayedStats = heroStats
+    end
     local generator = DeckGenerator.new({
         runtime = runtime,
         scheduler = scheduler,
@@ -921,6 +926,7 @@ Test.case("deck generator uses injected adapters in order", function()
         "field:onDeckSpawned",
         "scheduler:" .. tostring(Config.heroSlot.loadTimeoutSeconds),
         "deck:take",
+        "field:onHeroStatsAvailable",
         "log:Hero placed for Red at row "
             .. Config.heroSlot.row .. ", column "
             .. Config.heroSlot.column .. ".",
@@ -928,6 +934,8 @@ Test.case("deck generator uses injected adapters in order", function()
     }, events)
     Test.equal("hero-guid", takenParameters.guid)
     Test.nilValue(takenParameters.index)
+    Test.equal(5, displayedStats.intelligence)
+    Test.equal(60, displayedStats.health)
 
     -- Hero completion released this instance's per-field mutex.
     Test.truthy(generator:fetch(field, nil, 802))

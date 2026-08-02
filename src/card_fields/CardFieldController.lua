@@ -23,6 +23,12 @@ local publicMethodNames = {
     "getCardFieldDestination",
     "onDeckSlotClicked",
     "onDeckMenuUiClicked",
+    "onHeroIntelligenceIncreaseClicked",
+    "onHeroIntelligenceDecreaseClicked",
+    "onHeroHealthIncreaseClicked",
+    "onHeroHealthDecreaseClicked",
+    "onHeroHealthIncreaseFiveClicked",
+    "onHeroHealthDecreaseFiveClicked",
     "onObjectPickUp",
     "onObjectDrop",
     "onCardLeavesActionZone",
@@ -101,6 +107,20 @@ local function makeDefaultZoneBehaviors(dependencies)
     return registry
 end
 
+local function displayWorldPosition(field, configuredPosition)
+    local radians = math.rad(field.downRotationDegrees or 0)
+    local cosine = math.cos(radians)
+    local sine = math.sin(radians)
+    local localX = configuredPosition.x or 0
+    local localZ = configuredPosition.z or 0
+
+    return {
+        x = field.position.x + localX * cosine + localZ * sine,
+        y = configuredPosition.y,
+        z = field.position.z - localX * sine + localZ * cosine
+    }
+end
+
 function CardFieldController.new(dependencies)
     dependencies = dependencies or {}
     local defaultRuntime = Runtime.default()
@@ -176,6 +196,204 @@ function CardFieldController:removeDeckSlotButtons(surface)
     end
 end
 
+function CardFieldController:removeHeroStatDisplays(surface)
+    local displayConfig = self.config.heroStatsDisplay
+
+    if type(displayConfig) ~= "table" then
+        return
+    end
+
+    local tooltipPrefix = displayConfig.tooltipPrefix or "Hero stat: "
+    local buttons = self.objectAdapter.getButtons(surface)
+
+    for index = #buttons, 1, -1 do
+        local button = buttons[index]
+
+        if type(button.tooltip) == "string"
+            and string.sub(button.tooltip, 1, #tooltipPrefix)
+                == tooltipPrefix
+        then
+            self.objectAdapter.removeButton(surface, button.index)
+        end
+    end
+end
+
+function CardFieldController:addHeroStatDisplays(field)
+    local displayConfig = self.config.heroStatsDisplay
+
+    if type(displayConfig) ~= "table" then
+        return true
+    end
+
+    local surface = self.getObjectFromGuid(field.surfaceObjectGuid)
+
+    if surface == nil then
+        return false
+    end
+
+    self:removeHeroStatDisplays(surface)
+
+    local stats = CardFieldState.getHeroStats(self.state, field) or {}
+    local size = displayConfig.size or {}
+    local tooltipPrefix = displayConfig.tooltipPrefix or "Hero stat: "
+    local displays = {
+        {key = "intelligence", config = displayConfig.intelligence},
+        {key = "health", config = displayConfig.health}
+    }
+
+    for _, display in ipairs(displays) do
+        local itemConfig = display.config or {}
+        local position = itemConfig.position or {}
+        local value = stats[display.key]
+        local color = itemConfig.color or displayConfig.color
+
+        self.objectAdapter.createButton(surface, {
+            label = tostring(itemConfig.label or display.key)
+                .. " " .. (value ~= nil and tostring(value) or "--"),
+            click_function = "none",
+            function_owner = self.getGlobalOwner(),
+            position = surface.positionToLocal(
+                displayWorldPosition(field, position)
+            ),
+            rotation = {0, 0, 0},
+            width = math.floor((size.width or 3) * 100 + 0.5),
+            height = math.floor((size.height or 1.25) * 100 + 0.5),
+            font_size = displayConfig.fontSize or 260,
+            color = displayConfig.color or {0.08, 0.08, 0.08, 0.92},
+            font_color = itemConfig.fontColor
+                or displayConfig.fontColor or {1, 1, 1, 1},
+            hover_color = color,
+            press_color = color,
+            tooltip = tooltipPrefix .. display.key
+        })
+
+        local adjustConfig = displayConfig.adjustButtons or {}
+        local adjustSize = adjustConfig.size or {}
+
+        for _, button in ipairs(adjustConfig[display.key] or {}) do
+            local offset = button.offset or {}
+            local buttonPosition = {
+                x = (position.x or 0) + (offset.x or 0),
+                y = (position.y or 0)
+                    + (offset.y or adjustConfig.surfaceOffset or 0.15),
+                z = (position.z or 0) + (offset.z or 0)
+            }
+
+            self.objectAdapter.createButton(surface, {
+                label = button.label or "",
+                click_function = button.clickFunction,
+                function_owner = self.getGlobalOwner(),
+                position = surface.positionToLocal(
+                    displayWorldPosition(field, buttonPosition)
+                ),
+                rotation = {0, 0, 0},
+                width = math.floor(
+                    (adjustSize.width or 1.5) * 100 + 0.5
+                ),
+                height = math.floor(
+                    (adjustSize.height or 1) * 100 + 0.5
+                ),
+                font_size = adjustConfig.fontSize or 420,
+                color = adjustConfig.color
+                    or {0.08, 0.08, 0.08, 0.92},
+                font_color = adjustConfig.fontColor
+                    or {1, 1, 1, 1},
+                hover_color = adjustConfig.hoverColor
+                    or {0.2, 0.55, 0.9, 1},
+                press_color = adjustConfig.pressColor
+                    or {0.05, 0.3, 0.62, 1},
+                tooltip = tooltipPrefix .. display.key
+                    .. " adjustment"
+            })
+        end
+    end
+
+    return true
+end
+
+function CardFieldController:adjustHeroStat(
+    statKey,
+    surface,
+    playerColor,
+    amount
+)
+    if surface == nil or type(surface.getGUID) ~= "function" then
+        return false
+    end
+
+    local field = self.layout.findFieldBySurface(
+        self.fields,
+        surface.getGUID()
+    )
+
+    if field == nil
+        or CardFieldDefinitions.ownerColor(field) ~= playerColor
+    then
+        return false
+    end
+
+    local stats = CardFieldState.getHeroStats(self.state, field)
+
+    if type(stats) ~= "table" or tonumber(stats[statKey]) == nil then
+        return false
+    end
+
+    stats = {
+        intelligence = tonumber(stats.intelligence) or 0,
+        health = tonumber(stats.health) or 0
+    }
+    stats[statKey] = math.max(0, stats[statKey] + amount)
+    CardFieldState.setHeroStats(self.state, field, stats)
+    self:addHeroStatDisplays(field)
+    return true
+end
+
+function CardFieldController:onHeroIntelligenceIncreaseClicked(surface, playerColor)
+    return self:adjustHeroStat("intelligence", surface, playerColor, 1)
+end
+
+function CardFieldController:onHeroIntelligenceDecreaseClicked(surface, playerColor)
+    return self:adjustHeroStat("intelligence", surface, playerColor, -1)
+end
+
+function CardFieldController:onHeroHealthIncreaseClicked(surface, playerColor)
+    return self:adjustHeroStat("health", surface, playerColor, 1)
+end
+
+function CardFieldController:onHeroHealthDecreaseClicked(surface, playerColor)
+    return self:adjustHeroStat("health", surface, playerColor, -1)
+end
+
+function CardFieldController:onHeroHealthIncreaseFiveClicked(surface, playerColor)
+    return self:adjustHeroStat("health", surface, playerColor, 5)
+end
+
+function CardFieldController:onHeroHealthDecreaseFiveClicked(surface, playerColor)
+    return self:adjustHeroStat("health", surface, playerColor, -5)
+end
+
+function CardFieldController:configureFieldCallbacks(field)
+    local ownerColor = CardFieldDefinitions.ownerColor(field)
+
+    field.onDeckSpawned = function()
+        CardFieldState.setDeckSpawned(self.state, field, true)
+        self.onDeckSpawned(ownerColor, field)
+
+        local currentSurface = self.getObjectFromGuid(
+            field.surfaceObjectGuid
+        )
+
+        if currentSurface ~= nil then
+            self:removeDeckSlotButtons(currentSurface)
+        end
+    end
+
+    field.onHeroStatsAvailable = function(heroStats)
+        CardFieldState.setHeroStats(self.state, field, heroStats)
+        self:addHeroStatDisplays(field)
+    end
+end
+
 function CardFieldController:addDeckSlotButton(field)
     local surface = self.getObjectFromGuid(field.surfaceObjectGuid)
 
@@ -190,23 +408,8 @@ function CardFieldController:addDeckSlotButton(field)
 
     self:removeDeckSlotButtons(surface)
 
-    local ownerColor = CardFieldDefinitions.ownerColor(field)
-
     if CardFieldState.isDeckSpawned(self.state, field) then
         return true
-    end
-
-    field.onDeckSpawned = function()
-        CardFieldState.setDeckSpawned(self.state, field, true)
-        self.onDeckSpawned(ownerColor, field)
-
-        local currentSurface = self.getObjectFromGuid(
-            field.surfaceObjectGuid
-        )
-
-        if currentSurface ~= nil then
-            self:removeDeckSlotButtons(currentSurface)
-        end
     end
 
     local localPosition = surface.positionToLocal({
@@ -251,6 +454,8 @@ end
 
 function CardFieldController:refreshDeckSlotButtons()
     for _, field in ipairs(self.fields) do
+        self:configureFieldCallbacks(field)
+        self:addHeroStatDisplays(field)
         self:addDeckSlotButton(field)
     end
 end
@@ -261,6 +466,8 @@ function CardFieldController:renewDeckSlotButton(playerColor)
 
         if ownerColor == playerColor then
             CardFieldState.setDeckSpawned(self.state, field, false)
+            CardFieldState.setHeroStats(self.state, field, nil)
+            self:addHeroStatDisplays(field)
             return self:addDeckSlotButton(field)
         end
     end

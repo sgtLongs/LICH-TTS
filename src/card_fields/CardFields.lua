@@ -54,6 +54,38 @@ function CardFields.onDeckMenuUiClicked(playerColor, action)
     return defaultController:onDeckMenuUiClicked(playerColor, action)
 end
 
+function CardFields.onHeroIntelligenceIncreaseClicked(surface, playerColor)
+    return defaultController:onHeroIntelligenceIncreaseClicked(
+        surface, playerColor
+    )
+end
+
+function CardFields.onHeroIntelligenceDecreaseClicked(surface, playerColor)
+    return defaultController:onHeroIntelligenceDecreaseClicked(
+        surface, playerColor
+    )
+end
+
+function CardFields.onHeroHealthIncreaseClicked(surface, playerColor)
+    return defaultController:onHeroHealthIncreaseClicked(surface, playerColor)
+end
+
+function CardFields.onHeroHealthDecreaseClicked(surface, playerColor)
+    return defaultController:onHeroHealthDecreaseClicked(surface, playerColor)
+end
+
+function CardFields.onHeroHealthIncreaseFiveClicked(surface, playerColor)
+    return defaultController:onHeroHealthIncreaseFiveClicked(
+        surface, playerColor
+    )
+end
+
+function CardFields.onHeroHealthDecreaseFiveClicked(surface, playerColor)
+    return defaultController:onHeroHealthDecreaseFiveClicked(
+        surface, playerColor
+    )
+end
+
 function CardFields.onObjectPickUp(object)
     return defaultController:onObjectPickUp(object)
 end

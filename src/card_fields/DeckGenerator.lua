@@ -129,7 +129,7 @@ local function findHeroCard(cards)
                 and type(title) == "string"
                 and string.find(title, titleContains, 1, true) ~= nil
             then
-                return card
+                return card, hero
             end
         end
     end
@@ -143,7 +143,14 @@ local function settleObject(object, position)
     object.setAngularVelocity({0, 0, 0})
 end
 
-local function placeHero(controller, field, deck, rotation, heroCard)
+local function placeHero(
+    controller,
+    field,
+    deck,
+    rotation,
+    heroCard,
+    heroDefinition
+)
     if field.heroSlot == nil then
         controller.runtime.log("Card field did not contain a hero slot.")
         finish(controller, field)
@@ -161,6 +168,18 @@ local function placeHero(controller, field, deck, rotation, heroCard)
         smooth = false,
         callback_function = function(takenHero)
             settleObject(takenHero, heroPosition)
+            if type(field.onHeroStatsAvailable) == "function" then
+                local notified = pcall(
+                    field.onHeroStatsAvailable,
+                    heroDefinition
+                )
+
+                if not notified then
+                    controller.runtime.log(
+                        "Could not update the Hero stat displays."
+                    )
+                end
+            end
             finish(controller, field)
             controller.runtime.log(
                 "Hero placed for " .. field.playerColor
@@ -194,6 +213,7 @@ local function waitForLoadedDeck(
     deckSize
 )
     local loadedHeroCard = nil
+    local loadedHeroDefinition = nil
 
     local function deckIsFullyLoaded()
         if deck.spawning == true or deck.loading_custom == true then
@@ -213,7 +233,7 @@ local function waitForLoadedDeck(
             return false
         end
 
-        loadedHeroCard = findHeroCard(cards)
+        loadedHeroCard, loadedHeroDefinition = findHeroCard(cards)
         return loadedHeroCard ~= nil
             and (
                 loadedHeroCard.guid ~= nil
@@ -228,7 +248,8 @@ local function waitForLoadedDeck(
                 field,
                 deck,
                 rotation,
-                loadedHeroCard
+                loadedHeroCard,
+                loadedHeroDefinition
             )
         end,
         deckIsFullyLoaded,

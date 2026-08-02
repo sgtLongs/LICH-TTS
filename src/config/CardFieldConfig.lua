@@ -103,6 +103,74 @@ local CardFieldConfig = {
         loadTimeoutSeconds = 30
     },
 
+    heroStatsDisplay = {
+        -- Positions are relative to the center of each player field. Positive
+        -- Z points away from the player and toward the central play area, so
+        -- the same values work for fields on both sides of the table. Y is a
+        -- world-space height because the central play area is raised above
+        -- the card fields.
+        intelligence = {
+            position = {x = 4, y = 1.7, z = 13},
+            label = "INT : ",
+            fontColor = {0.2, 0.55, 1, 1}
+        },
+        health = {
+            position = {x = -4, y = 1.7, z = 13},
+            label = "HP  :",
+            fontColor = {1, 0.2, 0.2, 1}
+        },
+        adjustButtons = {
+            size = {width = 13, height = 5},
+            -- Keep controls above the stat display button so overlapping
+            -- button bounds cannot hide or intercept them.
+            surfaceOffset = 0,
+            fontSize = 420,
+            color = {0.08, 0.08, 0.08, 0.92},
+            fontColor = {1, 1, 1, 0.5},
+            intelligence = {
+                {
+                    label = "▲",
+                    offset = {x = 0, z = 1.4},
+                    clickFunction = "onHeroIntelligenceIncreaseClicked"
+                },
+                {
+                    label = "▼",
+                    offset = {x = 0, z = -1.4},
+                    clickFunction = "onHeroIntelligenceDecreaseClicked"
+                }
+            },
+            health = {
+                {
+                    label = "▲",
+                    offset = {x = 0, z = 1.4},
+                    clickFunction = "onHeroHealthIncreaseClicked"
+                },
+                {
+                    label = "▲▲",
+                    offset = {x = 0, z = 2.45},
+                    clickFunction = "onHeroHealthIncreaseFiveClicked"
+                },
+                {
+                    label = "▼",
+                    offset = {x = 0, z = -1.4},
+                    clickFunction = "onHeroHealthDecreaseClicked"
+                },
+                {
+                    label = "▼▼",
+                    offset = {x = 0, z = -2.45},
+                    clickFunction = "onHeroHealthDecreaseFiveClicked"
+                }
+            }
+        },
+        -- Zero-size transparent buttons render only their labels and do not
+        -- overlap the nearby stat adjustment controls.
+        size = {width = 24, height = 8},
+        fontSize = 600,
+        color = {0.1, 0.1, 0.1, 1},
+        fontColor = {1, 1, 1, 1},
+        tooltipPrefix = "Hero stat: "
+    },
+
     -- Inclusive geometry coordinates. CSV rows are written from the player's
     -- top to bottom, while geometry rows run from the player outward, so the
     -- CSV's first row is geometry row 3.

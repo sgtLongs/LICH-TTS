@@ -154,6 +154,38 @@ function GameController:onDeckSelectionUiClicked(playerColor, action)
     self.cardFields.onDeckMenuUiClicked(playerColor, action)
 end
 
+function GameController:onHeroIntelligenceIncreaseClicked(object, playerColor)
+    return self.cardFields.onHeroIntelligenceIncreaseClicked(
+        object, playerColor
+    )
+end
+
+function GameController:onHeroIntelligenceDecreaseClicked(object, playerColor)
+    return self.cardFields.onHeroIntelligenceDecreaseClicked(
+        object, playerColor
+    )
+end
+
+function GameController:onHeroHealthIncreaseClicked(object, playerColor)
+    return self.cardFields.onHeroHealthIncreaseClicked(object, playerColor)
+end
+
+function GameController:onHeroHealthDecreaseClicked(object, playerColor)
+    return self.cardFields.onHeroHealthDecreaseClicked(object, playerColor)
+end
+
+function GameController:onHeroHealthIncreaseFiveClicked(object, playerColor)
+    return self.cardFields.onHeroHealthIncreaseFiveClicked(
+        object, playerColor
+    )
+end
+
+function GameController:onHeroHealthDecreaseFiveClicked(object, playerColor)
+    return self.cardFields.onHeroHealthDecreaseFiveClicked(
+        object, playerColor
+    )
+end
+
 function GameController:onObjectPickUp(_, object)
     return self.cardFields.onObjectPickUp(object)
 end

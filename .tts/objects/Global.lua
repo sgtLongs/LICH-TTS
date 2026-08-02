@@ -147,6 +147,30 @@ function onObjectNumberTyped(object, playerColor, number, alt)
     return Game.onObjectNumberTyped(object, playerColor, number, alt)
 end
 
+function onHeroIntelligenceIncreaseClicked(object, playerColor)
+    return Game.onHeroIntelligenceIncreaseClicked(object, playerColor)
+end
+
+function onHeroIntelligenceDecreaseClicked(object, playerColor)
+    return Game.onHeroIntelligenceDecreaseClicked(object, playerColor)
+end
+
+function onHeroHealthIncreaseClicked(object, playerColor)
+    return Game.onHeroHealthIncreaseClicked(object, playerColor)
+end
+
+function onHeroHealthDecreaseClicked(object, playerColor)
+    return Game.onHeroHealthDecreaseClicked(object, playerColor)
+end
+
+function onHeroHealthIncreaseFiveClicked(object, playerColor)
+    return Game.onHeroHealthIncreaseFiveClicked(object, playerColor)
+end
+
+function onHeroHealthDecreaseFiveClicked(object, playerColor)
+    return Game.onHeroHealthDecreaseFiveClicked(object, playerColor)
+end
+
 function onObjectDestroy(object)
     Game.onObjectDestroy(object)
 end
