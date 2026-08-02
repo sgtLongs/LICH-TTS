@@ -342,7 +342,7 @@ function CardFieldController:adjustHeroStat(
         intelligence = tonumber(stats.intelligence) or 0,
         health = tonumber(stats.health) or 0
     }
-    stats[statKey] = math.max(0, stats[statKey] + amount)
+    stats[statKey] = stats[statKey] + amount
     CardFieldState.setHeroStats(self.state, field, stats)
     self:addHeroStatDisplays(field)
     return true

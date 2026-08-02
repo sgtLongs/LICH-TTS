@@ -569,7 +569,7 @@ Test.case("Hero stat arrow buttons enforce ownership and adjust values", functio
         ))
 
         local saved = CardFields.getSaveState().heroStatsByPlayer.Red
-        Test.equal(0, saved.intelligence)
+        Test.equal(-1, saved.intelligence)
         Test.equal(8, saved.health)
     end)
 end)
