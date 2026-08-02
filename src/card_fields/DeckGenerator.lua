@@ -1,64 +1,22 @@
 local Config = require("src/config/CardFieldConfig")
+local CardApiNormalizer = require("src/cards/CardApiNormalizer")
+local CardDefinition = require("src/cards/CardDefinition")
 local CardLogic = require("src/cards/CardLogic")
+local Runtime = require("src/tts/Runtime")
+local Scheduler = require("src/tts/Scheduler")
+local WebAdapter = require("src/tts/WebAdapter")
 
 local DeckGenerator = {}
-local generatingByField = {}
+local Controller = {}
+Controller.__index = Controller
+local defaultController = nil
 
 local function fieldKey(field)
     return field.surfaceObjectGuid or field.playerColor
 end
 
-local function finish(field)
-    generatingByField[fieldKey(field)] = nil
-end
-
-local function makeCardDefinitions(data)
-    if type(data) ~= "table"
-        or type(data.cards) ~= "table"
-        or #data.cards == 0
-    then
-        return nil, "API response did not contain any cards."
-    end
-
-    if type(data.backImageUrl) ~= "string"
-        or data.backImageUrl == ""
-    then
-        return nil, "API response did not contain a card back image."
-    end
-
-    local definitions = {}
-    local deckSize = 0
-
-    for _, card in ipairs(data.cards) do
-        local quantity = math.floor(tonumber(card.quantity) or 0)
-
-        if quantity > 0
-            and type(card.frontImageURL) == "string"
-            and card.frontImageURL ~= ""
-        then
-            local typesString = ""
-
-            if type(card.types) == "table" and #card.types > 0 then
-                typesString = table.concat(card.types, ", ")
-            end
-
-            definitions[#definitions + 1] = {
-                name = tostring(card.name or "") .. " | " .. typesString,
-                description = tostring(card.description or ""),
-                face = card.frontImageURL,
-                back = data.backImageUrl,
-                type = 0,
-                quantity = quantity
-            }
-            deckSize = deckSize + quantity
-        end
-    end
-
-    if deckSize == 0 then
-        return nil, "API response did not contain any spawnable cards."
-    end
-
-    return definitions, nil, deckSize
+local function finish(controller, field)
+    controller.generatingByField[fieldKey(field)] = nil
 end
 
 local function makeTransform()
@@ -79,13 +37,13 @@ end
 
 local function makeCustomDeckEntry(card)
     return {
-        FaceURL = card.face,
-        BackURL = card.back,
+        FaceURL = card.images.front,
+        BackURL = card.images.back,
         NumWidth = 1,
         NumHeight = 1,
         BackIsHidden = true,
         UniqueBack = false,
-        Type = card.type
+        Type = 0
     }
 end
 
@@ -101,7 +59,7 @@ local function makeCardData(
         -- only the standalone custom-card object type.
         Name = "Card",
         Transform = makeTransform(),
-        Nickname = card.name,
+        Nickname = CardDefinition.title(card),
         Description = card.description,
         CardID = cardId,
         SidewaysCard = false,
@@ -113,7 +71,7 @@ local function makeCardData(
     }
 end
 
-local function makeDeckData(definitions, deckSize, cardScript)
+local function makeDeckData(definitions, deckSize, scriptContext)
     local customDeck = {}
     local deckIds = {}
     local containedObjects = {}
@@ -121,6 +79,10 @@ local function makeDeckData(definitions, deckSize, cardScript)
     for deckId, definition in ipairs(definitions) do
         local cardId = deckId * 100
         local customDeckEntry = makeCustomDeckEntry(definition)
+        local cardScript = CardLogic.build(
+            definition.featureIds,
+            scriptContext
+        )
 
         customDeck[deckId] = customDeckEntry
 
@@ -194,10 +156,10 @@ local function settleObject(object, position)
     object.setAngularVelocity({0, 0, 0})
 end
 
-local function placeHero(field, deck, rotation, heroCard)
+local function placeHero(controller, field, deck, rotation, heroCard)
     if field.heroSlot == nil then
-        print("Card field did not contain a hero slot.")
-        finish(field)
+        controller.runtime.log("Card field did not contain a hero slot.")
+        finish(controller, field)
         return
     end
 
@@ -212,8 +174,8 @@ local function placeHero(field, deck, rotation, heroCard)
         smooth = false,
         callback_function = function(takenHero)
             settleObject(takenHero, heroPosition)
-            finish(field)
-            print(
+            finish(controller, field)
+            controller.runtime.log(
                 "Hero placed for " .. field.playerColor
                     .. " at row " .. Config.heroSlot.row
                     .. ", column " .. Config.heroSlot.column .. "."
@@ -230,12 +192,20 @@ local function placeHero(field, deck, rotation, heroCard)
     local succeeded, hero = pcall(deck.takeObject, takeParameters)
 
     if not succeeded or hero == nil then
-        print("Could not take the Hero card from the generated deck.")
-        finish(field)
+        controller.runtime.log(
+            "Could not take the Hero card from the generated deck."
+        )
+        finish(controller, field)
     end
 end
 
-local function waitForLoadedDeck(field, deck, rotation, deckSize)
+local function waitForLoadedDeck(
+    controller,
+    field,
+    deck,
+    rotation,
+    deckSize
+)
     local loadedHeroCard = nil
 
     local function deckIsFullyLoaded()
@@ -264,18 +234,24 @@ local function waitForLoadedDeck(field, deck, rotation, deckSize)
             )
     end
 
-    Wait.condition(
+    controller.scheduler.condition(
         function()
-            placeHero(field, deck, rotation, loadedHeroCard)
+            placeHero(
+                controller,
+                field,
+                deck,
+                rotation,
+                loadedHeroCard
+            )
         end,
         deckIsFullyLoaded,
         Config.heroSlot.loadTimeoutSeconds,
         function()
-            print(
+            controller.runtime.log(
                 "Timed out waiting for the complete deck and its Hero card "
                     .. "to load."
             )
-            finish(field)
+            finish(controller, field)
         end
     )
 end
@@ -288,7 +264,13 @@ local function makeFieldRotation(configuredRotation, field)
     }
 end
 
-local function spawnDeck(field, spawnPosition, definitions, deckSize)
+local function spawnDeck(
+    controller,
+    field,
+    spawnPosition,
+    definitions,
+    deckSize
+)
     local deckRotation = makeFieldRotation(
         Config.deckSlot.deckSpawnRotation,
         field
@@ -326,14 +308,28 @@ local function spawnDeck(field, spawnPosition, definitions, deckSize)
         }
     end
 
-    local cardScript = CardLogic.build(nil, {
+    local scriptContext = {
+        fieldId = field.surfaceObjectGuid or field.playerColor,
         purgatoryPosition = purgatoryPosition,
         abyssPosition = abyssPosition,
         deckPosition = position,
         cardScale = Config.deckSlot.cardScale
-    })
-    local succeeded, spawnedDeck = pcall(spawnObjectData, {
-        data = makeDeckData(definitions, deckSize, cardScript),
+    }
+    local built, deckData = pcall(
+        makeDeckData,
+        definitions,
+        deckSize,
+        scriptContext
+    )
+
+    if not built or type(deckData) ~= "table" then
+        finish(controller, field)
+        controller.runtime.log("Deck slot card creation failed.")
+        return
+    end
+
+    local succeeded, spawnedDeck = pcall(controller.runtime.spawnObjectData, {
+        data = deckData,
         position = position,
         rotation = deckRotation,
         callback_function = function(deck)
@@ -346,18 +342,28 @@ local function spawnDeck(field, spawnPosition, definitions, deckSize)
                 local notified = pcall(field.onDeckSpawned, deck)
 
                 if not notified then
-                    print("Could not remove the used deck spawn button.")
+                    controller.runtime.log(
+                        "Could not remove the used deck spawn button."
+                    )
                 end
             end
 
-            waitForLoadedDeck(field, deck, heroRotation, deckSize)
-            print("Deck generated for " .. field.playerColor .. ".")
+            waitForLoadedDeck(
+                controller,
+                field,
+                deck,
+                heroRotation,
+                deckSize
+            )
+            controller.runtime.log(
+                "Deck generated for " .. field.playerColor .. "."
+            )
         end
     })
 
     if not succeeded or spawnedDeck == nil then
-        finish(field)
-        print("Deck slot card creation failed.")
+        finish(controller, field)
+        controller.runtime.log("Deck slot card creation failed.")
     end
 end
 
@@ -366,56 +372,108 @@ local function getApiUrl(lootId)
         .. "?lootId=" .. tostring(lootId)
 end
 
-function DeckGenerator.fetch(field, spawnPosition, lootId)
+local function defaultDecodeJson(value)
+    return JSON.decode(value)
+end
+
+function DeckGenerator.new(dependencies)
+    dependencies = dependencies or {}
+
+    return setmetatable({
+        runtime = dependencies.runtime or Runtime.default(),
+        scheduler = dependencies.scheduler or Scheduler.default(),
+        web = dependencies.web
+            or dependencies.webAdapter
+            or WebAdapter.default(),
+        decodeJson = dependencies.decodeJson or defaultDecodeJson,
+        generatingByField = {}
+    }, Controller)
+end
+
+function Controller:fetch(field, spawnPosition, lootId)
     lootId = tonumber(lootId)
 
     if lootId == nil then
-        print("Deck generation requires a loot ID.")
+        self.runtime.log("Deck generation requires a loot ID.")
         return false
     end
 
     local key = fieldKey(field)
 
-    if generatingByField[key] then
+    if self.generatingByField[key] then
         return false
     end
 
-    generatingByField[key] = true
-    print("Fetching deck data for " .. field.playerColor .. "...")
+    self.generatingByField[key] = true
+    self.runtime.log(
+        "Fetching deck data for " .. field.playerColor .. "..."
+    )
 
-    WebRequest.get(getApiUrl(lootId), function(response)
-        if response.is_error then
-            print("Deck API request failed: " .. tostring(response.error))
-            finish(field)
-            return
+    local requested, requestFailure = pcall(
+        self.web.get,
+        getApiUrl(lootId),
+        function(response)
+            if response.is_error then
+                self.runtime.log(
+                    "Deck API request failed: " .. tostring(response.error)
+                )
+                finish(self, field)
+                return
+            end
+
+            local decoded, data = pcall(self.decodeJson, response.text)
+
+            if not decoded then
+                self.runtime.log("Failed to parse deck API response.")
+                finish(self, field)
+                return
+            end
+
+            local definitions, errorMessage, deckSize =
+                CardApiNormalizer.normalize(data)
+
+            if definitions == nil then
+                self.runtime.log(errorMessage)
+                finish(self, field)
+                return
+            end
+
+            spawnDeck(
+                self,
+                field,
+                spawnPosition or field.deckSlot,
+                definitions,
+                deckSize
+            )
         end
+    )
 
-        local decoded, data = pcall(JSON.decode, response.text)
-
-        if not decoded then
-            print("Failed to parse deck API response.")
-            finish(field)
-            return
-        end
-
-        local definitions, errorMessage, deckSize =
-            makeCardDefinitions(data)
-
-        if definitions == nil then
-            print(errorMessage)
-            finish(field)
-            return
-        end
-
-        spawnDeck(
-            field,
-            spawnPosition or field.deckSlot,
-            definitions,
-            deckSize
+    if not requested then
+        self.runtime.log(
+            "Deck API request failed: " .. tostring(requestFailure)
         )
-    end)
+        finish(self, field)
+    end
 
     return true
+end
+
+local function getDefaultController()
+    if defaultController == nil then
+        defaultController = DeckGenerator.new()
+    end
+
+    return defaultController
+end
+
+
+function DeckGenerator.setDefault(controller)
+    defaultController = controller or DeckGenerator.new()
+end
+
+
+function DeckGenerator.fetch(field, spawnPosition, lootId)
+    return getDefaultController():fetch(field, spawnPosition, lootId)
 end
 
 return DeckGenerator

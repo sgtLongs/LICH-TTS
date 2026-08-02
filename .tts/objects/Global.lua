@@ -13,6 +13,17 @@ function getCardButtonConfig()
     return JSON.encode(Game.getCardButtonConfig())
 end
 
+function getCardFieldDestination(parameters)
+    if type(parameters) ~= "table" then
+        return nil
+    end
+
+    return Game.getCardFieldDestination(
+        parameters.fieldId,
+        parameters.destination
+    )
+end
+
 function onObjectHover(playerColor, object)
     Game.onObjectHover(playerColor, object)
 end

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "mappings": [
+    {
+      "source": "object_logic/CabinetStorage.lua",
+      "targets": [
+        ".tts/objects/Board Cabinet (Drawn).0c8d35.lua",
+        ".tts/objects/Board Cabinet (Drawn).5dd89b.lua",
+        ".tts/objects/Board Cabinet (Drawn).661907.lua",
+        ".tts/objects/Board Cabinet (Drawn).665355.lua",
+        ".tts/objects/Board Cabinet (Drawn).88b8d6.lua",
+        ".tts/objects/Table Extension.04c44a.lua",
+        ".tts/objects/The Kraken Table.0b2ed0.lua"
+      ]
+    },
+    {
+      "source": "object_logic/CabinetStateToggle.lua",
+      "targets": [
+        ".tts/objects/Board Cabinet (Drawn).3c4e81.lua"
+      ]
+    },
+    {
+      "source": "object_logic/Board.lua",
+      "targets": [
+        ".tts/objects/Board.437cd7.lua"
+      ]
+    },
+    {
+      "source": "object_logic/StaticDecoration.lua",
+      "targets": [
+        ".tts/objects/Table Extension.6e517a.lua"
+      ]
+    }
+  ]
+}

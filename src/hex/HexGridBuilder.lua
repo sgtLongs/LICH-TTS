@@ -1,6 +1,7 @@
 local Config = require("src/config/HexGridConfig")
 local DebugConfig = require("src/config/GlobalDebugConfig")
 local HexGeometry = require("src/hex/HexGeometry")
+local Runtime = require("src/tts/Runtime")
 
 local HexGridBuilder = {}
 local SQRT_3 = math.sqrt(3)
@@ -218,7 +219,7 @@ local function removeGridButtons(board)
     end
 end
 
-local function createButtons(board, cells, surfaceY)
+local function createButtons(board, cells, surfaceY, functionOwner)
     removeGridButtons(board)
 
     local dimensions = getButtonDimensions()
@@ -229,7 +230,7 @@ local function createButtons(board, cells, surfaceY)
             board.createButton({
                 label = showDebug and buttonConfig.label or "",
                 click_function = Config.buttonClickFunction,
-                function_owner = Global,
+                function_owner = functionOwner,
                 position = {
                     cell.x,
                     surfaceY + Config.buttonSurfaceOffset
@@ -259,11 +260,17 @@ local function createButtons(board, cells, surfaceY)
     end
 end
 
-function HexGridBuilder.build(board)
+function HexGridBuilder.build(board, options)
+    options = options or {}
     local cells = HexGeometry.buildCells(Config)
     local surfaceY = resolveSurfaceY(board)
+    local functionOwner = options.functionOwner
 
-    createButtons(board, cells, surfaceY)
+    if functionOwner == nil then
+        functionOwner = Runtime.default().getGlobalOwner()
+    end
+
+    createButtons(board, cells, surfaceY, functionOwner)
 
     return {
         cells = cells,

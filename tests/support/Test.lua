@@ -1,5 +1,8 @@
 local Test = {}
 local tests = {}
+local activeCleanups = nil
+local NIL = {}
+Test.NIL = NIL
 
 local function describe(value)
     if type(value) == "string" then
@@ -72,11 +75,170 @@ function Test.contains(value, expectedFragment, message)
     end
 end
 
+local function valuesMatch(expected, actual, visited)
+    if expected == actual then
+        return true
+    end
+
+    if type(expected) ~= type(actual) or type(expected) ~= "table" then
+        return false
+    end
+
+    visited[expected] = visited[expected] or {}
+
+    if visited[expected][actual] then
+        return true
+    end
+
+    visited[expected][actual] = true
+
+    for key, expectedValue in pairs(expected) do
+        if not valuesMatch(expectedValue, actual[key], visited) then
+            return false
+        end
+    end
+
+    for key, _ in pairs(actual) do
+        if expected[key] == nil then
+            return false
+        end
+    end
+
+    return true
+end
+
+function Test.deepEqual(expected, actual, message)
+    if not valuesMatch(expected, actual, {}) then
+        error(
+            message
+                or "Expected deeply equal tables/values, got "
+                    .. describe(expected) .. " and " .. describe(actual)
+                    .. ".",
+            2
+        )
+    end
+end
+
+function Test.raises(callback, expectedFragment, message)
+    local succeeded, failure = pcall(callback)
+
+    if succeeded then
+        error(message or "Expected the callback to raise an error.", 2)
+    end
+
+    if expectedFragment ~= nil then
+        Test.contains(tostring(failure), expectedFragment, message)
+    end
+
+    return failure
+end
+
+function Test.spy(returnValue)
+    local calls = {}
+    local function spy(...)
+        calls[#calls + 1] = {...}
+        return returnValue
+    end
+
+    return spy, calls
+end
+
+function Test.cleanup(callback)
+    if activeCleanups == nil then
+        error("Test.cleanup must be called from inside a test case.", 2)
+    end
+
+    activeCleanups[#activeCleanups + 1] = callback
+end
+
+function Test.withGlobals(overrides, callback)
+    local previous = {}
+
+    for name, value in pairs(overrides or {}) do
+        if _G[name] == nil then
+            previous[name] = NIL
+        else
+            previous[name] = _G[name]
+        end
+
+        if value == NIL then
+            _G[name] = nil
+        else
+            _G[name] = value
+        end
+    end
+
+    local succeeded, first, second, third = pcall(callback)
+
+    for name, value in pairs(previous) do
+        if value == NIL then
+            _G[name] = nil
+        else
+            _G[name] = value
+        end
+    end
+
+    if not succeeded then
+        error(first, 0)
+    end
+
+    return first, second, third
+end
+
+local function snapshotTable(value)
+    local snapshot = {}
+
+    for key, child in pairs(value) do
+        snapshot[key] = child
+    end
+
+    return snapshot
+end
+
+
+local function restoreTable(value, snapshot)
+    for key, _ in pairs(value) do
+        if snapshot[key] == nil then
+            value[key] = nil
+        end
+    end
+
+    for key, child in pairs(snapshot) do
+        value[key] = child
+    end
+end
+
 function Test.run()
     local failed = 0
 
     for _, test in ipairs(tests) do
+        local globalsBefore = snapshotTable(_G)
+        local loadedModules = package.loaded
+        local loadedModulesBefore = snapshotTable(loadedModules)
+        activeCleanups = {}
         local succeeded, failure = pcall(test.run)
+        local cleanupsSucceeded = true
+        local cleanupFailure = nil
+
+        for index = #activeCleanups, 1, -1 do
+            local cleanupSucceeded, currentFailure = pcall(
+                activeCleanups[index]
+            )
+
+            if not cleanupSucceeded and cleanupsSucceeded then
+                cleanupsSucceeded = false
+                cleanupFailure = currentFailure
+            end
+        end
+
+        activeCleanups = nil
+        restoreTable(loadedModules, loadedModulesBefore)
+        restoreTable(_G, globalsBefore)
+
+        if succeeded and not cleanupsSucceeded then
+            succeeded = false
+            failure = cleanupFailure
+        end
 
         if succeeded then
             print("PASS " .. test.name)

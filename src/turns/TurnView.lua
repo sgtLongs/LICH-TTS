@@ -1,0 +1,113 @@
+local UiPatch = require("src/ui/UiPatch")
+
+local TurnView = {}
+
+local function add(patches, id, attribute, value)
+    UiPatch.append(patches, id, attribute, value)
+end
+
+function TurnView.buildModel(
+    currentColor,
+    currentPhase,
+    playerName
+)
+    return {
+        currentColor = currentColor,
+        currentPhase = currentPhase,
+        playerName = playerName
+    }
+end
+
+function TurnView.buildPatch(config, model)
+    local patches = {}
+    local currentColor = model.currentColor
+    local currentPhase = model.currentPhase
+
+    if currentColor == nil then
+        add(
+            patches,
+            config.ui.playerNameId,
+            "text",
+            config.ui.noPlayersText
+        )
+        add(
+            patches,
+            config.ui.playerNameId,
+            "color",
+            "#FFFFFF"
+        )
+        add(
+            patches,
+            config.ui.colorNameId,
+            "text",
+            config.ui.noPlayersDetailText
+        )
+    else
+        add(
+            patches,
+            config.ui.playerNameId,
+            "text",
+            model.playerName .. "'s Turn"
+        )
+        add(
+            patches,
+            config.ui.playerNameId,
+            "color",
+            config.playerHexColors[currentColor]
+        )
+        add(
+            patches,
+            config.ui.colorNameId,
+            "text",
+            currentColor .. " Player"
+        )
+    end
+
+    for _, phase in ipairs(model.phases or {}) do
+        local isCurrentPhase = phase == currentPhase
+
+        add(
+            patches,
+            config.ui.phaseIdPrefix .. phase,
+            "text",
+            (isCurrentPhase
+                and config.ui.activePhasePrefix
+                or config.ui.inactivePhasePrefix)
+                .. config.phaseLabels[phase]
+        )
+        add(
+            patches,
+            config.ui.phaseIdPrefix .. phase,
+            "color",
+            isCurrentPhase
+                and config.ui.activePhaseColor
+                or config.ui.inactivePhaseColor
+        )
+    end
+
+    for _, playerColor in ipairs(config.playerColors) do
+        local buttonId = config.ui.phaseButtonPrefix .. playerColor
+        local isCurrentPlayer = playerColor == currentColor
+        local activeButtonText = currentPhase == "end"
+            and config.ui.endPhaseButtonText
+            or config.ui.activeButtonText
+
+        add(
+            patches,
+            buttonId,
+            "text",
+            isCurrentPlayer and activeButtonText
+                or config.ui.waitingButtonText
+        )
+        add(
+            patches,
+            buttonId,
+            "interactable",
+            isCurrentPlayer and "true" or "false"
+        )
+    end
+
+    return patches
+end
+
+return TurnView

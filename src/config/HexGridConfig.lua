@@ -1,5 +1,7 @@
 local HexGridConfig = {
     boardGuid = "068885",
+    boardStateSchemaVersion = 1,
+    placedObjectTag = "LichHexGridObject",
     sideLength = 6,
 
     -- Grid alignment in board-local units.

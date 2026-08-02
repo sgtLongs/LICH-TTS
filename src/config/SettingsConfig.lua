@@ -1,8 +1,12 @@
+local HexGridConfig = require("src/config/HexGridConfig")
+
 local SettingsConfig = {
-    boardStateSchemaVersion = 1,
+    -- Compatibility aliases. Hex-board persistence belongs to HexGridConfig;
+    -- callers should migrate there without invalidating existing extensions.
+    boardStateSchemaVersion = HexGridConfig.boardStateSchemaVersion,
     legacySettingsSchemaVersion = 1,
     settingsSchemaVersion = 2,
-    placedObjectTag = "LichHexGridObject",
+    placedObjectTag = HexGridConfig.placedObjectTag,
     boardListPageSize = 5,
     ui = {
         rootId = "settingsMenuRoot",

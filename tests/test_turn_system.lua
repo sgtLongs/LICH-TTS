@@ -1,5 +1,6 @@
 local Test = require("tests/support/Test")
 local Config = require("src/config/TurnConfig")
+local TurnView = require("src/turns/TurnView")
 
 local uiUpdates = {}
 local announcements = {}
@@ -137,4 +138,110 @@ Test.case("turn system includes only players with spawned decks", function()
     Test.truthy(TurnSystem.endTurn("Red"))
     Test.equal("Blue", TurnSystem.getSaveState().currentTurnColor)
     Test.equal(2, #TurnSystem.getSaveState().activePlayerColors)
+end)
+
+Test.case("turn view builds a deterministic UI patch", function()
+    local model = TurnView.buildModel("Red", "end", "Rhea")
+    model.phases = {"start", "end"}
+
+    local patches = TurnView.buildPatch(Config, model)
+
+    Test.deepEqual({
+        {
+            id = "turnPlayerName",
+            attribute = "text",
+            value = "Rhea's Turn"
+        },
+        {
+            id = "turnPlayerName",
+            attribute = "color",
+            value = Config.playerHexColors.Red
+        },
+        {
+            id = "turnColorName",
+            attribute = "text",
+            value = "Red Player"
+        },
+        {
+            id = "turnPhasestart",
+            attribute = "text",
+            value = "  START PHASE"
+        },
+        {
+            id = "turnPhasestart",
+            attribute = "color",
+            value = Config.ui.inactivePhaseColor
+        },
+        {
+            id = "turnPhaseend",
+            attribute = "text",
+            value = "> END PHASE"
+        },
+        {
+            id = "turnPhaseend",
+            attribute = "color",
+            value = Config.ui.activePhaseColor
+        }
+    }, {
+        patches[1],
+        patches[2],
+        patches[3],
+        patches[4],
+        patches[5],
+        patches[6],
+        patches[7]
+    })
+    Test.equal(19, #patches)
+    Test.deepEqual({
+        id = "advancePhaseRed",
+        attribute = "text",
+        value = "END TURN"
+    }, patches[12])
+    Test.deepEqual({
+        id = "advancePhaseRed",
+        attribute = "interactable",
+        value = "true"
+    }, patches[13])
+end)
+
+Test.case("constructed turn controllers own isolated state", function()
+    local announcements = {}
+    local privateMessages = {}
+    local appliedPatches = {}
+    local scheduled = nil
+    local dependencies = {
+        getPlayer = function(color)
+            return {steam_name = "Player " .. color}
+        end,
+        announce = function(message)
+            announcements[#announcements + 1] = message
+        end,
+        broadcastToColor = function(message, color)
+            privateMessages[#privateMessages + 1] = {message, color}
+        end,
+        scheduler = {
+            frames = function(callback, frames)
+                scheduled = {callback = callback, frames = frames}
+            end
+        },
+        uiAdapter = {
+            apply = function(patches)
+                appliedPatches[#appliedPatches + 1] = patches
+            end
+        }
+    }
+    local first = TurnSystem.new(dependencies)
+    local second = TurnSystem.new(dependencies)
+
+    first.onLoad({activePlayerColors = {"Red"}})
+    Test.equal(1, scheduled.frames)
+    scheduled.callback()
+
+    Test.truthy(first.isPlayerActive("Red"))
+    Test.falsy(second.isPlayerActive("Red"))
+    Test.falsy(first.advancePhase("Blue"))
+    Test.equal("Blue", privateMessages[1][2])
+    Test.contains(privateMessages[1][1], "Player Red")
+    Test.equal("Player Red (Red), it is your turn!", announcements[1])
+    Test.truthy(#appliedPatches > 0)
 end)

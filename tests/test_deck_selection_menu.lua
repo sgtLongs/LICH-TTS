@@ -1,6 +1,12 @@
 local Test = require("tests/support/Test")
 local Config = require("src/config/CardFieldConfig")
 local DeckGenerator = require("src/card_fields/DeckGenerator")
+local DeckSelectionMenuModel = require(
+    "src/card_fields/DeckSelectionMenuModel"
+)
+local DeckSelectionMenuView = require(
+    "src/card_fields/DeckSelectionMenuView"
+)
 local DeckSelectionMenu = require(
     "src/card_fields/DeckSelectionMenu"
 )
@@ -10,6 +16,11 @@ Test.case("deck menu opens for its player and generates their choice", function(
     local previousFetch = DeckGenerator.fetch
     local attributes = {}
     local fetched = nil
+
+    Test.cleanup(function()
+        DeckGenerator.fetch = previousFetch
+        UI = previousUi
+    end)
 
     UI = {
         setAttribute = function(id, attribute, value)
@@ -61,8 +72,6 @@ Test.case("deck menu opens for its player and generates their choice", function(
         attributes[Config.deckSlot.menuRootId .. ".active"]
     )
 
-    DeckGenerator.fetch = previousFetch
-    UI = previousUi
 end)
 
 Test.case("deck configuration includes every available choice", function()
@@ -74,4 +83,80 @@ Test.case("deck configuration includes every available choice", function()
         "Yashlaegon, the Sinful",
         Config.deckSlot.decks[13].name
     )
+end)
+
+Test.case("deck selection model enforces field ownership", function()
+    local model = DeckSelectionMenuModel.new()
+    local field = {ownerColor = "Red"}
+    local position = {x = 1, y = 2, z = 3}
+
+    Test.falsy(DeckSelectionMenuModel.open(
+        model,
+        "Blue",
+        field,
+        position
+    ))
+    Test.truthy(DeckSelectionMenuModel.open(
+        model,
+        "Red",
+        field,
+        position
+    ))
+    Test.equal(nil, DeckSelectionMenuModel.getSelection(model, "Blue"))
+
+    local selection = DeckSelectionMenuModel.takeSelection(model, "Red")
+    Test.equal(field, selection.field)
+    Test.equal(position, selection.spawnPosition)
+    Test.equal(nil, DeckSelectionMenuModel.getSelection(model, "Red"))
+end)
+
+Test.case("deck selection view snapshots open and hidden patches", function()
+    Test.deepEqual({
+        {
+            id = Config.deckSlot.menuRootId,
+            attribute = "visibility",
+            value = "Teal"
+        },
+        {
+            id = Config.deckSlot.menuRootId,
+            attribute = "active",
+            value = "true"
+        }
+    }, DeckSelectionMenuView.buildOpenPatch(Config, "Teal"))
+    Test.deepEqual({
+        {
+            id = Config.deckSlot.menuRootId,
+            attribute = "active",
+            value = "false"
+        }
+    }, DeckSelectionMenuView.buildHiddenPatch(Config))
+end)
+
+Test.case("constructed deck menu controllers isolate selections", function()
+    local applied = {}
+    local fetched = nil
+    local dependencies = {
+        uiAdapter = {
+            apply = function(patches)
+                applied[#applied + 1] = patches
+            end
+        },
+        fetchDeck = function(field, position, lootId)
+            fetched = {field, position, lootId}
+            return true
+        end
+    }
+    local first = DeckSelectionMenu.new(dependencies)
+    local second = DeckSelectionMenu.new(dependencies)
+    local field = {ownerColor = "Red"}
+    local position = {x = 4, y = 5, z = 6}
+
+    first.initialize()
+    second.initialize()
+    Test.truthy(first.open("Red", field, position))
+    Test.falsy(second.handleAction("Red", "9636"))
+    Test.falsy(first.handleAction("Blue", "9636"))
+    Test.truthy(first.handleAction("Red", "9636"))
+    Test.deepEqual({field, position, 9636}, fetched)
+    Test.equal("false", applied[#applied][1].value)
 end)

@@ -1,0 +1,269 @@
+local Test = require("tests/support/Test")
+local CardFields = require("src/card_fields/CardFields")
+local GameController = require("src/GameController")
+
+local function subsystem(state)
+    return {
+        getSaveState = function()
+            return state
+        end,
+        onLoad = function()
+        end,
+        initialize = function()
+        end
+    }
+end
+
+local function dependencies(overrides)
+    local values = {
+        cardFields = subsystem({name = "cards"}),
+        cardLogic = {
+            getButtonConfig = function()
+                return {}
+            end,
+            refreshExistingButtons = function()
+            end
+        },
+        dungeonMap = subsystem({name = "dungeon"}),
+        hexGrid = subsystem({name = "hex"}),
+        settingsMenu = subsystem({name = "settings"}),
+        turnSystem = subsystem({name = "turns"}),
+        runtime = {
+            setGlobalScriptState = function()
+                return true
+            end,
+            storeRewindState = function()
+            end,
+            log = function()
+            end
+        },
+        json = {
+            encode = function(value)
+                return value
+            end,
+            decode = function(value)
+                return value
+            end
+        }
+    }
+
+    for key, value in pairs(overrides or {}) do
+        values[key] = value
+    end
+
+    return values
+end
+
+Test.case("game controller requires its subsystem boundaries", function()
+    local values = dependencies()
+    values.hexGrid = nil
+
+    Test.raises(function()
+        GameController.new(values)
+    end, "requires hexGrid")
+end)
+
+Test.case("game controller emits the versioned aggregate save", function()
+    local controller = GameController.new(dependencies())
+    local state = controller:onSave()
+
+    Test.equal(1, state.schemaVersion)
+    Test.equal("cards", state.cardFields.name)
+    Test.equal("dungeon", state.dungeonMap.name)
+    Test.equal("hex", state.hexGrid.name)
+    Test.equal("settings", state.settings.name)
+    Test.equal("turns", state.turnSystem.name)
+end)
+
+Test.case("game controller accepts a constructed card-fields port", function()
+    local values = dependencies()
+    values.cardFields = CardFields.new()
+    local state = GameController.new(values):onSave()
+
+    Test.equal(1, state.schemaVersion)
+    Test.deepEqual({}, state.cardFields.deckSpawnedByPlayer)
+end)
+
+Test.case("game controller loads legacy saves through injected ports", function()
+    local loaded = {}
+    local values = dependencies()
+    local catalog = {}
+    local coordinator = {}
+    values.savedBoardCatalog = catalog
+    values.boardLoadCoordinator = coordinator
+    values.turnSystem.onLoad = function(value)
+        loaded.turns = value
+    end
+    values.cardFields.onLoad = function(value)
+        loaded.cards = value
+    end
+    values.hexGrid.onLoad = function(value)
+        loaded.hex = value
+    end
+    values.settingsMenu.initialize = function(context, value)
+        loaded.settings = value
+        loaded.settingsContext = context
+    end
+    values.dungeonMap.initialize = function(context, value)
+        loaded.dungeon = value
+        loaded.dungeonContext = context
+    end
+
+    GameController.new(values):onLoad({
+        cardFields = {name = "cards"},
+        dungeonMap = {name = "dungeon"},
+        hexGrid = {name = "hex"},
+        settings = {name = "settings"},
+        turnSystem = {name = "turns"}
+    })
+
+    Test.equal("cards", loaded.cards.name)
+    Test.equal("dungeon", loaded.dungeon.name)
+    Test.equal("hex", loaded.hex.name)
+    Test.equal("settings", loaded.settings.name)
+    Test.equal("turns", loaded.turns.name)
+    Test.truthy(loaded.settingsContext.persistState)
+    Test.equal(
+        loaded.settingsContext.persistState,
+        loaded.dungeonContext.persistState
+    )
+    Test.equal(catalog, loaded.settingsContext.savedBoardCatalog)
+    Test.equal(catalog, loaded.dungeonContext.savedBoardCatalog)
+    Test.equal(coordinator, loaded.settingsContext.boardLoadCoordinator)
+    Test.equal(coordinator, loaded.dungeonContext.boardLoadCoordinator)
+end)
+
+Test.case("game controller persistence uses only its runtime port", function()
+    local capturedState = nil
+    local capturedIncludeCurrent = nil
+    local values = dependencies({
+        runtime = {
+            setGlobalScriptState = function(value)
+                capturedState = value
+                return true
+            end,
+            storeRewindState = function(_, includeCurrentState)
+                capturedIncludeCurrent = includeCurrentState
+            end,
+            log = function()
+            end
+        },
+        json = {
+            encode = function()
+                return "encoded-game"
+            end,
+            decode = function()
+                return {}
+            end
+        }
+    })
+
+    Test.truthy(GameController.new(values):persistState())
+    Test.equal("encoded-game", capturedState)
+    Test.falsy(capturedIncludeCurrent)
+end)
+
+Test.case("game controller reports but contains persistence failures", function()
+    local logged = nil
+    local values = dependencies({
+        runtime = {
+            setGlobalScriptState = function()
+                error("read-only")
+            end,
+            storeRewindState = function()
+            end,
+            log = function(message)
+                logged = message
+            end
+        }
+    })
+
+    Test.falsy(GameController.new(values):persistState())
+    Test.contains(logged, "read-only")
+end)
+
+Test.case("game controller preserves nil returns from legacy event wrappers", function()
+    local returnedBySubsystem = {}
+    local function sentinel()
+        return returnedBySubsystem
+    end
+
+    local values = dependencies()
+    values.cardFields.onDeckSlotClicked = sentinel
+    values.cardFields.onDeckMenuUiClicked = sentinel
+    values.cardLogic.refreshExistingButtons = sentinel
+    values.cardLogic.suppressButtonsUntilPlaced = sentinel
+    values.cardLogic.removeAllButtons = sentinel
+    values.cardLogic.scheduleHandButtonCleanup = sentinel
+    values.dungeonMap.handleAction = sentinel
+    values.hexGrid.onObjectHover = sentinel
+    values.hexGrid.onClicked = sentinel
+    values.hexGrid.onObjectClicked = sentinel
+    values.hexGrid.onMenuUiClicked = sentinel
+    values.hexGrid.onObjectDestroy = sentinel
+    values.settingsMenu.handleAction = sentinel
+    values.settingsMenu.onJsonEdited = sentinel
+    values.settingsMenu.onBoardNameEdited = sentinel
+    values.settingsMenu.onEditModeChanged = sentinel
+    values.turnSystem.endTurn = sentinel
+    values.turnSystem.refreshUi = sentinel
+
+    local controller = GameController.new(values)
+    local calls = {
+        function()
+            return controller:onObjectHover()
+        end,
+        function()
+            return controller:onEndTurnClicked("Blue")
+        end,
+        function()
+            return controller:refreshCardButtons()
+        end,
+        function()
+            return controller:onHexGridClicked("Blue", false)
+        end,
+        function()
+            return controller:onCardFieldDeckSlotClicked({}, "Blue")
+        end,
+        function()
+            return controller:onDeckSelectionUiClicked("Blue", "deck")
+        end,
+        function()
+            return controller:onObjectLeaveContainer({}, {})
+        end,
+        function()
+            return controller:onObjectEnterZone({tag = "Hand"}, {})
+        end,
+        function()
+            return controller:onHexGridObjectClicked({}, "Blue", false)
+        end,
+        function()
+            return controller:onHexGridMenuUiClicked("Blue", "tile")
+        end,
+        function()
+            return controller:onSettingsUiClicked("Blue", "save")
+        end,
+        function()
+            return controller:onSettingsJsonEdited("Blue", "{}")
+        end,
+        function()
+            return controller:onSettingsBoardNameEdited("Blue", "Crypt")
+        end,
+        function()
+            return controller:onSettingsEditModeChanged("Blue", "True")
+        end,
+        function()
+            return controller:onDungeonMapUiClicked("Blue", "tile1")
+        end,
+        function()
+            return controller:onObjectDestroy({})
+        end,
+        function()
+            return controller:onPlayerConnect()
+        end
+    }
+
+    for _, call in ipairs(calls) do
+        Test.equal(nil, call())
+    end
+end)

@@ -5,8 +5,16 @@ local encodedValue = nil
 local decodedValue = nil
 
 local CardFields = {
+    configureDefaultDependencies = function(dependencies)
+        calls.cardFieldDependencies = dependencies
+    end,
     getSaveState = function()
         return {area = "cards"}
+    end,
+    getCardFieldDestination = function(fieldId, destination)
+        calls.destinationFieldId = fieldId
+        calls.destinationName = destination
+        return {x = 9, y = 8, z = 7}
     end,
     onLoad = function(savedState)
         calls.cardFieldsLoaded = true
@@ -147,6 +155,10 @@ local TurnSystem = {
         return true
     end,
     refreshUi = function()
+    end,
+    activatePlayer = function(playerColor)
+        calls.activatedPlayerColor = playerColor
+        return true
     end
 }
 
@@ -178,6 +190,12 @@ function storeRewindState(callback, includeCurrentState)
 end
 
 local Game = require("src/Game")
+
+Test.case("game composition injects deck activation into card fields", function()
+    Test.truthy(calls.cardFieldDependencies)
+    Test.truthy(calls.cardFieldDependencies.onDeckSpawned("Purple"))
+    Test.equal("Purple", calls.activatedPlayerColor)
+end)
 
 Test.case("game save gathers state from each subsystem", function()
     local result = Game.onSave()
@@ -237,6 +255,17 @@ Test.case("game exposes card button runtime configuration", function()
 
     Test.truthy(config.tap)
     Test.truthy(config.destroy)
+end)
+
+Test.case("game routes stable card-field destinations", function()
+    local destination = Game.getCardFieldDestination(
+        "field-a",
+        "purgatory"
+    )
+
+    Test.equal("field-a", calls.destinationFieldId)
+    Test.equal("purgatory", calls.destinationName)
+    Test.equal(9, destination.x)
 end)
 
 Test.case("game routes phase advances", function()

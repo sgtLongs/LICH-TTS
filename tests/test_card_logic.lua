@@ -1,5 +1,10 @@
 local Test = require("tests/support/Test")
 local CardLogic = require("src/cards/CardLogic")
+local CardFeatureRegistry = require("src/cards/CardFeatureRegistry")
+local CardHostService = require("src/cards/CardHostService")
+local CardScriptBuilder = require("src/cards/CardScriptBuilder")
+local Rotate90 = require("src/cards/features/Rotate90")
+local FieldActions = require("src/cards/features/FieldActions")
 local Config = require("src/config/CardLogicConfig")
 local DebugConfig = require("src/config/GlobalDebugConfig")
 
@@ -515,6 +520,28 @@ Test.case("card logic can be extended with opt-in features", function()
     Test.falsy(string.find(script, 'id = "rotate90"', 1, true))
 end)
 
+Test.case("card logic accepts first-class feature descriptors", function()
+    local registered = CardLogic.registerFeatureDescriptor({
+        id = "descriptorFeature",
+        stateVersion = 2,
+        source = "registerCardFeature({id = \"descriptorFeature\"})"
+    })
+    local script = CardLogic.build({"descriptorFeature"})
+
+    Test.equal(2, registered.stateVersion)
+    Test.contains(script, 'id = "descriptorFeature"')
+
+    local found = false
+
+    for _, descriptor in ipairs(CardLogic.getFeatureDescriptors()) do
+        if descriptor.id == "descriptorFeature" then
+            found = true
+        end
+    end
+
+    Test.truthy(found)
+end)
+
 Test.case("hovered cards offer movement to their purgatory", function()
     local script = CardLogic.build(nil, {
         purgatoryPosition = {x = 11, y = -1, z = 29},
@@ -630,6 +657,15 @@ Test.case("card button positions and debug drawing come from config", function()
     local previousTapWidth = Config.buttons.tap.width
     local previousActionHeight = Config.buttons.actionList.height
 
+    Test.cleanup(function()
+        DebugConfig.drawCardButtons = previousDebug
+        Config.buttons.tap.position.x = previousTapX
+        Config.buttons.destroy.position.x = previousDestroyX
+        Config.buttons.destroy.position.z = previousDestroyZ
+        Config.buttons.tap.width = previousTapWidth
+        Config.buttons.actionList.height = previousActionHeight
+    end)
+
     DebugConfig.drawCardButtons = true
     Config.buttons.tap.position.x = 2.25
     Config.buttons.destroy.position.x = 1.8
@@ -659,10 +695,102 @@ Test.case("card button positions and debug drawing come from config", function()
     Test.contains(script, "destroyButtonHeight = 650")
     Test.contains(script, "label = showDebug and cardContext.tapDebugLabel")
 
-    DebugConfig.drawCardButtons = previousDebug
-    Config.buttons.tap.position.x = previousTapX
-    Config.buttons.destroy.position.x = previousDestroyX
-    Config.buttons.destroy.position.z = previousDestroyZ
-    Config.buttons.tap.width = previousTapWidth
-    Config.buttons.actionList.height = previousActionHeight
+end)
+
+Test.case("card logic preserves its host-side compatibility facade", function()
+    Test.equal(
+        CardHostService.removeAllButtons,
+        CardLogic.removeAllButtons
+    )
+    Test.equal(
+        CardHostService.scheduleHandButtonCleanup,
+        CardLogic.scheduleHandButtonCleanup
+    )
+    Test.equal(
+        CardHostService.suppressButtonsUntilPlaced,
+        CardLogic.suppressButtonsUntilPlaced
+    )
+    Test.equal(
+        CardHostService.returnToHandThroughDeck,
+        CardLogic.returnToHandThroughDeck
+    )
+    Test.equal(
+        CardHostService.reloadAndReturnToHand,
+        CardLogic.reloadAndReturnToHand
+    )
+end)
+
+Test.case("card feature registry owns stable feature descriptors", function()
+    local registry = CardFeatureRegistry.new()
+    registry:register(Rotate90)
+    registry:register(FieldActions)
+
+    local defaults = registry:getDefaultIds()
+    Test.equal("rotate90", defaults[1])
+    Test.equal("destroyToPurgatory", defaults[2])
+    Test.equal(1, registry:get("rotate90").stateVersion)
+    Test.equal(1, registry:get("destroyToPurgatory").stateVersion)
+
+    defaults[1] = "changed-outside-registry"
+    Test.equal("rotate90", registry:getDefaultIds()[1])
+
+    Test.raises(function()
+        registry:register(Rotate90)
+    end, "Card feature already registered: rotate90")
+end)
+
+Test.case("card script builder derives cleanup from feature descriptors", function()
+    local registry = CardFeatureRegistry.new()
+    registry:register({
+        id = "customButton",
+        source = [=[
+registerCardFeature({
+    id = "customButton"
+})
+]=],
+        buttonCallbacks = {"onCustomCardClicked"}
+    })
+    local builder = CardScriptBuilder.new({registry = registry})
+    local script = builder:build({"customButton"})
+
+    Test.contains(script, 'button.click_function == "onCustomCardClicked"')
+    Test.contains(script, 'id = "customButton"')
+    Test.falsy(string.find(script, "onDestroyCardClicked", 1, true))
+end)
+
+Test.case("built-in card features remain isolated and unknown IDs fail", function()
+    local rotateScript = CardLogic.build({"rotate90"})
+    local actionsScript = CardLogic.build({"destroyToPurgatory"})
+
+    Test.contains(rotateScript, "notifyActionZoneRotationChanged")
+    Test.falsy(string.find(
+        rotateScript,
+        "onDestroyCardClicked",
+        1,
+        true
+    ))
+    Test.falsy(string.find(
+        rotateScript,
+        "type(config.destroy)",
+        1,
+        true
+    ))
+
+    Test.contains(actionsScript, "function onDestroyCardClicked")
+    Test.falsy(string.find(
+        actionsScript,
+        "notifyActionZoneRotationChanged",
+        1,
+        true
+    ))
+    Test.falsy(string.find(
+        actionsScript,
+        "type(config.tap)",
+        1,
+        true
+    ))
+
+    Test.raises(function()
+        CardLogic.build({"notRegistered"})
+    end, "Unknown card feature: notRegistered")
 end)

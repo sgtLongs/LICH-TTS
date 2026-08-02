@@ -247,6 +247,7 @@
                 spacing="5"
                 childAlignment="UpperCenter"
             >
+                <!-- BEGIN GENERATED:settings-board-buttons -->
                 <Button
                     id="settingsSavedBoard1"
                     text="Saved Board 1"
@@ -292,6 +293,7 @@
                     preferredHeight="36"
                     active="false"
                 />
+                <!-- END GENERATED:settings-board-buttons -->
             </VerticalLayout>
 
             <HorizontalLayout
@@ -467,6 +469,7 @@
             />
         </HorizontalLayout>
 
+        <!-- BEGIN GENERATED:deck-choice-rows -->
         <HorizontalLayout preferredHeight="68" spacing="12">
             <Button
                 text="Arysa Andrews"
@@ -564,6 +567,7 @@
             />
             <Panel preferredWidth="420" preferredHeight="64" />
         </HorizontalLayout>
+        <!-- END GENERATED:deck-choice-rows -->
     </VerticalLayout>
 </Panel>
 
@@ -614,6 +618,7 @@
                 preferredHeight="530"
                 color="#11182780"
             >
+                <!-- BEGIN GENERATED:dungeon-tile-buttons -->
                 <Button
                     id="dungeonMapTile1"
                     text="#"
@@ -1175,6 +1180,7 @@
                     active="false"
                     tooltip="Unassigned dungeon hex"
                 />
+                <!-- END GENERATED:dungeon-tile-buttons -->
             </Panel>
 
             <Panel
@@ -1260,6 +1266,7 @@
                         preferredHeight="43"
                         active="false"
                     />
+                    <!-- BEGIN GENERATED:dungeon-board-buttons -->
                     <Button
                         id="dungeonMapBoard1"
                         text="Saved Board 1"
@@ -1320,6 +1327,7 @@
                         preferredHeight="42"
                         active="false"
                     />
+                    <!-- END GENERATED:dungeon-board-buttons -->
                     <HorizontalLayout
                         preferredHeight="38"
                         spacing="8"
@@ -1440,6 +1448,7 @@
             color="#E5E7EB"
             preferredHeight="38"
         />
+        <!-- BEGIN GENERATED:turn-phase-and-player-controls -->
         <Text
             id="turnPhasestart"
             text="> START PHASE"
@@ -1540,6 +1549,7 @@
             preferredHeight="52"
             interactable="false"
         />
+        <!-- END GENERATED:turn-phase-and-player-controls -->
     </VerticalLayout>
 </Panel>
 
@@ -1579,6 +1589,7 @@
                 preferredHeight="34"
             />
         </HorizontalLayout>
+        <!-- BEGIN GENERATED:hex-spawn-selector-rows -->
         <HorizontalLayout
             preferredHeight="58"
             spacing="8"
@@ -1665,6 +1676,7 @@
                 tooltip="Source Stone"
             />
         </HorizontalLayout>
+        <!-- END GENERATED:hex-spawn-selector-rows -->
         <Text
             text="Click an empty hex to spawn. Click a placed object to delete it."
             fontSize="17"
@@ -1737,6 +1749,7 @@
             spacing="12"
             childAlignment="UpperCenter"
         >
+            <!-- BEGIN GENERATED:hex-menu-choice-rows -->
             <HorizontalLayout
                 preferredHeight="72"
                 spacing="12"
@@ -1821,6 +1834,7 @@
                     preferredHeight="64"
                 />
             </HorizontalLayout>
+            <!-- END GENERATED:hex-menu-choice-rows -->
             <Button
                 id="hexGridMenuDeleteObject"
                 active="false"
