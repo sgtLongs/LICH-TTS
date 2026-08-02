@@ -9,6 +9,7 @@ local defaultFeatures = {}
 local bootstrap = [=[
 local cardFeatures = {}
 local cardState = {features = {}}
+local actionZoneTapEnabled = true
 
 local function registerCardFeature(feature)
     cardFeatures[#cardFeatures + 1] = feature
@@ -169,15 +170,19 @@ function refreshCardButtons()
 
     for _, button in ipairs(self.getButtons() or {}) do
         if button.click_function == "onCardTapped" then
-            hasTapButton = true
-            local parameters = makeTapButtonParameters()
-            parameters.index = button.index
-            self.editButton(parameters)
+            if actionZoneTapEnabled then
+                hasTapButton = true
+                local parameters = makeTapButtonParameters()
+                parameters.index = button.index
+                self.editButton(parameters)
+            else
+                self.removeButton(button.index)
+            end
             break
         end
     end
 
-    if not hasTapButton then
+    if actionZoneTapEnabled and not hasTapButton then
         for _, feature in ipairs(cardFeatures) do
             if type(feature.onTap) == "function" then
                 self.createButton(makeTapButtonParameters())
@@ -189,6 +194,18 @@ function refreshCardButtons()
     if type(refreshCardActionButtons) == "function" then
         refreshCardActionButtons()
     end
+end
+
+function setActionZoneTapEnabled(parameters)
+    actionZoneTapEnabled = type(parameters) ~= "table"
+        or parameters.enabled ~= false
+    refreshCardButtons()
+end
+
+function getActionZoneTapRotation()
+    local rotateState = cardState.features.rotate90
+    return type(rotateState) == "table"
+        and rotateState.rotated == true
 end
 
 function onLoad(savedState)
@@ -217,7 +234,10 @@ function onLoad(savedState)
             or type(feature.onTap) == "function"
     end
 
-    if hasTapFeature and not isCardInHand() then
+    if hasTapFeature
+        and actionZoneTapEnabled
+        and not isCardInHand()
+    then
         self.createButton(makeTapButtonParameters())
     end
 end
@@ -254,7 +274,10 @@ function onHover(playerColor)
 end
 
 function onCardTapped(object, playerColor, altClick)
-    if object ~= self or not isSingleCard() then
+    if object ~= self
+        or not isSingleCard()
+        or not actionZoneTapEnabled
+    then
         return
     end
 
@@ -514,25 +537,50 @@ function CardLogic.build(featureNames, context)
 end
 
 CardLogic.registerFeature("rotate90", [=[
+local function notifyActionZoneRotationChanged(rotated)
+    if Global ~= nil and type(Global.call) == "function" then
+        pcall(
+            Global.call,
+            "onActionZoneCardRotationChanged",
+            {card = self, rotated = rotated}
+        )
+    end
+end
+
 registerCardFeature({
     id = "rotate90",
 
     onLoad = function(state)
         state.rotated = state.rotated == true
+        notifyActionZoneRotationChanged(state.rotated)
     end,
 
     onTap = function(state)
         state.rotated = not state.rotated
+        notifyActionZoneRotationChanged(state.rotated)
 
         if type(hideActionButtonsDuringCardRotation) == "function" then
             hideActionButtonsDuringCardRotation()
         end
 
-        self.rotate({
-            x = 0,
-            y = state.rotated and 90 or -90,
-            z = 0
-        })
+        local amount = state.rotated and 90 or -90
+
+        if type(self.getRotation) == "function"
+            and type(self.setRotationSmooth) == "function"
+        then
+            local rotation = self.getRotation()
+
+            -- Use an exact target and ignore collisions while turning. The
+            -- relative rotate API can be physically constrained by the
+            -- locked cards directly beneath an action-stack card.
+            self.setRotationSmooth({
+                x = rotation.x,
+                y = rotation.y + amount,
+                z = rotation.z
+            }, false, true)
+        else
+            self.rotate({x = 0, y = amount, z = 0})
+        end
     end
 })
 ]=], true)

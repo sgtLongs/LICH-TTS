@@ -33,6 +33,25 @@ function onCardLeavesActionZone(parameters)
     return Game.onCardLeavesActionZone(parameters.card)
 end
 
+function onActionStackUpClicked(object, playerColor, altClick)
+    return Game.onActionStackUpClicked(object)
+end
+
+function onActionStackDownClicked(object, playerColor, altClick)
+    return Game.onActionStackDownClicked(object)
+end
+
+function onActionZoneCardRotationChanged(parameters)
+    if type(parameters) ~= "table" then
+        return false
+    end
+
+    return Game.onActionZoneCardRotationChanged(
+        parameters.card,
+        parameters.rotated
+    )
+end
+
 function onEndTurnClicked(player, value, id)
     Game.onEndTurnClicked(player.color)
 end

@@ -32,6 +32,16 @@ local CardFields = {
         calls.actionZoneLeavingCard = object
         return true
     end,
+    onActionStackNavigationClicked = function(object, direction)
+        calls.actionStackCard = object
+        calls.actionStackDirection = direction
+        return true
+    end,
+    onActionZoneCardRotationChanged = function(object, rotated)
+        calls.actionStackRotatedCard = object
+        calls.actionStackRotated = rotated
+        return true
+    end,
     renewDeckSlotButton = function()
         return true
     end
@@ -260,6 +270,24 @@ Test.case("game routes scripted cards leaving action zones", function()
 
     Test.truthy(Game.onCardLeavesActionZone(card))
     Test.equal(card, calls.actionZoneLeavingCard)
+end)
+
+Test.case("game routes action stack navigation arrows", function()
+    local card = {}
+
+    Test.truthy(Game.onActionStackDownClicked(card))
+    Test.equal(card, calls.actionStackCard)
+    Test.equal(1, calls.actionStackDirection)
+    Test.truthy(Game.onActionStackUpClicked(card))
+    Test.equal(-1, calls.actionStackDirection)
+end)
+
+Test.case("game routes action stack card rotation changes", function()
+    local card = {}
+
+    Test.truthy(Game.onActionZoneCardRotationChanged(card, true))
+    Test.equal(card, calls.actionStackRotatedCard)
+    Test.truthy(calls.actionStackRotated)
 end)
 
 Test.case("game routes edit mode object number keys", function()

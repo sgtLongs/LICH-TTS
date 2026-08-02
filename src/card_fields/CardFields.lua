@@ -118,11 +118,22 @@ function CardFields.onLoad(savedState)
         field.deckSpawned = spawnedByPlayer[ownerColor] == true
     end
 
+    ActionZone.onLoad(
+        fields,
+        type(savedState) == "table" and savedState.actionZone or nil
+    )
+
     -- Zone outlines are part of the playable field rather than debug
     -- geometry, so they are always visible.
     Global.setVectorLines(built.lines)
 
     refreshDeckSlotButtons()
+
+    local function refreshActionZones()
+        ActionZone.refresh(fields)
+    end
+
+    Wait.time(refreshActionZones, 0.5)
 
     -- Stateful cabinet objects can replace and reload themselves after Global's
     -- onLoad has run. Refresh once those object-level load handlers have
@@ -145,7 +156,8 @@ function CardFields.getSaveState()
     end
 
     return {
-        deckSpawnedByPlayer = deckSpawnedByPlayer
+        deckSpawnedByPlayer = deckSpawnedByPlayer,
+        actionZone = ActionZone.getSaveState(fields)
     }
 end
 
@@ -216,6 +228,14 @@ end
 
 function CardFields.onCardLeavesActionZone(object)
     return ActionZone.onCardLeaves(fields, object)
+end
+
+function CardFields.onActionStackNavigationClicked(object, direction)
+    return ActionZone.onStackNavigationClicked(fields, object, direction)
+end
+
+function CardFields.onActionZoneCardRotationChanged(object, rotated)
+    return ActionZone.onCardRotationChanged(fields, object, rotated)
 end
 
 return CardFields

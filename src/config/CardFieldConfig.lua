@@ -14,7 +14,35 @@ local CardFieldConfig = {
         -- The five printed action spaces are used until the row fills. Extra
         -- cards share the same usable width with equal center-to-center gaps.
         defaultSlots = 5,
-        cardCenterHeight = 0.2
+        cardCenterHeight = 0.2,
+        -- A drop must overlap this much of an existing action card before it
+        -- joins that card's stack. Drops in open space remain new row entries.
+        stackDropHalfWidth = 1.5,
+        stackDropHalfDepth = 1.75,
+        -- Each lower card is fanned toward its player so part of its face
+        -- remains visible. Its stack index, not the selection, owns this Z.
+        stackCardZOffset = -0.55,
+        stackLayerHeight = 0.03,
+        selectedCardLift = 0.4,
+        navigationButtons = {
+            -- Up and down can be positioned and sized independently. TTS
+            -- button width/height values are measured in hundredths.
+            up = {
+                position = {x = 0, y = 0.45, z = -2},
+                width = 1200,
+                height = 350
+            },
+            down = {
+                position = {x = 0, y = 0.45, z = 2},
+                width = 1200,
+                height = 350
+            },
+            fontSize = 260,
+            color = {0.08, 0.08, 0.08, 0.92},
+            fontColor = {1, 1, 1, 1},
+            hoverColor = {0.2, 0.55, 0.9, 1},
+            pressColor = {0.05, 0.3, 0.62, 1}
+        }
     },
 
     deckSlot = {

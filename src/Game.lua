@@ -127,6 +127,18 @@ function Game.onCardLeavesActionZone(object)
     return CardFields.onCardLeavesActionZone(object)
 end
 
+function Game.onActionStackUpClicked(object)
+    return CardFields.onActionStackNavigationClicked(object, -1)
+end
+
+function Game.onActionStackDownClicked(object)
+    return CardFields.onActionStackNavigationClicked(object, 1)
+end
+
+function Game.onActionZoneCardRotationChanged(object, rotated)
+    return CardFields.onActionZoneCardRotationChanged(object, rotated)
+end
+
 function Game.onHexGridObjectClicked(object, playerColor, altClick)
     HexGrid.onObjectClicked(object, playerColor, altClick)
 end

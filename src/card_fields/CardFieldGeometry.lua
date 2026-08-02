@@ -171,6 +171,12 @@ function CardFieldGeometry.buildField(field, config)
                 defaultSlots = actionConfig.defaultSlots
                     or (zone.lastColumn - zone.firstColumn + 1),
                 cardCenterHeight = actionConfig.cardCenterHeight or 0.2,
+                stackDropHalfWidth = actionConfig.stackDropHalfWidth,
+                stackDropHalfDepth = actionConfig.stackDropHalfDepth,
+                stackCardZOffset = actionConfig.stackCardZOffset,
+                stackLayerHeight = actionConfig.stackLayerHeight,
+                selectedCardLift = actionConfig.selectedCardLift,
+                navigationButtons = actionConfig.navigationButtons,
                 y = surfaceY
             }
         end
