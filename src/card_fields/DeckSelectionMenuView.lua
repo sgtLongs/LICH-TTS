@@ -10,6 +10,7 @@ end
 
 function DeckSelectionMenuView.buildOpenPatch(config, playerColor)
     return {
+        UiPatch.set(config.deckSlot.customLootIdInputId, "text", ""),
         UiPatch.set(
             config.deckSlot.menuRootId,
             "visibility",

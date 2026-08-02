@@ -66,6 +66,7 @@ local CardFieldConfig = {
         apiUrl =
             "https://kickback-kingdom.com/api/v1/lich/get-deck.php",
         menuRootId = "deckSelectionMenuRoot",
+        customLootIdInputId = "deckSelectionCustomLootId",
         decks = {
             {lootId = 9636, name = "Arysa Andrews"},
             {lootId = 4371, name = "Aurelia, Maiden of the Brush"},

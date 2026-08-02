@@ -138,6 +138,11 @@ end)
 Test.case("deck selection view snapshots open and hidden patches", function()
     Test.deepEqual({
         {
+            id = Config.deckSlot.customLootIdInputId,
+            attribute = "text",
+            value = ""
+        },
+        {
             id = Config.deckSlot.menuRootId,
             attribute = "visibility",
             value = "Teal"
@@ -184,4 +189,44 @@ Test.case("constructed deck menu controllers isolate selections", function()
     Test.truthy(first.handleAction("Red", "9636"))
     Test.deepEqual({field, position, 9636}, fetched)
     Test.equal("false", applied[#applied][1].value)
+end)
+
+Test.case("deck menu accepts a custom numeric loot ID", function()
+    local fetched = nil
+    local controller = DeckSelectionMenu.new({
+        uiAdapter = {
+            apply = function()
+            end
+        },
+        fetchDeck = function(field, position, lootId)
+            fetched = {field, position, lootId}
+            return true
+        end
+    })
+    local field = {ownerColor = "Red"}
+    local position = {x = 7, y = 8, z = 9}
+
+    Test.truthy(controller.open("Red", field, position))
+    Test.truthy(controller.handleAction("Red", "24680"))
+    Test.deepEqual({field, position, 24680}, fetched)
+end)
+
+Test.case("deck menu rejects malformed custom loot IDs", function()
+    local fetchCount = 0
+    local controller = DeckSelectionMenu.new({
+        uiAdapter = {
+            apply = function()
+            end
+        },
+        fetchDeck = function()
+            fetchCount = fetchCount + 1
+        end
+    })
+    local field = {ownerColor = "Red"}
+
+    Test.truthy(controller.open("Red", field, {}))
+    Test.falsy(controller.handleAction("Red", "not-a-number"))
+    Test.falsy(controller.handleAction("Red", "12.5"))
+    Test.falsy(controller.handleAction("Red", "0"))
+    Test.equal(0, fetchCount)
 end)

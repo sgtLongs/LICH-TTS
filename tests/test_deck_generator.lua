@@ -460,6 +460,39 @@ Test.case("JSON decode failures release the field for retry", function()
     end)
 end)
 
+Test.case("missing loot IDs report Deck not found and allow retry", function()
+    local requests = {}
+    local logs = {}
+    local messages = {}
+    local field = makeFailureField()
+    local generator = DeckGenerator.new({
+        runtime = {
+            log = function(message)
+                logs[#logs + 1] = message
+            end,
+            broadcastToColor = function(message, playerColor)
+                messages[#messages + 1] = {message, playerColor}
+            end
+        },
+        web = {
+            get = function(_, callback)
+                requests[#requests + 1] = callback
+                return true
+            end
+        },
+        decodeJson = function()
+            return nil
+        end
+    })
+
+    Test.truthy(generator:fetch(field, nil, 999999999))
+    requests[1]({is_error = false, text = "null"})
+
+    Test.equal("Deck not found", logs[#logs])
+    Test.deepEqual({"Deck not found", "Red"}, messages[1])
+    Test.truthy(generator:fetch(field, nil, 999999999))
+end)
+
 Test.case("invalid API response shapes never reach the spawner", function()
     withGeneratorGlobals(function()
         local field = makeFailureField()

@@ -437,6 +437,16 @@ function Controller:fetch(field, spawnPosition, lootId)
                 return
             end
 
+            if data == nil then
+                self.runtime.log("Deck not found")
+                self.runtime.broadcastToColor(
+                    "Deck not found",
+                    field.ownerColor or field.playerColor
+                )
+                finish(self, field)
+                return
+            end
+
             local definitions, errorMessage, deckSize =
                 CardApiNormalizer.normalize(data)
 

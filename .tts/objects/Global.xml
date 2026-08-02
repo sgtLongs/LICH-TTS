@@ -440,7 +440,7 @@
     id="deckSelectionMenuRoot"
     rectAlignment="MiddleCenter"
     width="900"
-    height="650"
+    height="760"
     color="#090C12F5"
     padding="22 22 22 22"
     active="false"
@@ -466,6 +466,23 @@
                 preferredWidth="56"
                 preferredHeight="52"
                 tooltip="Close"
+            />
+        </HorizontalLayout>
+
+        <HorizontalLayout
+            preferredHeight="64"
+            spacing="12"
+            childAlignment="MiddleCenter"
+        >
+            <InputField
+                id="deckSelectionCustomLootId"
+                placeholder="Enter a custom loot ID"
+                characterValidation="Integer"
+                onEndEdit="onDeckSelectionUiClicked"
+                fontSize="22"
+                preferredWidth="852"
+                preferredHeight="56"
+                tooltip="Enter a loot ID and press Enter"
             />
         </HorizontalLayout>
 

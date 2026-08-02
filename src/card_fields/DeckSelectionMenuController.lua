@@ -66,9 +66,18 @@ function DeckSelectionMenuController.new(dependencies)
             return true
         end
 
-        local deck = decksByLootId[tostring(action)]
+        local actionValue = tostring(action)
+        local deck = decksByLootId[actionValue]
+        local lootId = deck ~= nil and deck.lootId or nil
 
-        if deck == nil then
+        if lootId == nil and actionValue:match("^%d+$") ~= nil then
+            lootId = tonumber(actionValue)
+        end
+
+        if lootId == nil
+            or lootId <= 0
+            or lootId >= math.huge
+        then
             return false
         end
 
@@ -78,7 +87,7 @@ function DeckSelectionMenuController.new(dependencies)
         return fetchDeck(
             selection.field,
             selection.spawnPosition,
-            deck.lootId
+            lootId
         )
     end
 
