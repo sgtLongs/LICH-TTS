@@ -57,7 +57,7 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
 
             if includeHero then
                 cards[#cards + 1] = {
-                    name = "Manfred",
+                    name = "Manfred Schneider",
                     description = "The deck hero",
                     frontImageURL = "hero.png",
                     types = {"Undead", "Hero"},
@@ -94,6 +94,10 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
 
             local allObjects = {
                 {
+                    guid = "wrong-hero",
+                    name = "Not Manfred | Undead, Hero"
+                },
+                {
                     guid = "skeleton-one",
                     name = "Skeleton | Undead"
                 },
@@ -103,7 +107,7 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
                 },
                 {
                     guid = "hero-guid",
-                    name = "Manfred | Undead, Hero"
+                    name = "Manfred Schneider | Undead, Hero"
                 }
             }
             local loadedObjects = {}
@@ -259,11 +263,11 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
     Test.falsy(waitParameters.condition())
 
     spawnedDeck.loading_custom = false
-    loadedObjectCount = 2
+    loadedObjectCount = 3
     Test.falsy(waitParameters.condition())
     Test.falsy(takeParameters)
 
-    loadedObjectCount = 3
+    loadedObjectCount = 4
     Test.truthy(waitParameters.condition())
     waitParameters.callback()
 
@@ -337,7 +341,7 @@ local function makeValidApiData()
                 quantity = 1
             },
             {
-                name = "Hero",
+                name = "Arysa Andrews",
                 description = "The hero",
                 frontImageURL = "hero.png",
                 types = {"Undead", "Hero"},
@@ -591,7 +595,7 @@ Test.case("failed Hero extraction releases the field for retry", function()
         deck.getObjects = function()
             return {
                 {guid = "skeleton", name = "Skeleton | Undead"},
-                {guid = "hero", name = "Hero | Undead, Hero"}
+                {guid = "hero", name = "Arysa Andrews | Human, Hero"}
             }
         end
         deck.takeObject = function()
@@ -638,7 +642,7 @@ Test.case("Hero metadata supports nickname and index fallbacks", function()
         deck.getObjects = function()
             return {
                 {index = 2, nickname = "Skeleton | Undead"},
-                {index = 7, nickname = "Fallback | Undead, Hero"}
+                {index = 7, nickname = "Arysa Andrews | Human, Hero"}
             }
         end
         deck.takeObject = function(parameters)
@@ -849,7 +853,10 @@ Test.case("deck generator uses injected adapters in order", function()
         getObjects = function()
             return {
                 {guid = "skeleton-guid", name = "Skeleton | Undead"},
-                {guid = "hero-guid", name = "Hero | Undead, Hero"}
+                {
+                    guid = "hero-guid",
+                    name = "Arysa Andrews | Human, Hero"
+                }
             }
         end,
         takeObject = function(parameters)

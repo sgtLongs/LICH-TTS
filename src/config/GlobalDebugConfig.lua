@@ -3,7 +3,7 @@ local GlobalDebugConfig = {
     drawEditObjectButtons = false,
     drawCardFields = false,
     drawCardFieldDeckButtons = false,
-    drawCardButtons = true
+    drawCardButtons = false
 }
 
 return GlobalDebugConfig

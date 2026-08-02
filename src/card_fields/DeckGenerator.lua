@@ -1,4 +1,5 @@
 local Config = require("src/config/CardFieldConfig")
+local HeroConfig = require("src/config/HeroConfig")
 local CardApiNormalizer = require("src/cards/CardApiNormalizer")
 local CardDefinition = require("src/cards/CardDefinition")
 local CardLogic = require("src/cards/CardLogic")
@@ -114,36 +115,22 @@ local function makeDeckData(definitions, deckSize, scriptContext)
     }
 end
 
-local function titleHasType(title, expectedType)
-    if type(title) ~= "string" then
-        return false
-    end
-
-    local types = string.match(title, "^.- | (.-)%s*$")
-
-    if types == nil then
-        return false
-    end
-
-    for cardType in string.gmatch(types, "[^,]+") do
-        local trimmed = string.match(cardType, "^%s*(.-)%s*$")
-
-        if trimmed == expectedType then
-            return true
-        end
-    end
-
-    return false
-end
-
 local function findHeroCard(cards)
     for _, card in ipairs(cards or {}) do
         -- Container metadata exposes the visible card title as `name`.
         -- `nickname` remains as a fallback for older TTS versions.
         local title = card.name or card.nickname
 
-        if titleHasType(title, "Hero") then
-            return card
+        for _, hero in ipairs(HeroConfig.heroes or {}) do
+            local titleContains = hero.titleContains
+
+            if type(titleContains) == "string"
+                and titleContains ~= ""
+                and type(title) == "string"
+                and string.find(title, titleContains, 1, true) ~= nil
+            then
+                return card
+            end
         end
     end
 

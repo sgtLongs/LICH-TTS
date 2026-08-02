@@ -1,5 +1,6 @@
 local Test = require("tests/support/Test")
 local Config = require("src/config/CardFieldConfig")
+local HeroConfig = require("src/config/HeroConfig")
 local DeckGenerator = require("src/card_fields/DeckGenerator")
 local DeckSelectionMenuModel = require(
     "src/card_fields/DeckSelectionMenuModel"
@@ -83,6 +84,30 @@ Test.case("deck configuration includes every available choice", function()
         "Yashlaegon, the Sinful",
         Config.deckSlot.decks[13].name
     )
+
+    local expectedHeroes = {
+        {"Arysa Andrews", 5, 60},
+        {"Aureilia, Maiden of the Brush", 6, 40},
+        {"Brain in a Jar", 8, 20},
+        {"Devon Andrews", 5, 55},
+        {"Draelith, Phoenix King", 6, 45},
+        {"Eric and Eugene", 7, 35},
+        {"Eric the Possessed", 5, 60},
+        {"Isaiah Mangrum", 6, 55},
+        {"Kronid The Wretched", 6, 45},
+        {"Maldrith, Acolyte of Shadows", 6, 40},
+        {"Manfred Schneider", 7, 40},
+        {"Marok, The Devourer", 3, 60},
+        {"Yashlaegon, the Sinful", 6, 45}
+    }
+
+    for index, expected in ipairs(expectedHeroes) do
+        local hero = HeroConfig.heroes[index]
+
+        Test.equal(expected[1], hero.titleContains)
+        Test.equal(expected[2], hero.intelligence)
+        Test.equal(expected[3], hero.health)
+    end
 end)
 
 Test.case("deck selection model enforces field ownership", function()
