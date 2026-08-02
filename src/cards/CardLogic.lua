@@ -733,6 +733,16 @@ function refreshCardActionButtons()
     end
 end
 
+local function notifyActionZoneCardLeaving()
+    if Global ~= nil and type(Global.call) == "function" then
+        pcall(
+            Global.call,
+            "onCardLeavesActionZone",
+            {card = self}
+        )
+    end
+end
+
 local function moveCardTo(destination, missingMessage)
     if type(destination) ~= "table" then
         print(missingMessage)
@@ -740,6 +750,7 @@ local function moveCardTo(destination, missingMessage)
     end
 
     removeActionButtons()
+    notifyActionZoneCardLeaving()
     self.setPositionSmooth({
         x = destination.x,
         y = destination.y,
@@ -809,6 +820,7 @@ function onUnequipCardClicked(object, playerColor, altClick)
     end
 
     removeActionButtons()
+    notifyActionZoneCardLeaving()
     local deckPosition = deck.getPosition()
 
     -- putObject inserts at the end nearest the card's Y elevation. Moving
@@ -834,6 +846,7 @@ function onReturnCardClicked(object, playerColor, altClick)
     end
 
     removeActionButtons()
+    notifyActionZoneCardLeaving()
     self.deal(1, playerColor)
 end
 

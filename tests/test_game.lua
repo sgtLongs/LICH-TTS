@@ -20,6 +20,18 @@ local CardFields = {
         calls.deckMenuPlayerColor = playerColor
         calls.deckMenuAction = action
     end,
+    onObjectPickUp = function(object)
+        calls.pickedUpCard = object
+        return true
+    end,
+    onObjectDrop = function(object)
+        calls.droppedCard = object
+        return true
+    end,
+    onCardLeavesActionZone = function(object)
+        calls.actionZoneLeavingCard = object
+        return true
+    end,
     renewDeckSlotButton = function()
         return true
     end
@@ -232,6 +244,22 @@ Test.case("game routes deck slot and deck menu choices", function()
     Test.equal("Blue", calls.deckSlotPlayerColor)
     Test.equal("Blue", calls.deckMenuPlayerColor)
     Test.equal("9636", calls.deckMenuAction)
+end)
+
+Test.case("game routes card pickup and drop events", function()
+    local card = {}
+
+    Test.truthy(Game.onObjectPickUp("Blue", card))
+    Test.equal(card, calls.pickedUpCard)
+    Test.truthy(Game.onObjectDrop("Blue", card))
+    Test.equal(card, calls.droppedCard)
+end)
+
+Test.case("game routes scripted cards leaving action zones", function()
+    local card = {}
+
+    Test.truthy(Game.onCardLeavesActionZone(card))
+    Test.equal(card, calls.actionZoneLeavingCard)
 end)
 
 Test.case("game routes edit mode object number keys", function()

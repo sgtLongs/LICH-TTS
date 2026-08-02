@@ -17,6 +17,22 @@ function onObjectHover(playerColor, object)
     Game.onObjectHover(playerColor, object)
 end
 
+function onObjectPickUp(playerColor, object)
+    return Game.onObjectPickUp(playerColor, object)
+end
+
+function onObjectDrop(playerColor, object)
+    return Game.onObjectDrop(playerColor, object)
+end
+
+function onCardLeavesActionZone(parameters)
+    if type(parameters) ~= "table" then
+        return false
+    end
+
+    return Game.onCardLeavesActionZone(parameters.card)
+end
+
 function onEndTurnClicked(player, value, id)
     Game.onEndTurnClicked(player.color)
 end

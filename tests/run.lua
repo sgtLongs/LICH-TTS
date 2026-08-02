@@ -2,6 +2,7 @@ local Test = require("tests/support/Test")
 
 require("tests/test_hex_geometry")
 require("tests/test_card_field_geometry")
+require("tests/test_action_zone")
 require("tests/test_deck_generator")
 require("tests/test_card_logic")
 require("tests/test_deck_selection_menu")

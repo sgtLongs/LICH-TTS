@@ -85,6 +85,7 @@ function CardFieldGeometry.buildField(field, config)
     local lines = {}
     local cells = {}
     local zoneCenters = {}
+    local actionZone = nil
     local cellWidth = field.size.x / config.columns
     local cellHeight = field.size.z / config.rows
     local left = -field.size.x * 0.5
@@ -126,18 +127,16 @@ function CardFieldGeometry.buildField(field, config)
     end
 
     for _, zone in ipairs(config.zones) do
-        local zoneLeft = left
-            + (zone.firstColumn - 1) * cellWidth
-            + config.zoneInset
-        local zoneTop = top
-            + (zone.firstRow - 1) * cellHeight
-            + config.zoneInset
-        local zoneRight = left
-            + zone.lastColumn * cellWidth
-            - config.zoneInset
-        local zoneBottom = top
-            + zone.lastRow * cellHeight
-            - config.zoneInset
+        local zoneBounds = {
+            left = left + (zone.firstColumn - 1) * cellWidth,
+            top = top + (zone.firstRow - 1) * cellHeight,
+            right = left + zone.lastColumn * cellWidth,
+            bottom = top + zone.lastRow * cellHeight
+        }
+        local zoneLeft = zoneBounds.left + config.zoneInset
+        local zoneTop = zoneBounds.top + config.zoneInset
+        local zoneRight = zoneBounds.right - config.zoneInset
+        local zoneBottom = zoneBounds.bottom - config.zoneInset
 
         addRectangle(
             lines,
@@ -160,6 +159,21 @@ function CardFieldGeometry.buildField(field, config)
             (zone.firstRow + zone.lastRow) * 0.5,
             false
         )
+
+        if (zone.type or zone.key) == "action" then
+            local actionConfig = config.actionZone or {}
+            actionZone = {
+                localLeft = zoneBounds.left,
+                localTop = zoneBounds.top,
+                localRight = zoneBounds.right,
+                localBottom = zoneBounds.bottom,
+                localCenterZ = (zoneBounds.top + zoneBounds.bottom) * 0.5,
+                defaultSlots = actionConfig.defaultSlots
+                    or (zone.lastColumn - zone.firstColumn + 1),
+                cardCenterHeight = actionConfig.cardCenterHeight or 0.2,
+                y = surfaceY
+            }
+        end
 
         for row = zone.firstRow, zone.lastRow do
             for column = zone.firstColumn, zone.lastColumn do
@@ -191,6 +205,7 @@ function CardFieldGeometry.buildField(field, config)
         },
         deckSlot = deckSlotPoint,
         heroSlot = heroSlotPoint,
+        actionZone = actionZone,
         zoneCenters = zoneCenters,
         cellWidth = cellWidth,
         cellHeight = cellHeight

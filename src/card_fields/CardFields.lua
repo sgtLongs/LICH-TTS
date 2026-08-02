@@ -1,6 +1,7 @@
 local Config = require("src/config/CardFieldConfig")
 local DebugConfig = require("src/config/GlobalDebugConfig")
 local CardFieldGeometry = require("src/card_fields/CardFieldGeometry")
+local ActionZone = require("src/card_fields/ActionZone")
 local DeckSelectionMenu = require("src/card_fields/DeckSelectionMenu")
 local TurnSystem = require("src/turns/TurnSystem")
 
@@ -203,6 +204,18 @@ end
 
 function CardFields.onDeckMenuUiClicked(playerColor, action)
     return DeckSelectionMenu.handleAction(playerColor, action)
+end
+
+function CardFields.onObjectPickUp(object)
+    return ActionZone.onObjectPickUp(fields, object)
+end
+
+function CardFields.onObjectDrop(object)
+    return ActionZone.onObjectDrop(fields, object)
+end
+
+function CardFields.onCardLeavesActionZone(object)
+    return ActionZone.onCardLeaves(fields, object)
 end
 
 return CardFields

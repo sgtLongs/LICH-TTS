@@ -10,6 +10,13 @@ local CardFieldConfig = {
     zoneInset = 0.12,
     gridColor = {0.75, 0.75, 0.75, 0.8},
 
+    actionZone = {
+        -- The five printed action spaces are used until the row fills. Extra
+        -- cards share the same usable width with equal center-to-center gaps.
+        defaultSlots = 5,
+        cardCenterHeight = 0.2
+    },
+
     deckSlot = {
         row = 1,
         column = 1,

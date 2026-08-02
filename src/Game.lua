@@ -115,6 +115,18 @@ function Game.onDeckSelectionUiClicked(playerColor, action)
     CardFields.onDeckMenuUiClicked(playerColor, action)
 end
 
+function Game.onObjectPickUp(playerColor, object)
+    return CardFields.onObjectPickUp(object)
+end
+
+function Game.onObjectDrop(playerColor, object)
+    return CardFields.onObjectDrop(object)
+end
+
+function Game.onCardLeavesActionZone(object)
+    return CardFields.onCardLeavesActionZone(object)
+end
+
 function Game.onHexGridObjectClicked(object, playerColor, altClick)
     HexGrid.onObjectClicked(object, playerColor, altClick)
 end

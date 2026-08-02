@@ -185,6 +185,15 @@ Test.case("hovered cards offer movement to their purgatory", function()
     Test.contains(script, "deck.putObject(self)")
     Test.contains(script, "function onReturnCardClicked")
     Test.contains(script, "self.deal(1, playerColor)")
+    Test.contains(script, "local function notifyActionZoneCardLeaving()")
+    Test.contains(script, '"onCardLeavesActionZone"')
+    local _, actionZoneNotificationCount = string.gsub(
+        script,
+        "notifyActionZoneCardLeaving%(%s*%)",
+        ""
+    )
+    -- One declaration plus the shared destroy/damn move, unequip, and return.
+    Test.equal(4, actionZoneNotificationCount)
     Test.contains(script, "player.getHoverObject() ~= self")
     Test.contains(script, "x = destination.x")
     Test.contains(script, "y = destination.y")
