@@ -24,6 +24,7 @@ local TurnConfig = {
         inactivePhaseColor = "#9CA3AF",
         activePhasePrefix = "> ",
         inactivePhasePrefix = "  ",
+        startPhaseButtonText = "UNTAP ALL",
         activeButtonText = "NEXT PHASE",
         endPhaseButtonText = "END TURN",
         waitingButtonText = "WAITING...",

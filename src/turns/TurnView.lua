@@ -88,9 +88,13 @@ function TurnView.buildPatch(config, model)
     for _, playerColor in ipairs(config.playerColors) do
         local buttonId = config.ui.phaseButtonPrefix .. playerColor
         local isCurrentPlayer = playerColor == currentColor
-        local activeButtonText = currentPhase == "end"
-            and config.ui.endPhaseButtonText
-            or config.ui.activeButtonText
+        local activeButtonText = config.ui.activeButtonText
+
+        if currentPhase == "start" then
+            activeButtonText = config.ui.startPhaseButtonText
+        elseif currentPhase == "end" then
+            activeButtonText = config.ui.endPhaseButtonText
+        end
 
         add(
             patches,

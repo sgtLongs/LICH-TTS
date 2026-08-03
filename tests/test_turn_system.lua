@@ -53,6 +53,7 @@ Test.case("turn system restores state and updates the TTS boundary", function()
     Test.equal(6, TurnSystem.getSaveState().currentTurnIndex)
     Test.equal("Ben's Turn", uiUpdates["turnPlayerName:text"])
     Test.equal("true", uiUpdates["advancePhaseBlue:interactable"])
+    Test.equal("UNTAP ALL", uiUpdates["advancePhaseBlue:text"])
     Test.equal("> START PHASE", uiUpdates["turnPhasestart:text"])
     Test.equal("Ben (Blue), it is your turn!", announcements[1].message)
 end)
@@ -88,6 +89,58 @@ Test.case("turn system rejects a phase change from another player", function()
     Test.falsy(TurnSystem.advancePhase("Blue"))
     Test.equal("start", TurnSystem.getSaveState().currentPhase)
     Test.equal("Blue", privateMessages[#privateMessages].playerColor)
+end)
+
+Test.case("start phase untaps every tapped card before advancing", function()
+    local events = {}
+    local tappedCard = {tag = "Card"}
+    local untappedCard = {tag = "Card"}
+    local deck = {tag = "Deck"}
+
+    tappedCard.call = function(functionName, parameters)
+        events[#events + 1] = "tapped:" .. functionName
+
+        if functionName == "getActionZoneTapRotation" then
+            return true
+        end
+
+        Test.equal(tappedCard, parameters)
+    end
+    untappedCard.call = function(functionName)
+        events[#events + 1] = "untapped:" .. functionName
+        return false
+    end
+    deck.call = function()
+        error("decks must not be untapped")
+    end
+
+    local controller = TurnSystem.new({
+        runtime = {
+            getAllObjects = function()
+                return {tappedCard, untappedCard, deck}
+            end,
+            getPlayer = function(color)
+                return {steam_name = color}
+            end
+        },
+        scheduler = {frames = function(callback) callback() end},
+        uiAdapter = {apply = function() end},
+        announce = function() end,
+        broadcastToColor = function() end
+    })
+
+    controller.onLoad({activePlayerColors = {"White"}})
+    Test.truthy(controller.advancePhase("White"))
+    Test.equal("main", controller.getSaveState().currentPhase)
+    Test.deepEqual({
+        "tapped:getActionZoneTapRotation",
+        "tapped:onCardTapped",
+        "untapped:getActionZoneTapRotation"
+    }, events)
+
+    events = {}
+    Test.truthy(controller.advancePhase("White"))
+    Test.deepEqual({}, events)
 end)
 
 Test.case("turn system advances a valid turn", function()

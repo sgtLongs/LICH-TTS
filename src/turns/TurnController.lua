@@ -98,6 +98,22 @@ function TurnController.new(dependencies)
         end
     end
 
+    local function untapAllCards()
+        for _, object in ipairs(runtime.getAllObjects()) do
+            if object.tag == "Card" and type(object.call) == "function" then
+                local succeeded, rotated = pcall(function()
+                    return object.call("getActionZoneTapRotation")
+                end)
+
+                if succeeded and rotated == true then
+                    pcall(function()
+                        object.call("onCardTapped", object)
+                    end)
+                end
+            end
+        end
+    end
+
     function controller.advancePhase(playerColor)
         local currentColor = getCurrentColor()
 
@@ -120,6 +136,11 @@ function TurnController.new(dependencies)
         end
 
         local previousColor = currentColor
+
+        if stateApi.getCurrentPhase(turnState) == "start" then
+            untapAllCards()
+        end
+
         local advanced = stateApi.advancePhase(turnState, playerColor)
         updateUi()
 

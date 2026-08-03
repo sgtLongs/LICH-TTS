@@ -661,7 +661,7 @@ static string RenderTurnControls(
     var inactivePhasePrefix = uiValues[2];
     var activePhaseColor = uiValues[3];
     var inactivePhaseColor = uiValues[4];
-    var activeButtonText = uiValues[5];
+    var startPhaseButtonText = uiValues[5];
     var waitingButtonText = uiValues[6];
     var phaseButtonPrefix = uiValues[7];
     var lines = new List<string>();
@@ -702,7 +702,7 @@ static string RenderTurnControls(
         lines.Add("        <Button");
         lines.Add($"            id=\"{phaseButtonPrefix}{color}\"");
         lines.Add(
-            $"            text=\"{EscapeXmlAttribute(active ? activeButtonText : waitingButtonText)}\"");
+            $"            text=\"{EscapeXmlAttribute(active ? startPhaseButtonText : waitingButtonText)}\"");
         lines.Add($"            visibility=\"{color}\"");
         lines.Add("            onClick=\"onAdvancePhaseClicked\"");
         lines.Add("            preferredWidth=\"280\"");
@@ -906,7 +906,7 @@ static IReadOnlyDictionary<string, string> BuildGlobalUiRegions(Script script)
     var turnUi = EvaluateLuaStrings(
         script,
         "local ui = require('src/config/TurnConfig').ui; return {ui.phaseIdPrefix, ui.activePhasePrefix, "
-            + "ui.inactivePhasePrefix, ui.activePhaseColor, ui.inactivePhaseColor, ui.activeButtonText, "
+            + "ui.inactivePhasePrefix, ui.activePhaseColor, ui.inactivePhaseColor, ui.startPhaseButtonText, "
             + "ui.waitingButtonText, ui.phaseButtonPrefix}",
         "turn UI values");
     var spawnDefinitions = EvaluateLuaStrings(
