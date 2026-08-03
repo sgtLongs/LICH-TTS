@@ -65,6 +65,11 @@ function TurnView.buildPatch(config, model)
 
     for _, phase in ipairs(model.phases or {}) do
         local isCurrentPhase = phase == currentPhase
+        local phaseLabel = config.phaseLabels[phase]
+
+        if isCurrentPhase and model.isDrawing == true then
+            phaseLabel = config.drawPhase.activeLabel
+        end
 
         add(
             patches,
@@ -73,7 +78,7 @@ function TurnView.buildPatch(config, model)
             (isCurrentPhase
                 and config.ui.activePhasePrefix
                 or config.ui.inactivePhasePrefix)
-                .. config.phaseLabels[phase]
+                .. phaseLabel
         )
         add(
             patches,
@@ -92,6 +97,8 @@ function TurnView.buildPatch(config, model)
 
         if currentPhase == "start" then
             activeButtonText = config.ui.startPhaseButtonText
+        elseif currentPhase == "draw" and model.isDrawing == true then
+            activeButtonText = config.ui.drawingButtonText
         elseif currentPhase == "end" then
             activeButtonText = config.ui.endPhaseButtonText
         end
@@ -107,7 +114,8 @@ function TurnView.buildPatch(config, model)
             patches,
             buttonId,
             "interactable",
-            isCurrentPlayer and "true" or "false"
+            isCurrentPlayer and model.isDrawing ~= true
+                and "true" or "false"
         )
     end
 

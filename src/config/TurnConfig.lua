@@ -26,6 +26,7 @@ local TurnConfig = {
         inactivePhasePrefix = "  ",
         startPhaseButtonText = "UNTAP ALL",
         activeButtonText = "NEXT PHASE",
+        drawingButtonText = "DRAWING...",
         endPhaseButtonText = "END TURN",
         waitingButtonText = "WAITING...",
         noPlayersText = "WAITING FOR DECKS",
@@ -37,6 +38,12 @@ local TurnConfig = {
         draw = "DRAW PHASE",
         status = "STATUS PHASE",
         ["end"] = "END PHASE"
+    },
+    drawPhase = {
+        delaySeconds = 0,
+        cardIntervalSeconds = 0.2,
+        deckSearchRadius = 4,
+        activeLabel = "DRAWING"
     },
     invalidTurnColor = {1, 0.35, 0.35}
 }

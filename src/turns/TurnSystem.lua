@@ -7,6 +7,11 @@ function TurnSystem.new(dependencies)
     return TurnController.new(dependencies)
 end
 
+function TurnSystem.configureDefaultDependencies(dependencies)
+    defaultController = TurnController.new(dependencies)
+    return defaultController
+end
+
 function TurnSystem.advancePhase(playerColor)
     return defaultController.advancePhase(playerColor)
 end

@@ -71,13 +71,203 @@ Test.case("turn system advances phases and ends after end phase", function()
 
     Test.truthy(TurnSystem.advancePhase("White"))
     Test.truthy(TurnSystem.advancePhase("White"))
-    Test.truthy(TurnSystem.advancePhase("White"))
     Test.equal("end", TurnSystem.getSaveState().currentPhase)
     Test.equal("END TURN", uiUpdates["advancePhaseWhite:text"])
 
     Test.truthy(TurnSystem.advancePhase("White"))
     Test.equal("Blue", TurnSystem.getSaveState().currentTurnColor)
     Test.equal("start", TurnSystem.getSaveState().currentPhase)
+end)
+
+Test.case("draw phase fills the hand one card at a configured interval", function()
+    local FakeWait = require("tests/support/FakeWait")
+    local wait = FakeWait.new()
+    local draws = {}
+    local hand = {{}, {}}
+    local deck = {
+        tag = "Deck",
+        getPosition = function()
+            return {x = 10, y = 2, z = 20}
+        end,
+        deal = function(count, color)
+            draws[#draws + 1] = {
+                count = count,
+                color = color,
+                time = wait.currentTime
+            }
+            return true
+        end
+    }
+    local controller = TurnSystem.new({
+        cardFields = {
+            getPlayerDrawInfo = function(color)
+                Test.equal("White", color)
+                return {
+                    intelligence = 5,
+                    deckPosition = {x = 10, y = 2, z = 20}
+                }
+            end
+        },
+        runtime = {
+            getAllObjects = function()
+                return {deck}
+            end,
+            getPlayer = function()
+                return {
+                    steam_name = "Wendy",
+                    getHandObjects = function()
+                        return hand
+                    end
+                }
+            end,
+            log = function() end
+        },
+        scheduler = wait,
+        uiAdapter = {apply = function(patches)
+            for _, patch in ipairs(patches) do
+                uiUpdates[patch.id .. ":" .. patch.attribute] = patch.value
+            end
+        end},
+        announce = function() end,
+        broadcastToColor = function() end
+    })
+
+    controller.onLoad({activePlayerColors = {"White"}})
+    wait.advanceFrames(1)
+    Test.truthy(controller.advancePhase("White"))
+    Test.truthy(controller.advancePhase("White"))
+    Test.equal("draw", controller.getSaveState().currentPhase)
+    Test.equal("> DRAWING", uiUpdates["turnPhasedraw:text"])
+    Test.equal("DRAWING...", uiUpdates["advancePhaseWhite:text"])
+    Test.equal("false", uiUpdates["advancePhaseWhite:interactable"])
+    Test.falsy(controller.advancePhase("White"))
+
+    wait.advanceTime(Config.drawPhase.delaySeconds)
+    Test.equal(1, #draws)
+    Test.equal("draw", controller.getSaveState().currentPhase)
+    wait.advanceTime(Config.drawPhase.cardIntervalSeconds)
+    Test.equal(2, #draws)
+    wait.advanceTime(Config.drawPhase.cardIntervalSeconds)
+
+    Test.equal(3, #draws)
+    Test.equal(1, draws[1].count)
+    Test.equal("White", draws[1].color)
+    Test.near(
+        Config.drawPhase.cardIntervalSeconds,
+        draws[2].time - draws[1].time,
+        0.0001
+    )
+    Test.equal("draw", controller.getSaveState().currentPhase)
+    wait.advanceTime(Config.drawPhase.cardIntervalSeconds)
+    Test.equal("status", controller.getSaveState().currentPhase)
+    Test.equal("> STATUS PHASE", uiUpdates["turnPhasestatus:text"])
+end)
+
+Test.case("draw phase draws no cards when the hand meets intelligence", function()
+    local FakeWait = require("tests/support/FakeWait")
+    local wait = FakeWait.new()
+    local controller = TurnSystem.new({
+        cardFields = {
+            getPlayerDrawInfo = function()
+                return {intelligence = 2, deckPosition = {x = 0, z = 0}}
+            end
+        },
+        runtime = {
+            getAllObjects = function()
+                return {}
+            end,
+            getPlayer = function()
+                return {getHandObjects = function() return {{}, {}, {}} end}
+            end,
+            log = function() end
+        },
+        scheduler = wait,
+        uiAdapter = {apply = function() end},
+        announce = function() end,
+        broadcastToColor = function() end
+    })
+
+    controller.onLoad({activePlayerColors = {"White"}})
+    wait.advanceFrames(1)
+    controller.advancePhase("White")
+    controller.advancePhase("White")
+    Test.equal("draw", controller.getSaveState().currentPhase)
+    wait.advanceTime(Config.drawPhase.delaySeconds)
+    Test.equal("status", controller.getSaveState().currentPhase)
+end)
+
+Test.case("draw phase skips to status when its deck is unavailable", function()
+    local FakeWait = require("tests/support/FakeWait")
+    local wait = FakeWait.new()
+    local messages = {}
+    local controller = TurnSystem.new({
+        cardFields = {
+            getPlayerDrawInfo = function()
+                return {intelligence = 3, deckPosition = {x = 0, z = 0}}
+            end
+        },
+        runtime = {
+            getAllObjects = function() return {} end,
+            getPlayer = function()
+                return {getHandObjects = function() return {} end}
+            end,
+            log = function(message) messages[#messages + 1] = message end
+        },
+        scheduler = wait,
+        uiAdapter = {apply = function() end},
+        announce = function() end,
+        broadcastToColor = function() end
+    })
+
+    controller.onLoad({activePlayerColors = {"White"}})
+    wait.advanceFrames(1)
+    controller.advancePhase("White")
+    controller.advancePhase("White")
+    wait.advanceTime(Config.drawPhase.delaySeconds)
+
+    Test.equal("status", controller.getSaveState().currentPhase)
+    Test.contains(messages[1], "no deck found")
+end)
+
+Test.case("ending a turn cancels a stale draw callback", function()
+    local FakeWait = require("tests/support/FakeWait")
+    local wait = FakeWait.new()
+    local drawCount = 0
+    local controller = TurnSystem.new({
+        cardFields = {
+            getPlayerDrawInfo = function()
+                return {intelligence = 1, deckPosition = {x = 0, z = 0}}
+            end
+        },
+        runtime = {
+            getAllObjects = function()
+                return {{
+                    tag = "Card",
+                    getPosition = function() return {x = 0, z = 0} end,
+                    deal = function() drawCount = drawCount + 1 end
+                }}
+            end,
+            getPlayer = function()
+                return {getHandObjects = function() return {} end}
+            end,
+            log = function() end
+        },
+        scheduler = wait,
+        uiAdapter = {apply = function() end},
+        announce = function() end,
+        broadcastToColor = function() end
+    })
+
+    controller.onLoad({activePlayerColors = {"White", "Blue"}})
+    wait.advanceFrames(1)
+    controller.advancePhase("White")
+    controller.advancePhase("White")
+    Test.truthy(controller.endTurn("White"))
+    wait.advanceTime(Config.drawPhase.delaySeconds)
+
+    Test.equal(0, drawCount)
+    Test.equal("Blue", controller.getSaveState().currentTurnColor)
+    Test.equal("start", controller.getSaveState().currentPhase)
 end)
 
 Test.case("turn system rejects a phase change from another player", function()

@@ -20,6 +20,7 @@ local publicMethodNames = {
     "onLoad",
     "getSaveState",
     "getFields",
+    "getPlayerDrawInfo",
     "getCardFieldDestination",
     "onDeckSlotClicked",
     "onDeckMenuUiClicked",
@@ -519,6 +520,23 @@ end
 
 function CardFieldController:getFields()
     return self.fields
+end
+
+function CardFieldController:getPlayerDrawInfo(playerColor)
+    for _, field in ipairs(self.fields) do
+        if CardFieldDefinitions.ownerColor(field) == playerColor then
+            local stats = CardFieldState.getHeroStats(self.state, field)
+
+            return {
+                intelligence = stats and stats.intelligence or 0,
+                deckPosition = self.layout.buttonAlignedDeckSpawnPosition(
+                    field
+                )
+            }
+        end
+    end
+
+    return nil
 end
 
 function CardFieldController:getCardFieldDestination(fieldId, destination)

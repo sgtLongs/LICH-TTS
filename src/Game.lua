@@ -19,6 +19,12 @@ if type(CardFields.configureDefaultDependencies) == "function" then
     })
 end
 
+if type(TurnSystem.configureDefaultDependencies) == "function" then
+    TurnSystem.configureDefaultDependencies({
+        cardFields = CardFields
+    })
+end
+
 local savedBoardCatalog = SavedBoardCatalog.new({
     schemaVersion = SettingsConfig.settingsSchemaVersion,
     legacySchemaVersion = SettingsConfig.legacySettingsSchemaVersion,
