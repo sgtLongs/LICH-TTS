@@ -314,6 +314,7 @@ local function makeGridHarness(name, surfaceY)
         {row = 0, column = 1, x = 1, z = 0}
     }
     local menuContext = nil
+    local spawnedParameters = nil
     local menu = {
         initialize = function(parameters)
             menuContext = parameters
@@ -396,8 +397,16 @@ local function makeGridHarness(name, surfaceY)
         builder = builder,
         menu = menu,
         objectSpawner = {
-            spawn = function()
-                return false
+            spawn = function(parameters)
+                spawnedParameters = parameters
+                parameters.onSpawned({
+                    addTag = function()
+                    end,
+                    getGUID = function()
+                        return name .. "-spawned"
+                    end
+                })
+                return true
             end,
             place = function()
                 return true
@@ -412,6 +421,9 @@ local function makeGridHarness(name, surfaceY)
         controller = controller,
         getMenuContext = function()
             return menuContext
+        end,
+        getSpawnedParameters = function()
+            return spawnedParameters
         end,
         trace = trace
     }
@@ -468,6 +480,42 @@ Test.case("full hex grid controllers isolate every board session", function()
     Test.nilValue(secondState.recentClickCells.Red)
     Test.truthy(first.controller.getModel().selectedCells['0:0'])
     Test.nilValue(second.controller.getModel().selectedCells['0:0'])
+end)
+
+Test.case("hex grid places death fog only on its outer candidates", function()
+    local harness = makeGridHarness("fog", 1.25)
+    local completed = nil
+
+    harness.controller.onLoad(nil)
+    harness.callbacks[1].callback()
+    Test.truthy(harness.controller.beginDeathFogPlacement(
+        "Red",
+        function(succeeded)
+            completed = succeeded
+        end
+    ))
+
+    local candidates = harness.controller.getSessionSnapshot()
+        .deathFogCandidateCells
+    Test.truthy(candidates["0:1"])
+    Test.nilValue(candidates["0:0"])
+
+    harness.cells[1], harness.cells[2] =
+        harness.cells[2], harness.cells[1]
+    harness.controller.onClicked("Red", false)
+
+    Test.truthy(completed)
+    Test.equal(
+        "deathFog",
+        harness.controller.getModel().placements[1].templateKey
+    )
+    Test.equal(
+        "dcc277",
+        harness.getSpawnedParameters().template.sourceGuid
+    )
+    Test.nilValue(
+        harness.controller.getSessionSnapshot().deathFogRequest
+    )
 end)
 
 Test.case("constructed hex grid supports bound dot calls", function()

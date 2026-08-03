@@ -27,6 +27,7 @@ local TurnConfig = {
         startPhaseButtonText = "UNTAP ALL",
         activeButtonText = "NEXT PHASE",
         drawingButtonText = "DRAWING...",
+        deathFogButtonText = "PLACE DEATH FOG",
         endPhaseButtonText = "END TURN",
         waitingButtonText = "WAITING...",
         noPlayersText = "WAITING FOR DECKS",

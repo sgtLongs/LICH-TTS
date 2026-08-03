@@ -153,6 +153,33 @@ function HexGridBuilder.draw(board, cells, surfaceY, state)
             )
         end
 
+        if state.deathFogCandidateCells ~= nil
+            and state.deathFogCandidateCells[key]
+        then
+            for _, fillLine in ipairs(
+                makeHexFillLines(
+                    cell,
+                    surfaceY,
+                    Config.deathFogCandidateFillColor,
+                    Config.deathFogCandidateFillLineThickness,
+                    Config.deathFogCandidateFillSurfaceOffset
+                )
+            ) do
+                table.insert(lines, fillLine)
+            end
+
+            table.insert(
+                lines,
+                makeHexLine(
+                    cell,
+                    surfaceY,
+                    Config.deathFogCandidateColor,
+                    Config.deathFogCandidateLineThickness,
+                    Config.deathFogCandidateSurfaceOffset
+                )
+            )
+        end
+
         if state.hoveredCells[key] then
             for _, fillLine in ipairs(
                 makeHexFillLines(

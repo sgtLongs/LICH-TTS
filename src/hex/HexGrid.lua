@@ -94,4 +94,15 @@ function HexGrid.setEditMode(enabled, playerColor)
     return defaultController.setEditMode(enabled, playerColor)
 end
 
+function HexGrid.beginDeathFogPlacement(playerColor, onCompleted)
+    return defaultController.beginDeathFogPlacement(
+        playerColor,
+        onCompleted
+    )
+end
+
+function HexGrid.cancelDeathFogPlacement(playerColor)
+    return defaultController.cancelDeathFogPlacement(playerColor)
+end
+
 return HexGrid

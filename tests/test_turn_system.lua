@@ -79,6 +79,72 @@ Test.case("turn system advances phases and ends after end phase", function()
     Test.equal("start", TurnSystem.getSaveState().currentPhase)
 end)
 
+Test.case("end phase requires a completed death fog placement", function()
+    local completion = nil
+    local privateMessage = nil
+    local controller = TurnSystem.new({
+        endPhase = {
+            beginDeathFogPlacement = function(color, onCompleted)
+                Test.equal("White", color)
+                completion = onCompleted
+                return true
+            end,
+            cancelDeathFogPlacement = function()
+                return true
+            end
+        },
+        getPlayer = function(color)
+            return {steam_name = color}
+        end,
+        broadcastToColor = function(message)
+            privateMessage = message
+        end,
+        announce = function()
+        end,
+        scheduler = {
+            frames = function(callback)
+                callback()
+            end
+        },
+        uiAdapter = {apply = function()
+        end}
+    })
+
+    controller.onLoad({
+        currentTurnColor = "White",
+        currentPhase = "status",
+        activePlayerColors = {"White", "Blue"}
+    })
+
+    Test.truthy(controller.advancePhase("White"))
+    Test.equal("end", controller.getSaveState().currentPhase)
+    Test.truthy(type(completion) == "function")
+    Test.falsy(controller.advancePhase("White"))
+    Test.contains(privateMessage, "death fog")
+
+    completion(true)
+    Test.truthy(controller.advancePhase("White"))
+    Test.equal("Blue", controller.getSaveState().currentTurnColor)
+end)
+
+Test.case("turn view disables the end button during fog placement", function()
+    local model = TurnView.buildModel("Red", "end", "Rhea")
+    model.phases = {"end"}
+    model.isPlacingDeathFog = true
+    local patches = TurnView.buildPatch(Config, model)
+
+    Test.deepEqual({
+        id = "advancePhaseRed",
+        attribute = "text",
+        value = Config.ui.deathFogButtonText
+    }, patches[10])
+    Test.deepEqual({
+        id = "advancePhaseRed",
+        attribute = "interactable",
+        value = "false"
+    }, patches[11])
+end)
+
 Test.case("draw phase fills the hand one card at a configured interval", function()
     local FakeWait = require("tests/support/FakeWait")
     local wait = FakeWait.new()

@@ -147,8 +147,27 @@ function HexObjectSpawner.new(dependencies)
     function spawner.spawn(parameters)
         local template = parameters.template
         local playerColor = parameters.playerColor
+        local templateJson = template.json
 
-        if type(template.json) ~= "string" or template.json == "" then
+        if (type(templateJson) ~= "string" or templateJson == "")
+            and type(template.sourceGuid) == "string"
+        then
+            local sourceObject = runtime.getObject(template.sourceGuid)
+
+            if sourceObject ~= nil
+                and type(sourceObject.getJSON) == "function"
+            then
+                local readSucceeded, sourceJson = pcall(
+                    sourceObject.getJSON
+                )
+
+                if readSucceeded then
+                    templateJson = sourceJson
+                end
+            end
+        end
+
+        if type(templateJson) ~= "string" or templateJson == "" then
             notify(
                 playerColor,
                 "No saved template exists for " .. template.label .. ".",
@@ -170,7 +189,7 @@ function HexObjectSpawner.new(dependencies)
 
         local succeeded = pcall(function()
             runtime.spawnObjectJson({
-                json = template.json,
+                json = templateJson,
                 position = spawnPosition,
                 callback_function = function(spawnedObject)
                     spawnedObject.setLuaScript("")

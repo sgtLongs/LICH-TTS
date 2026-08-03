@@ -100,7 +100,9 @@ function TurnView.buildPatch(config, model)
         elseif currentPhase == "draw" and model.isDrawing == true then
             activeButtonText = config.ui.drawingButtonText
         elseif currentPhase == "end" then
-            activeButtonText = config.ui.endPhaseButtonText
+            activeButtonText = model.isPlacingDeathFog == true
+                and config.ui.deathFogButtonText
+                or config.ui.endPhaseButtonText
         end
 
         add(
@@ -115,6 +117,7 @@ function TurnView.buildPatch(config, model)
             buttonId,
             "interactable",
             isCurrentPlayer and model.isDrawing ~= true
+                and model.isPlacingDeathFog ~= true
                 and "true" or "false"
         )
     end

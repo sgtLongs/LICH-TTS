@@ -1,5 +1,6 @@
 local Config = require("src/config/HexGridConfig")
 local DebugConfig = require("src/config/GlobalDebugConfig")
+local DeathFogDefinition = require("src/hex/DeathFogDefinition")
 local HexBoardCodec = require("src/hex/HexBoardCodec")
 local HexBoardModel = require("src/hex/HexBoardModel")
 local HexGeometry = require("src/hex/HexGeometry")
@@ -11,6 +12,7 @@ local HexPlacementRules = require("src/hex/HexPlacementRules")
 local SpawnDefinitions = require("src/hex/HexSpawnDefinitions")
 local Runtime = require("src/tts/Runtime")
 local Scheduler = require("src/tts/Scheduler")
+local DeathFogRules = require("src/turns/DeathFogRules")
 
 local HexGridController = {}
 local Controller = {}
@@ -38,7 +40,9 @@ local publicMethodNames = {
     "onSpawnSelectorUiClicked",
     "onScriptingButtonDown",
     "onObjectNumberTyped",
-    "setEditMode"
+    "setEditMode",
+    "beginDeathFogPlacement",
+    "cancelDeathFogPlacement"
 }
 
 local function defaultJson()
@@ -84,8 +88,12 @@ function HexGridController.new(options)
     end
 
     if options.templatesByKey ~= nil then
-        templatesByKey = options.templatesByKey
+        templatesByKey = copyMap(options.templatesByKey)
     end
+
+    local deathFogTemplate = options.deathFogTemplate
+        or DeathFogDefinition
+    templatesByKey[deathFogTemplate.key] = deathFogTemplate
 
     local menu = options.menu
 
@@ -151,7 +159,10 @@ function HexGridController.new(options)
         hoverWaitId = nil,
         recentClickCells = {},
         selectedTemplate = nil,
-        editMode = false
+        editMode = false,
+        deathFogTemplate = deathFogTemplate,
+        deathFogRequest = nil,
+        deathFogCandidateCells = {}
     }, Controller)
 
     -- TTS subsystem consumers call methods with dot syntax, while domain
@@ -255,6 +266,10 @@ function Controller:getSessionSnapshot()
         rotationCandidateCells = copyMap(
             self.rotationCandidateCells
         ),
+        deathFogCandidateCells = copyMap(
+            self.deathFogCandidateCells
+        ),
+        deathFogRequest = self.deathFogRequest,
         pendingSpawn = self.pendingSpawn,
         pendingSavedPlacements = self.pendingSavedPlacements,
         resolvedSurfaceY = self.resolvedSurfaceY,
@@ -286,7 +301,8 @@ local function drawGrid(self)
         {
             hoveredCells = self.hoveredCells,
             menuTargetCell = self.menuTargetCell,
-            rotationCandidateCells = self.rotationCandidateCells
+            rotationCandidateCells = self.rotationCandidateCells,
+            deathFogCandidateCells = self.deathFogCandidateCells
         }
     )
 end
@@ -859,7 +875,9 @@ local function spawnPlacement(
             reportCompletion(completedSuccessfully)
         end,
         function(spawnedObject)
-            addObjectClickButton(self, spawnedObject, placement)
+            if template.addEditButtons ~= false then
+                addObjectClickButton(self, spawnedObject, placement)
+            end
         end,
         silent
     )
@@ -950,6 +968,90 @@ local function updateHoveredCells(self)
         self.hoveredCells = nextHoveredCells
         drawGrid(self)
     end
+end
+
+local function finishDeathFogPlacement(self, succeeded)
+    local request = self.deathFogRequest
+
+    if request == nil then
+        return
+    end
+
+    self.deathFogRequest = nil
+    self.deathFogCandidateCells = {}
+    drawGrid(self)
+
+    if request.onCompleted ~= nil then
+        pcall(request.onCompleted, succeeded == true)
+    end
+end
+
+local function refreshDeathFogCandidates(self)
+    if self.deathFogRequest == nil
+        or self.board == nil
+        or #self.cells == 0
+    then
+        return
+    end
+
+    self.deathFogCandidateCells = DeathFogRules.getCandidates(
+        self.cells,
+        self.model.placements,
+        self.templatesByKey,
+        self.cellKey
+    )
+
+    if next(self.deathFogCandidateCells) == nil then
+        self.runtime.broadcastToColor(
+            "No hex remains available for death fog.",
+            self.deathFogRequest.playerColor,
+            self.config.selectedColor
+        )
+        finishDeathFogPlacement(self, true)
+    else
+        drawGrid(self)
+    end
+end
+
+local function getDeathFogFacingCell(self, targetCell)
+    local adjacentCells = getAdjacentCells(self, targetCell)
+
+    for _, cell in ipairs(self.cells) do
+        local key = self.cellKey(cell.row, cell.column)
+
+        if adjacentCells[key] ~= nil then
+            return cell
+        end
+    end
+
+    return nil
+end
+
+local function placeDeathFog(self, targetCell)
+    local request = self.deathFogRequest
+    local facingCell = getDeathFogFacingCell(self, targetCell)
+
+    if request == nil or facingCell == nil then
+        return false
+    end
+
+    local placement = {
+        templateKey = self.deathFogTemplate.key,
+        cell = self.modelApi.copyCell(targetCell),
+        facingCell = self.modelApi.copyCell(facingCell)
+    }
+
+    return spawnPlacement(
+        self,
+        placement,
+        request.playerColor,
+        false,
+        function(succeeded)
+            if succeeded then
+                finishDeathFogPlacement(self, true)
+            end
+        end
+    )
 end
 
 local function restoreSavedPlacements(self)
@@ -1107,6 +1209,7 @@ local function buildGrid(self)
     end
 
     restoreSavedPlacements(self)
+    refreshDeathFogCandidates(self)
 
     if self.hoverWaitId ~= nil then
         self.scheduler.stop(self.hoverWaitId)
@@ -1133,6 +1236,8 @@ function Controller:onLoad(savedState)
     self.recentClickCells = {}
     self.rotationCandidateCells = {}
     self.pendingSpawn = nil
+    self.deathFogRequest = nil
+    self.deathFogCandidateCells = {}
     self.pendingSavedPlacements = self:loadSaveState(savedState)
 
     self.scheduler.frames(function()
@@ -1251,6 +1356,7 @@ function Controller:loadBoardState(
     end
 
     drawGrid(self)
+    refreshDeathFogCandidates(self)
     spawningFinished = true
     reportLoadCompletionIfReady()
 
@@ -1292,6 +1398,7 @@ function Controller:onObjectDestroy(object)
 
     if placement ~= nil then
         self.modelApi.removePlacement(self.model, placement)
+        refreshDeathFogCandidates(self)
     end
 end
 
@@ -1324,6 +1431,27 @@ local function handlePointerClick(self, playerColor, altClick)
                 self.recentClickCells[playerColor] = nil
             end
         end, 2)
+    end
+
+    if self.deathFogRequest ~= nil then
+        if playerColor ~= self.deathFogRequest.playerColor then
+            return true
+        end
+
+        if not altClick
+            and cell ~= nil
+            and self.deathFogCandidateCells[key] ~= nil
+        then
+            placeDeathFog(self, cell)
+        else
+            self.runtime.broadcastToColor(
+                "Choose a highlighted hex in the outermost available ring.",
+                playerColor,
+                self.config.rotationCancelColor
+            )
+        end
+
+        return true
     end
 
     if self.pendingSpawn ~= nil then
@@ -1491,6 +1619,51 @@ function Controller:setEditMode(enabled, playerColor)
             )
         end
     end
+end
+
+function Controller:beginDeathFogPlacement(playerColor, onCompleted)
+    if type(playerColor) ~= "string" then
+        return false
+    end
+
+    self.pendingSpawn = nil
+    self.rotationCandidateCells = {}
+    self.menu.close()
+    self.deathFogRequest = {
+        playerColor = playerColor,
+        onCompleted = onCompleted
+    }
+    self.deathFogCandidateCells = {}
+    refreshDeathFogCandidates(self)
+
+    if self.deathFogRequest ~= nil then
+        self.runtime.broadcastToColor(
+            "Place death fog on a highlighted hex in the outermost "
+                .. "available ring.",
+            playerColor,
+            self.config.deathFogCandidateColor
+        )
+    end
+
+    return true
+end
+
+function Controller:cancelDeathFogPlacement(playerColor)
+    if self.deathFogRequest == nil
+        or (playerColor ~= nil
+            and self.deathFogRequest.playerColor ~= playerColor)
+    then
+        return false
+    end
+
+    self.deathFogRequest = nil
+    self.deathFogCandidateCells = {}
+
+    if self.board ~= nil then
+        drawGrid(self)
+    end
+
+    return true
 end
 
 return HexGridController

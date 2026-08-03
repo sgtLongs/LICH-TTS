@@ -21,7 +21,8 @@ end
 
 if type(TurnSystem.configureDefaultDependencies) == "function" then
     TurnSystem.configureDefaultDependencies({
-        cardFields = CardFields
+        cardFields = CardFields,
+        endPhase = HexGrid
     })
 end
 

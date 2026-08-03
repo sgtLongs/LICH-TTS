@@ -7,7 +7,8 @@ function HexGridView.buildRenderState(model, session)
         selectedCells = model.selectedCells,
         hoveredCells = session.hoveredCells or {},
         menuTargetCell = session.menuTargetCell,
-        rotationCandidateCells = session.rotationCandidateCells or {}
+        rotationCandidateCells = session.rotationCandidateCells or {},
+        deathFogCandidateCells = session.deathFogCandidateCells or {}
     }
 end
 

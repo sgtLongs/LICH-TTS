@@ -134,6 +134,8 @@ local HexGridConfig = {
     menuTargetColor = {0.95, 0.2, 1},
     rotationCandidateColor = {0.2, 1, 0.35},
     rotationCandidateFillColor = {0.2, 1, 0.35, 0.2},
+    deathFogCandidateColor = {0.55, 0.1, 0.75},
+    deathFogCandidateFillColor = {0.35, 0.05, 0.5, 0.3},
     rotationCancelColor = {1, 0.45, 0.25},
     lineThickness = 0.0,
     hoverFillLineThickness = 0.12,
@@ -146,7 +148,11 @@ local HexGridConfig = {
     rotationCandidateFillLineThickness = 0.12,
     rotationCandidateFillSurfaceOffset = 0.03,
     rotationCandidateLineThickness = 0.28,
-    rotationCandidateSurfaceOffset = 0.08
+    rotationCandidateSurfaceOffset = 0.08,
+    deathFogCandidateFillLineThickness = 0.14,
+    deathFogCandidateFillSurfaceOffset = 0.035,
+    deathFogCandidateLineThickness = 0.3,
+    deathFogCandidateSurfaceOffset = 0.085
 }
 
 return HexGridConfig

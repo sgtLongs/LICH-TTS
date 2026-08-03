@@ -20,6 +20,7 @@ function TurnController.new(dependencies)
     local runtime = dependencies.runtime or Runtime.default()
     local getPlayer = dependencies.getPlayer or runtime.getPlayer
     local cardFields = dependencies.cardFields
+    local endPhase = dependencies.endPhase
     local sendPrivate = dependencies.broadcastToColor
         or runtime.broadcastToColor
     local announce = dependencies.announce or function(message)
@@ -31,6 +32,7 @@ function TurnController.new(dependencies)
     local activeByColor = {}
     local drawGeneration = 0
     local isDrawing = false
+    local isPlacingDeathFog = false
     local controller = {}
 
     local function scheduleTime(callback, delay)
@@ -71,12 +73,55 @@ function TurnController.new(dependencies)
         )
         model.phases = stateApi.getPhases()
         model.isDrawing = isDrawing
+        model.isPlacingDeathFog = isPlacingDeathFog
         uiAdapter.apply(view.buildPatch(config, model))
     end
 
     local function cancelDrawing()
         drawGeneration = drawGeneration + 1
         isDrawing = false
+    end
+
+    local function cancelDeathFogPlacement()
+        local playerColor = getCurrentColor()
+        isPlacingDeathFog = false
+
+        if endPhase ~= nil
+            and type(endPhase.cancelDeathFogPlacement) == "function"
+        then
+            endPhase.cancelDeathFogPlacement(playerColor)
+        end
+    end
+
+    local function beginDeathFogPlacement()
+        local playerColor = getCurrentColor()
+
+        if playerColor == nil
+            or stateApi.getCurrentPhase(turnState) ~= "end"
+            or endPhase == nil
+            or type(endPhase.beginDeathFogPlacement) ~= "function"
+        then
+            isPlacingDeathFog = false
+            return
+        end
+
+        isPlacingDeathFog = true
+        local accepted = endPhase.beginDeathFogPlacement(
+            playerColor,
+            function(succeeded)
+                if succeeded == true
+                    and getCurrentColor() == playerColor
+                    and stateApi.getCurrentPhase(turnState) == "end"
+                then
+                    isPlacingDeathFog = false
+                    updateUi()
+                end
+            end
+        )
+
+        if accepted == false then
+            isPlacingDeathFog = false
+        end
     end
 
     local function getHandCount(playerColor)
@@ -266,6 +311,15 @@ function TurnController.new(dependencies)
             return false
         end
 
+        if isPlacingDeathFog then
+            sendPrivate(
+                "Place a death fog tile before ending the turn.",
+                playerColor,
+                config.invalidTurnColor
+            )
+            return false
+        end
+
         local previousColor = currentColor
 
         if stateApi.getCurrentPhase(turnState) == "start" then
@@ -273,6 +327,11 @@ function TurnController.new(dependencies)
         end
 
         local advanced = stateApi.advancePhase(turnState, playerColor)
+
+        if advanced and stateApi.getCurrentPhase(turnState) == "end" then
+            beginDeathFogPlacement()
+        end
+
         updateUi()
 
         if advanced and stateApi.getCurrentPhase(turnState) == "draw" then
@@ -280,6 +339,7 @@ function TurnController.new(dependencies)
         end
 
         if advanced and getCurrentColor() ~= previousColor then
+            cancelDeathFogPlacement()
             announceTurn()
         end
 
@@ -288,6 +348,7 @@ function TurnController.new(dependencies)
 
     function controller.onLoad(savedTurnState)
         cancelDrawing()
+        cancelDeathFogPlacement()
         restoreActivePlayers(savedTurnState)
         turnState = stateApi.new(
             getActivePlayerColors(),
@@ -295,12 +356,14 @@ function TurnController.new(dependencies)
         )
 
         scheduler.frames(function()
-            updateUi()
-            announceTurn()
-
             if stateApi.getCurrentPhase(turnState) == "draw" then
                 beginDrawing()
+            elseif stateApi.getCurrentPhase(turnState) == "end" then
+                beginDeathFogPlacement()
             end
+
+            updateUi()
+            announceTurn()
         end, 1)
     end
 
@@ -331,7 +394,17 @@ function TurnController.new(dependencies)
             return false
         end
 
+        if isPlacingDeathFog then
+            sendPrivate(
+                "Place a death fog tile before ending the turn.",
+                playerColor,
+                config.invalidTurnColor
+            )
+            return false
+        end
+
         cancelDrawing()
+        cancelDeathFogPlacement()
         stateApi.endTurn(turnState, playerColor)
         updateUi()
         announceTurn()

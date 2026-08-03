@@ -1,5 +1,41 @@
 local Test = require("tests/support/Test")
 local HexObjectSpawner = require("src/hex/HexObjectSpawner")
+
+Test.case("hex spawner can read a live GUID-backed template", function()
+    local spawnedJson = nil
+    local source = {
+        getJSON = function()
+            return "source-json"
+        end
+    }
+    local spawner = HexObjectSpawner.new({
+        runtime = {
+            getObject = function(guid)
+                Test.equal("dcc277", guid)
+                return source
+            end,
+            spawnObjectJson = function(parameters)
+                spawnedJson = parameters.json
+            end,
+            broadcastToColor = function()
+            end
+        },
+        scheduler = {frames = function()
+        end}
+    })
+
+    Test.truthy(spawner.spawn({
+        board = {positionToWorld = function(position) return position end},
+        surfaceY = 0,
+        template = {
+            label = "Death Fog",
+            sourceGuid = "dcc277"
+        },
+        cell = {row = 0, column = 0, x = 0, z = 0},
+        facingCell = {row = 0, column = 1}
+    }))
+    Test.equal("source-json", spawnedJson)
+end)
 local Config = require("src/config/HexSpawnConfig")
 
 Test.case("object position offset moves the placed object", function()
