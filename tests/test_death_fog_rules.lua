@@ -4,6 +4,7 @@ local HexGeometry = require("src/hex/HexGeometry")
 
 local templatesByKey = {
     deathFog = {key = "deathFog", isDeathFog = true},
+    sourceStone = {key = "sourceStone", allowsDeathFog = true},
     token = {key = "token"},
     wall = {key = "wall", isWall = true, occupiesFacingCell = true}
 }
@@ -27,22 +28,25 @@ local function buildCells(sideLength)
     })
 end
 
-Test.case("death fog candidates use every open hex in the outer ring", function()
+Test.case("death fog excludes occupied hexes in the outer ring", function()
     local candidates = DeathFogRules.getCandidates(
         buildCells(3),
         {
             placement("token", 0, 2, 0, 1),
             placement("deathFog", -2, 0, -1, 0),
+            placement("sourceStone", -1, 2, 0, 1),
             placement("wall", 2, -2, 1, -1)
         },
         templatesByKey,
         HexGeometry.cellKey
     )
 
-    Test.truthy(candidates["0:2"])
+    Test.nilValue(candidates["0:2"])
     Test.nilValue(candidates["-2:0"])
+    Test.truthy(candidates["-1:2"])
     Test.nilValue(candidates["2:-2"])
     Test.nilValue(candidates["1:-1"])
+    Test.truthy(candidates["1:1"])
 end)
 
 Test.case("death fog advances inward only after a ring is blocked", function()
@@ -83,4 +87,3 @@ Test.case("death fog advances inward only after a ring is blocked", function()
     Test.truthy(candidates["0:1"])
     Test.nilValue(candidates["0:0"])
 end)
-

@@ -1,19 +1,19 @@
 {
-  "GUID": "86b8f0",
+  "GUID": "54d660",
   "Name": "Card",
   "Transform": {
-    "posX": 36,
-    "posY": -0.9799998,
-    "posZ": -35.5,
-    "rotX": -8.844718e-9,
+    "posX": 40.5853348,
+    "posY": 3.47473979,
+    "posZ": -54.1496849,
+    "rotX": 0,
     "rotY": 180,
-    "rotZ": -2.1623844e-8,
+    "rotZ": 0,
     "scaleX": 1,
     "scaleY": 1,
     "scaleZ": 1
   },
-  "Nickname": "Concealed Revolver | Equipment, Pistol",
-  "Description": "Tap: Deal 8 damage to target.",
+  "Nickname": "Evade | Reaction",
+  "Description": "Prevent any damage dealt to a target you control.",
   "GMNotes": "",
   "AltLookAngle": {
     "x": 0,
@@ -39,11 +39,11 @@
   "GridProjection": false,
   "HideWhenFaceDown": true,
   "Hands": true,
-  "CardID": 200,
+  "CardID": 600,
   "SidewaysCard": false,
   "CustomDeck": {
-    "2": {
-      "FaceURL": "https://kickback-kingdom.com/assets/media/lich/cards/The-Awakening/1023.png",
+    "6": {
+      "FaceURL": "https://kickback-kingdom.com/assets/media/lich/cards/The-Awakening/592.png",
       "BackURL": "https://kickback-kingdom.com/assets/images/lich/decks/back.jpg",
       "NumWidth": 1,
       "NumHeight": 1,

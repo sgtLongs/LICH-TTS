@@ -1,5 +1,12 @@
 local Test = require("tests/support/Test")
+local DeathFogDefinition = require("src/hex/DeathFogDefinition")
 local HexObjectSpawner = require("src/hex/HexObjectSpawner")
+
+Test.case("death fog has a saved template after its source is removed", function()
+    Test.truthy(type(DeathFogDefinition.json) == "string")
+    Test.truthy(#DeathFogDefinition.json > 0)
+    Test.contains(DeathFogDefinition.json, '"MaterialIndex":2')
+end)
 
 Test.case("hex spawner can read a live GUID-backed template", function()
     local spawnedJson = nil

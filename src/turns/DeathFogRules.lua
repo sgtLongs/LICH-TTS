@@ -10,15 +10,6 @@ local function distanceFromCenter(cell)
     )
 end
 
-local function blocksDeathFog(template)
-    return template ~= nil
-        and (template.isDeathFog == true
-            or template.isWall == true
-            or template.blocksDeathFog == true
-            or template.key == "deathFog"
-            or template.key == "wall")
-end
-
 function DeathFogRules.getCandidates(
     cells,
     placements,
@@ -30,7 +21,7 @@ function DeathFogRules.getCandidates(
     for _, placement in ipairs(placements or {}) do
         local template = templatesByKey[placement.templateKey]
 
-        if blocksDeathFog(template) then
+        if template == nil or template.allowsDeathFog ~= true then
             for _, occupiedCell in ipairs(
                 HexPlacementRules.getOccupiedCells(
                     placement,

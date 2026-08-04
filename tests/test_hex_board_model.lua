@@ -292,6 +292,7 @@ end)
 
 local function makeGridHarness(name, surfaceY)
     local callbacks = {}
+    local objectsByGuid = {}
     local trace = {}
     local player = {
         admin = true,
@@ -315,6 +316,19 @@ local function makeGridHarness(name, surfaceY)
     }
     local menuContext = nil
     local spawnedParameters = nil
+    local spawnedObject = {
+        addTag = function()
+        end,
+        getBounds = function()
+            return {
+                center = {x = 1, y = 1, z = 0},
+                size = {x = 1, y = 2, z = 1}
+            }
+        end,
+        getGUID = function()
+            return name .. "-spawned"
+        end
+    }
     local menu = {
         initialize = function(parameters)
             menuContext = parameters
@@ -333,7 +347,12 @@ local function makeGridHarness(name, surfaceY)
     local runtime = {
         getObject = function(guid)
             trace[#trace + 1] = "getObject:" .. tostring(guid)
-            return board
+
+            if guid == name .. "-board" then
+                return board
+            end
+
+            return objectsByGuid[guid]
         end,
         getPlayer = function(playerColor)
             trace[#trace + 1] = "getPlayer:" .. playerColor
@@ -399,13 +418,7 @@ local function makeGridHarness(name, surfaceY)
         objectSpawner = {
             spawn = function(parameters)
                 spawnedParameters = parameters
-                parameters.onSpawned({
-                    addTag = function()
-                    end,
-                    getGUID = function()
-                        return name .. "-spawned"
-                    end
-                })
+                parameters.onSpawned(spawnedObject)
                 return true
             end,
             place = function()
@@ -422,6 +435,8 @@ local function makeGridHarness(name, surfaceY)
         getMenuContext = function()
             return menuContext
         end,
+        objectsByGuid = objectsByGuid,
+        spawnedObject = spawnedObject,
         getSpawnedParameters = function()
             return spawnedParameters
         end,
@@ -485,9 +500,31 @@ end)
 Test.case("hex grid places death fog only on its outer candidates", function()
     local harness = makeGridHarness("fog", 1.25)
     local completed = nil
+    local sourcePosition = {x = 1.65, y = 1, z = 0.19}
+    local sourceStone = {
+        getBounds = function()
+            return {
+                center = {x = 1.65, y = 1.5, z = 0.19},
+                size = {x = 1, y = 1, z = 1}
+            }
+        end,
+        getPosition = function()
+            return sourcePosition
+        end,
+        setPosition = function(position)
+            sourcePosition = position
+        end
+    }
 
     harness.controller.onLoad(nil)
     harness.callbacks[1].callback()
+    harness.objectsByGuid["source-stone"] = sourceStone
+    HexBoardModel.addPlacement(harness.controller.getModel(), {
+        templateKey = "sourceStone",
+        cell = {row = 0, column = 1},
+        facingCell = {row = 0, column = 0},
+        guid = "source-stone"
+    })
     Test.truthy(harness.controller.beginDeathFogPlacement(
         "Red",
         function(succeeded)
@@ -505,14 +542,28 @@ Test.case("hex grid places death fog only on its outer candidates", function()
     harness.controller.onClicked("Red", false)
 
     Test.truthy(completed)
-    Test.equal(
-        "deathFog",
-        harness.controller.getModel().placements[1].templateKey
-    )
+    local fogPlacement = nil
+
+    for _, placement in ipairs(
+        harness.controller.getModel().placements
+    ) do
+        if placement.templateKey == "deathFog" then
+            fogPlacement = placement
+        end
+    end
+
+    Test.truthy(fogPlacement ~= nil)
     Test.equal(
         "dcc277",
         harness.getSpawnedParameters().template.sourceGuid
     )
+    harness.getSpawnedParameters().onPlacementFinalized(
+        harness.spawnedObject
+    )
+    Test.equal(1.65, sourcePosition.x)
+    Test.equal(2, sourcePosition.y)
+    Test.equal(0.19, sourcePosition.z)
+    Test.equal(2, #harness.controller.getModel().placements)
     Test.nilValue(
         harness.controller.getSessionSnapshot().deathFogRequest
     )

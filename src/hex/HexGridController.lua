@@ -509,6 +509,104 @@ local function getPlacementByGuid(self, guid)
     return self.modelApi.findPlacementByGuid(self.model, guid)
 end
 
+local function findPlacementAtCell(self, cell, predicate)
+    for _, placement in ipairs(self.model.placements) do
+        local template = self.templatesByKey[placement.templateKey]
+
+        if predicate(template)
+            and placementOccupiesCell(self, placement, cell)
+        then
+            return placement
+        end
+    end
+
+    return nil
+end
+
+local function getPlacementObject(self, placement)
+    return placement ~= nil
+        and type(placement.guid) == "string"
+        and self.runtime.getObject(placement.guid) or nil
+end
+
+local function moveSourceStoneOnTop(sourceStone, deathFog)
+    if sourceStone == nil or deathFog == nil then
+        return false
+    end
+
+    return pcall(function()
+        local sourcePosition = sourceStone.getPosition()
+        local sourceBounds = sourceStone.getBounds()
+        local fogBounds = deathFog.getBounds()
+        local sourceBottom = sourceBounds.center.y
+            - sourceBounds.size.y * 0.5
+        local fogTop = fogBounds.center.y + fogBounds.size.y * 0.5
+
+        sourceStone.setPosition({
+            x = sourcePosition.x,
+            y = sourcePosition.y + fogTop - sourceBottom,
+            z = sourcePosition.z
+        })
+    end)
+end
+
+local function stackSourceStoneForPlacement(
+    self,
+    placement,
+    placementObject
+)
+    local template = self.templatesByKey[placement.templateKey]
+    local sourcePlacement = nil
+    local fogPlacement = nil
+    local sourceObject = nil
+    local fogObject = nil
+
+    if template ~= nil and template.isDeathFog == true then
+        fogPlacement = placement
+        fogObject = placementObject
+        sourcePlacement = findPlacementAtCell(
+            self,
+            placement.cell,
+            function(candidate)
+                return candidate ~= nil
+                    and candidate.isSourceStone == true
+            end
+        )
+    elseif template ~= nil and template.isSourceStone == true then
+        sourcePlacement = placement
+        sourceObject = placementObject
+        fogPlacement = findPlacementAtCell(
+            self,
+            placement.cell,
+            function(candidate)
+                return candidate ~= nil and candidate.isDeathFog == true
+            end
+        )
+    end
+
+    sourceObject = sourceObject or getPlacementObject(
+        self,
+        sourcePlacement
+    )
+    fogObject = fogObject or getPlacementObject(self, fogPlacement)
+
+    return moveSourceStoneOnTop(sourceObject, fogObject)
+end
+
+local function stackRestoredSourceStones(self)
+    for _, placement in ipairs(self.model.placements) do
+        local template = self.templatesByKey[placement.templateKey]
+
+        if template ~= nil and template.isSourceStone == true then
+            stackSourceStoneForPlacement(
+                self,
+                placement,
+                getPlacementObject(self, placement)
+            )
+        end
+    end
+end
+
 local function addObjectClickButton(self, object, placement)
     if object == nil or placement == nil or self.board == nil then
         return
@@ -878,6 +976,12 @@ local function spawnPlacement(
             if template.addEditButtons ~= false then
                 addObjectClickButton(self, spawnedObject, placement)
             end
+
+            stackSourceStoneForPlacement(
+                self,
+                placement,
+                spawnedObject
+            )
         end,
         silent
     )
@@ -1142,6 +1246,7 @@ local function restoreSavedPlacements(self)
     end
 
     self.pendingSavedPlacements = {}
+    stackRestoredSourceStones(self)
 end
 
 local function buildGrid(self)

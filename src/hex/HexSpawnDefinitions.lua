@@ -165,6 +165,8 @@ local HexSpawnDefinitions = {
         key = "sourceStone",
         label = "Source Stone",
         json = SavedObjectData.sourceStone,
+        allowsDeathFog = true,
+        isSourceStone = true,
         objectPositionOffset = {x = 0.65, y = 0, z = 0.19},
         rotationOffsetY = 30,
         editClickArea = makeHexPrismClickArea({
