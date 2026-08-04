@@ -1749,7 +1749,7 @@
 
 <Panel
     id="hexGridSpawnSelectorRoot"
-    rectAlignment="UpperCenter"
+    rectAlignment="UpperRight"
     width="660"
     height="235"
     offsetXY="0 -24"
