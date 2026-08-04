@@ -81,7 +81,8 @@ function SurfaceTemplateFactory.build(settings)
         isDeathFog = settings.isDeathFog == true,
         blocksSurfacePlacement =
             settings.blocksSurfacePlacement == true,
-        addEditButtons = false
+        addEditButtons = true,
+        usesSurfaceHitboxes = true
     }
 end
 

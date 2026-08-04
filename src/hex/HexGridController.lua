@@ -656,6 +656,14 @@ local function addObjectClickButton(self, object, placement)
         return
     end
 
+    if type(object.getButtons) ~= "function"
+        or type(object.createButton) ~= "function"
+        or type(object.getBounds) ~= "function"
+        or type(object.positionToLocal) ~= "function"
+    then
+        return
+    end
+
     local existingButtons = object.getButtons() or {}
 
     for index = #existingButtons, 1, -1 do
@@ -669,8 +677,113 @@ local function addObjectClickButton(self, object, placement)
     local bounds = object.getBounds()
     local boundsCenter = bounds.center
     local boundsSize = bounds.size or {}
-    local showDebug = self.debugConfig.drawEditObjectButtons == true
     local template = self.templatesByKey[placement.templateKey]
+
+    if template ~= nil and template.usesSurfaceHitboxes == true then
+        local showDebug = self.debugConfig.drawSurfaceHitboxes == true
+        local cell = self.cellsByKey[
+            self.cellKey(placement.cell.row, placement.cell.column)
+        ]
+        local objectTop = object.positionToLocal({
+            x = boundsCenter.x,
+            y = boundsCenter.y + (boundsSize.y or 0) * 0.5,
+            z = boundsCenter.z
+        })
+
+        for buttonIndex, buttonConfig in ipairs(self.config.buttons) do
+            local angle = math.rad(
+                self.config.rotationDegrees + buttonConfig.rotation
+            )
+            local cosine = math.cos(angle)
+            local sine = math.sin(angle)
+            local halfLength = self.config.buttonLength * 0.5
+            local halfThickness = self.config.buttonThickness * 0.5
+            local center = cell or {x = 0, z = 0}
+            local widthStart = object.positionToLocal(
+                self.board.positionToWorld({
+                    x = center.x - cosine * halfLength,
+                    y = self.resolvedSurfaceY,
+                    z = center.z + sine * halfLength
+                })
+            )
+            local widthEnd = object.positionToLocal(
+                self.board.positionToWorld({
+                    x = center.x + cosine * halfLength,
+                    y = self.resolvedSurfaceY,
+                    z = center.z - sine * halfLength
+                })
+            )
+            local heightStart = object.positionToLocal(
+                self.board.positionToWorld({
+                    x = center.x - sine * halfThickness,
+                    y = self.resolvedSurfaceY,
+                    z = center.z - cosine * halfThickness
+                })
+            )
+            local heightEnd = object.positionToLocal(
+                self.board.positionToWorld({
+                    x = center.x + sine * halfThickness,
+                    y = self.resolvedSurfaceY,
+                    z = center.z + cosine * halfThickness
+                })
+            )
+            local widthX = widthEnd.x - widthStart.x
+            local widthZ = widthEnd.z - widthStart.z
+            local heightX = heightEnd.x - heightStart.x
+            local heightZ = heightEnd.z - heightStart.z
+            local width = math.max(60, math.floor(
+                math.sqrt(widthX * widthX + widthZ * widthZ)
+                    * 100 + 0.5
+            ))
+            local height = math.max(60, math.floor(
+                math.sqrt(heightX * heightX + heightZ * heightZ)
+                    * 100 + 0.5
+            ))
+            local localRotation = math.deg(
+                math.atan2(-widthZ, widthX)
+            )
+
+            object.createButton({
+                label = showDebug and buttonConfig.label or "",
+                click_function = self.config.objectButtonClickFunction,
+                function_owner = self.runtime.getGlobalOwner(),
+                position = {
+                    objectTop.x,
+                    objectTop.y + self.config.buttonSurfaceOffset
+                        + buttonIndex * self.config.buttonLayerSpacing,
+                    objectTop.z
+                },
+                rotation = {
+                    0,
+                    localRotation,
+                    0
+                },
+                width = width,
+                height = height,
+                font_size = showDebug
+                    and self.config.buttonFontSize or 1,
+                color = showDebug
+                    and buttonConfig.color
+                    or self.config.invisibleButtonColor,
+                font_color = showDebug
+                    and self.config.buttonFontColor
+                    or self.config.invisibleButtonColor,
+                hover_color = showDebug
+                    and buttonConfig.hoverColor
+                    or self.config.invisibleButtonColor,
+                press_color = showDebug
+                    and buttonConfig.pressColor
+                    or self.config.invisibleButtonColor,
+                tooltip = showDebug
+                    and buttonConfig.label .. " degree surface hitbox"
+                    or "Select hex"
+            })
+        end
+
+        return
+    end
+
+    local showDebug = self.debugConfig.drawEditObjectButtons == true
     local clickArea = template ~= nil
         and template.editClickArea or {}
 

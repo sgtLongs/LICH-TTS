@@ -68,6 +68,8 @@ Test.case("surface definitions derive names and rendering from config", function
         Test.equal(settings.color, definition.placementTemplate.color)
         Test.equal(settings.opacity, definition.placementTemplate.opacity)
         Test.truthy(definition.placementTemplate.isSurface)
+        Test.truthy(definition.placementTemplate.addEditButtons)
+        Test.truthy(definition.placementTemplate.usesSurfaceHitboxes)
         Test.contains(
             definition.placementTemplate.json,
             '"MeshURL":"https://steamusercontent-a.akamaihd.net/'

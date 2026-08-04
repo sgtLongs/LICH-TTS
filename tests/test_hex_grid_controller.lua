@@ -236,11 +236,71 @@ local function newHarness(options)
         view = {draw = function() end},
         menu = menu,
         objectSpawner = objectSpawner,
+        debugConfig = options.debugConfig,
         json = json
     })
 
     return harness
 end
+
+Test.case("surfaces receive three selectable top hitboxes", function()
+    local harness = newHarness({
+        debugConfig = {
+            drawEditObjectButtons = false,
+            drawSurfaceHitboxes = true
+        }
+    })
+    local buttons = {}
+    local surfaceObject = {
+        addTag = function()
+        end,
+        createButton = function(parameters)
+            buttons[#buttons + 1] = parameters
+        end,
+        getBounds = function()
+            return {
+                center = {x = 0, y = 0.1, z = 0},
+                size = {x = 3, y = 0.2, z = 3}
+            }
+        end,
+        getButtons = function()
+            return {}
+        end,
+        getGUID = function()
+            return "fire-surface"
+        end,
+        positionToLocal = function(position)
+            return {
+                x = position.x * 0.5,
+                y = position.y,
+                z = position.z * 0.5
+            }
+        end
+    }
+    harness.objectsByGuid["fire-surface"] = surfaceObject
+
+    harness.controller:onLoad({
+        placedObjects = {
+            makePlacement("fire", 0, 0, 0, 1, "fire-surface")
+        }
+    })
+
+    Test.equal(3, #buttons)
+    Test.equal("onHexGridObjectClicked", buttons[1].click_function)
+    Test.equal(640, buttons[1].width)
+    Test.equal(400, buttons[1].height)
+    Test.near(0, buttons[1].rotation[2], 0.0001)
+    Test.near(60, buttons[2].rotation[2], 0.0001)
+    Test.near(120, buttons[3].rotation[2], 0.0001)
+    Test.equal("0", buttons[1].label)
+    Test.contains(buttons[1].tooltip, "surface hitbox")
+
+    harness.pointerCell = harness.cellsByKey["0:0"]
+    harness.controller:onObjectClicked(surfaceObject, "Red", false)
+    Test.truthy(
+        harness.controller:getModel().selectedCells["0:0"]
+    )
+end)
 
 Test.case("restart removes surfaces while preserving map objects", function()
     local harness = newHarness()
