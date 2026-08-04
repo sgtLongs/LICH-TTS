@@ -867,6 +867,55 @@ static string RenderHexMenuChoiceRows(IReadOnlyList<string> definitions)
     return string.Join('\n', lines);
 }
 
+static string RenderSurfaceChoiceButtons(
+    IReadOnlyList<string> definitions,
+    string idPrefix)
+{
+    var lines = new List<string>();
+
+    for (var rowStart = 0; rowStart < definitions.Count; rowStart += 2)
+    {
+        lines.Add("        <HorizontalLayout");
+        lines.Add("            preferredHeight=\"58\"");
+        lines.Add("            spacing=\"10\"");
+        lines.Add("            childAlignment=\"MiddleCenter\"");
+        lines.Add("        >");
+
+        for (var column = 0; column < 2; column++)
+        {
+            var index = rowStart + column;
+
+            if (index >= definitions.Count)
+            {
+                lines.Add(
+                    "            <Panel preferredWidth=\"185\" preferredHeight=\"54\" />");
+                continue;
+            }
+
+            var fields = DefinitionFields(
+                definitions[index],
+                2,
+                "surface definition");
+            lines.Add("            <Button");
+            lines.Add($"                id=\"{idPrefix}{index + 1}\"");
+            lines.Add(
+                $"                text=\"{EscapeXmlAttribute(fields[1].ToUpperInvariant())}\"");
+            lines.Add("                fontSize=\"19\"");
+            lines.Add("                fontStyle=\"Bold\"");
+            lines.Add("                colors=\"#4C1D6F|#6B2998|#35134E|#35134E\"");
+            lines.Add(
+                $"                onClick=\"onSurfaceUiClicked({fields[0]})\"");
+            lines.Add("                preferredWidth=\"185\"");
+            lines.Add("                preferredHeight=\"54\"");
+            lines.Add("            />");
+        }
+
+        lines.Add("        </HorizontalLayout>");
+    }
+
+    return string.Join('\n', lines);
+}
+
 static IReadOnlyDictionary<string, string> BuildGlobalUiRegions(Script script)
 {
     var settingsCount = EvaluateLuaCount(
@@ -918,6 +967,15 @@ static IReadOnlyDictionary<string, string> BuildGlobalUiRegions(Script script)
         script,
         "return {require('src/config/HexMenuConfig').ui.spawnSelectorButtonPrefix}",
         "hex spawn selector prefix")[0];
+    var surfaceDefinitions = EvaluateLuaStrings(
+        script,
+        "local result = {}; for _, definition in ipairs(require('src/surfaces/SurfaceDefinitions')) do "
+            + "result[#result + 1] = definition.key .. '\\t' .. definition.label; end; return result",
+        "surface definitions");
+    var surfaceButtonPrefix = EvaluateLuaStrings(
+        script,
+        "return {require('src/config/SurfaceConfig').ui.buttonPrefix}",
+        "surface button prefix")[0];
 
     return new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -937,7 +995,10 @@ static IReadOnlyDictionary<string, string> BuildGlobalUiRegions(Script script)
             spawnDefinitions,
             spawnPrefix),
         ["hex-menu-choice-rows"] = RenderHexMenuChoiceRows(
-            spawnDefinitions)
+            spawnDefinitions),
+        ["surface-choice-buttons"] = RenderSurfaceChoiceButtons(
+            surfaceDefinitions,
+            surfaceButtonPrefix)
     };
 }
 
@@ -1116,6 +1177,19 @@ static void ValidateTrackedAssets(string repositoryRoot, Script script)
             @"\d+"),
         SequentialStrings(hexSpawnCount));
 
+    var expectedSurfaceArguments = EvaluateLuaStrings(
+        script,
+        "local values = {'close'}; for _, definition in ipairs(require('src/surfaces/SurfaceDefinitions')) do "
+            + "values[#values + 1] = definition.key; end; return values",
+        "surface callback arguments");
+    RequireExactSequence(
+        "surface callback arguments",
+        ExtractCallbackArguments(
+            callbackValues,
+            "onSurfaceUiClicked",
+            @"[A-Za-z_][A-Za-z0-9_]*"),
+        expectedSurfaceArguments);
+
     var settingsRowCount = EvaluateLuaCount(
         script,
         "return require('src/config/SettingsConfig').boardListPageSize",
@@ -1255,6 +1329,21 @@ static void ValidateTrackedAssets(string repositoryRoot, Script script)
                 + "config.ui.spawnSelectorButtonPrefix .. index; end; "
                 + "return result",
             "hex UI IDs"));
+
+    RequireUiIds(
+        "surfaces",
+        idSet,
+        EvaluateLuaStrings(
+            script,
+            "local config = require('src/config/SurfaceConfig'); "
+                + "local definitions = require('src/surfaces/SurfaceDefinitions'); "
+                + "local result = {}; "
+                + "for key, value in pairs(config.ui) do "
+                + "if type(value) == 'string' and string.match(key, 'Id$') "
+                + "then result[#result + 1] = value; end; end; "
+                + "for index = 1, #definitions do result[#result + 1] = "
+                + "config.ui.buttonPrefix .. index; end; return result",
+            "surface UI IDs"));
 }
 
 static void CompileGeneratedCardScripts(Script script)

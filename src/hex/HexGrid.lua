@@ -71,6 +71,10 @@ function HexGrid.onMenuUiClicked(playerColor, action)
     return defaultController.onMenuUiClicked(playerColor, action)
 end
 
+function HexGrid.onSurfaceUiClicked(playerColor, action)
+    return defaultController.onSurfaceUiClicked(playerColor, action)
+end
+
 function HexGrid.onSpawnSelectorUiClicked(playerColor, action)
     return defaultController.onSpawnSelectorUiClicked(
         playerColor,

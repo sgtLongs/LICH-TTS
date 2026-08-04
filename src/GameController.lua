@@ -242,6 +242,10 @@ function GameController:onHexGridMenuUiClicked(playerColor, action)
     self.hexGrid.onMenuUiClicked(playerColor, action)
 end
 
+function GameController:onSurfaceUiClicked(playerColor, action)
+    return self.hexGrid.onSurfaceUiClicked(playerColor, action)
+end
+
 function GameController:onHexGridSpawnSelectorUiClicked(playerColor, action)
     return self.hexGrid.onSpawnSelectorUiClicked(playerColor, action)
 end

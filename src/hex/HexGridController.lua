@@ -1,6 +1,5 @@
 local Config = require("src/config/HexGridConfig")
 local DebugConfig = require("src/config/GlobalDebugConfig")
-local DeathFogDefinition = require("src/hex/DeathFogDefinition")
 local HexBoardCodec = require("src/hex/HexBoardCodec")
 local HexBoardModel = require("src/hex/HexBoardModel")
 local HexGeometry = require("src/hex/HexGeometry")
@@ -12,7 +11,8 @@ local HexPlacementRules = require("src/hex/HexPlacementRules")
 local SpawnDefinitions = require("src/hex/HexSpawnDefinitions")
 local Runtime = require("src/tts/Runtime")
 local Scheduler = require("src/tts/Scheduler")
-local DeathFogRules = require("src/turns/DeathFogRules")
+local SurfaceController = require("src/surfaces/SurfaceController")
+local SurfaceDefinitions = require("src/surfaces/SurfaceDefinitions")
 
 local HexGridController = {}
 local Controller = {}
@@ -37,6 +37,7 @@ local publicMethodNames = {
     "onObjectClicked",
     "onPlayerAction",
     "onMenuUiClicked",
+    "onSurfaceUiClicked",
     "onSpawnSelectorUiClicked",
     "onScriptingButtonDown",
     "onObjectNumberTyped",
@@ -91,9 +92,44 @@ function HexGridController.new(options)
         templatesByKey = copyMap(options.templatesByKey)
     end
 
+    local surfaceDefinitions = options.surfaceDefinitions
+        or SurfaceDefinitions
     local deathFogTemplate = options.deathFogTemplate
-        or DeathFogDefinition
-    templatesByKey[deathFogTemplate.key] = deathFogTemplate
+
+    for _, definition in ipairs(surfaceDefinitions) do
+        local template = definition.placementTemplate
+
+        if definition.key == "deathFog"
+            and deathFogTemplate ~= nil
+        then
+            template = deathFogTemplate
+        end
+
+        if template ~= nil then
+            templatesByKey[template.key] = template
+
+            if definition.key == "deathFog" then
+                deathFogTemplate = template
+            end
+        end
+    end
+
+    local surfaces = options.surfaces
+
+    if surfaces == nil then
+        local surfaceDependencies = {
+            definitions = surfaceDefinitions,
+            templatesByKey = templatesByKey,
+            cellKey = cellKey
+        }
+
+        if options.uiAdapter ~= nil then
+            surfaceDependencies.uiAdapter = options.uiAdapter
+        end
+
+        surfaces = (options.surfaceControllerFactory
+            or SurfaceController).new(surfaceDependencies)
+    end
 
     local menu = options.menu
 
@@ -137,6 +173,7 @@ function HexGridController.new(options)
         modelApi = options.modelApi or HexBoardModel,
         codec = options.codec or HexBoardCodec,
         menu = menu,
+        surfaces = surfaces,
         objectSpawner = objectSpawner,
         schemaVersion = options.schemaVersion
             or config.boardStateSchemaVersion,
@@ -160,6 +197,7 @@ function HexGridController.new(options)
         recentClickCells = {},
         selectedTemplate = nil,
         editMode = false,
+        deathFogSurface = surfaces.getDefinition("deathFog"),
         deathFogTemplate = deathFogTemplate,
         deathFogRequest = nil,
         deathFogCandidateCells = {}
@@ -270,6 +308,7 @@ function Controller:getSessionSnapshot()
             self.deathFogCandidateCells
         ),
         deathFogRequest = self.deathFogRequest,
+        surfaceMenu = self.surfaces.getActiveMenu(),
         pendingSpawn = self.pendingSpawn,
         pendingSavedPlacements = self.pendingSavedPlacements,
         resolvedSurfaceY = self.resolvedSurfaceY,
@@ -529,22 +568,23 @@ local function getPlacementObject(self, placement)
         and self.runtime.getObject(placement.guid) or nil
 end
 
-local function moveSourceStoneOnTop(sourceStone, deathFog)
-    if sourceStone == nil or deathFog == nil then
+local function moveSourceStoneOnTop(sourceStone, surfaceObject)
+    if sourceStone == nil or surfaceObject == nil then
         return false
     end
 
     return pcall(function()
         local sourcePosition = sourceStone.getPosition()
         local sourceBounds = sourceStone.getBounds()
-        local fogBounds = deathFog.getBounds()
+        local surfaceBounds = surfaceObject.getBounds()
         local sourceBottom = sourceBounds.center.y
             - sourceBounds.size.y * 0.5
-        local fogTop = fogBounds.center.y + fogBounds.size.y * 0.5
+        local surfaceTop = surfaceBounds.center.y
+            + surfaceBounds.size.y * 0.5
 
         sourceStone.setPosition({
             x = sourcePosition.x,
-            y = sourcePosition.y + fogTop - sourceBottom,
+            y = sourcePosition.y + surfaceTop - sourceBottom,
             z = sourcePosition.z
         })
     end)
@@ -557,13 +597,13 @@ local function stackSourceStoneForPlacement(
 )
     local template = self.templatesByKey[placement.templateKey]
     local sourcePlacement = nil
-    local fogPlacement = nil
+    local surfacePlacement = nil
     local sourceObject = nil
-    local fogObject = nil
+    local surfaceObject = nil
 
-    if template ~= nil and template.isDeathFog == true then
-        fogPlacement = placement
-        fogObject = placementObject
+    if template ~= nil and template.isSurface == true then
+        surfacePlacement = placement
+        surfaceObject = placementObject
         sourcePlacement = findPlacementAtCell(
             self,
             placement.cell,
@@ -575,11 +615,11 @@ local function stackSourceStoneForPlacement(
     elseif template ~= nil and template.isSourceStone == true then
         sourcePlacement = placement
         sourceObject = placementObject
-        fogPlacement = findPlacementAtCell(
+        surfacePlacement = findPlacementAtCell(
             self,
             placement.cell,
             function(candidate)
-                return candidate ~= nil and candidate.isDeathFog == true
+                return candidate ~= nil and candidate.isSurface == true
             end
         )
     end
@@ -588,9 +628,12 @@ local function stackSourceStoneForPlacement(
         self,
         sourcePlacement
     )
-    fogObject = fogObject or getPlacementObject(self, fogPlacement)
+    surfaceObject = surfaceObject or getPlacementObject(
+        self,
+        surfacePlacement
+    )
 
-    return moveSourceStoneOnTop(sourceObject, fogObject)
+    return moveSourceStoneOnTop(sourceObject, surfaceObject)
 end
 
 local function stackRestoredSourceStones(self)
@@ -820,6 +863,7 @@ local function toggleCellSelection(self, cell, playerColor)
     local key = self.cellKey(cell.row, cell.column)
 
     self.menu.close()
+    self.surfaces.close()
     local selected = self.modelApi.toggleSelected(self.model, key)
     drawGrid(self)
 
@@ -840,6 +884,12 @@ local function openPlacementMenu(
     targetCell
 )
     if placement == nil or not isAdmin(self, playerColor) then
+        return false
+    end
+
+    local template = self.templatesByKey[placement.templateKey]
+
+    if template ~= nil and template.isSurface == true then
         return false
     end
 
@@ -1098,11 +1148,11 @@ local function refreshDeathFogCandidates(self)
         return
     end
 
-    self.deathFogCandidateCells = DeathFogRules.getCandidates(
+    self.deathFogCandidateCells = self.surfaces.getCandidates(
+        self.deathFogSurface,
         self.cells,
         self.model.placements,
-        self.templatesByKey,
-        self.cellKey
+        true
     )
 
     if next(self.deathFogCandidateCells) == nil then
@@ -1131,16 +1181,58 @@ local function getDeathFogFacingCell(self, targetCell)
     return nil
 end
 
-local function placeDeathFog(self, targetCell)
-    local request = self.deathFogRequest
+local function removeReplacedSurfaces(self, replacedPlacements)
+    for _, replacedPlacement in ipairs(replacedPlacements or {}) do
+        if hasPlacement(self, replacedPlacement) then
+            local replacedObject = getPlacementObject(
+                self,
+                replacedPlacement
+            )
+
+            removePlacement(self, replacedPlacement)
+
+            if replacedObject ~= nil then
+                self.runtime.destroyObject(replacedObject)
+            end
+        end
+    end
+end
+
+local function placeSurface(
+    self,
+    surfaceDefinition,
+    targetCell,
+    playerColor,
+    onCompleted
+)
     local facingCell = getDeathFogFacingCell(self, targetCell)
 
-    if request == nil or facingCell == nil then
+    if surfaceDefinition == nil
+        or facingCell == nil
+        or not self.surfaces.canPlace(
+            surfaceDefinition,
+            targetCell,
+            self.model.placements
+        )
+    then
         return false
     end
 
+    local template = surfaceDefinition.placementTemplate ~= nil
+        and self.templatesByKey[
+            surfaceDefinition.placementTemplate.key
+        ] or nil
+
+    if template == nil then
+        return false
+    end
+
+    local replacedPlacements = self.surfaces.getReplacedPlacements(
+        targetCell,
+        self.model.placements
+    )
     local placement = {
-        templateKey = self.deathFogTemplate.key,
+        templateKey = template.key,
         cell = self.modelApi.copyCell(targetCell),
         facingCell = self.modelApi.copyCell(facingCell)
     }
@@ -1148,8 +1240,35 @@ local function placeDeathFog(self, targetCell)
     return spawnPlacement(
         self,
         placement,
-        request.playerColor,
+        playerColor,
         false,
+        function(succeeded)
+            if succeeded then
+                removeReplacedSurfaces(self, replacedPlacements)
+                refreshDeathFogCandidates(self)
+            elseif hasPlacement(self, placement) then
+                removePlacement(self, placement)
+            end
+
+            if onCompleted ~= nil then
+                pcall(onCompleted, succeeded == true)
+            end
+        end
+    )
+end
+
+local function placeDeathFog(self, targetCell)
+    local request = self.deathFogRequest
+
+    if request == nil then
+        return false
+    end
+
+    return placeSurface(
+        self,
+        self.deathFogSurface,
+        targetCell,
+        request.playerColor,
         function(succeeded)
             if succeeded then
                 finishDeathFogPlacement(self, true)
@@ -1308,6 +1427,23 @@ local function buildGrid(self)
             cancelPendingSpawn(self, playerColor, false)
         end
     })
+    self.surfaces.initialize({
+        getPlacements = function()
+            return self.model.placements
+        end,
+        onSurfaceChoice = function(
+            definition,
+            targetCell,
+            playerColor
+        )
+            return placeSurface(
+                self,
+                definition,
+                targetCell,
+                playerColor
+            )
+        end
+    })
 
     if self.editMode then
         self.menu.showSpawnSelector(self.selectedTemplate)
@@ -1343,6 +1479,7 @@ function Controller:onLoad(savedState)
     self.pendingSpawn = nil
     self.deathFogRequest = nil
     self.deathFogCandidateCells = {}
+    self.surfaces.close()
     self.pendingSavedPlacements = self:loadSaveState(savedState)
 
     self.scheduler.frames(function()
@@ -1380,6 +1517,7 @@ function Controller:loadBoardState(
     end
 
     self.menu.close()
+    self.surfaces.close()
 
     local objectsToDestroy = {}
     local guidsToDestroy = {}
@@ -1587,6 +1725,7 @@ local function handlePointerClick(self, playerColor, altClick)
             openPlacementMenu(self, placement, playerColor, cell)
         else
             toggleCellSelection(self, cell, playerColor)
+            self.surfaces.open(playerColor, cell)
         end
 
         return true
@@ -1620,7 +1759,9 @@ local function handlePointerClick(self, playerColor, altClick)
         return true
     end
 
-    return toggleCellSelection(self, cell, playerColor)
+    local handled = toggleCellSelection(self, cell, playerColor)
+    self.surfaces.open(playerColor, cell)
+    return handled
 end
 
 function Controller:onClicked(playerColor, altClick)
@@ -1674,6 +1815,10 @@ function Controller:onMenuUiClicked(playerColor, action)
     self.menu.handleAction(playerColor, action)
 end
 
+function Controller:onSurfaceUiClicked(playerColor, action)
+    return self.surfaces.handleAction(playerColor, action)
+end
+
 function Controller:onSpawnSelectorUiClicked(playerColor, action)
     return selectPlacementTemplate(self, action, playerColor)
 end
@@ -1700,6 +1845,7 @@ end
 
 function Controller:setEditMode(enabled, playerColor)
     self.editMode = enabled == true
+    self.surfaces.close()
 
     if not self.editMode then
         self.pendingSpawn = nil
@@ -1727,13 +1873,17 @@ function Controller:setEditMode(enabled, playerColor)
 end
 
 function Controller:beginDeathFogPlacement(playerColor, onCompleted)
-    if type(playerColor) ~= "string" then
+    if type(playerColor) ~= "string"
+        or self.deathFogSurface == nil
+        or self.deathFogTemplate == nil
+    then
         return false
     end
 
     self.pendingSpawn = nil
     self.rotationCandidateCells = {}
     self.menu.close()
+    self.surfaces.close()
     self.deathFogRequest = {
         playerColor = playerColor,
         onCompleted = onCompleted

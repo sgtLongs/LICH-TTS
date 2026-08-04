@@ -111,6 +111,10 @@ function onHexGridMenuUiClicked(player, action, id)
     Game.onHexGridMenuUiClicked(player.color, action)
 end
 
+function onSurfaceUiClicked(player, action, id)
+    return Game.onSurfaceUiClicked(player.color, action)
+end
+
 function onHexGridSpawnSelectorUiClicked(player, action, id)
     return Game.onHexGridSpawnSelectorUiClicked(player.color, action)
 end

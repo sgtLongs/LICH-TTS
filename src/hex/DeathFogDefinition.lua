@@ -1,12 +1,9 @@
-local SavedObjectData = require("data/HexGridObjectTemplates")
+local SurfaceDefinitions = require("src/surfaces/SurfaceDefinitions")
 
-return {
-    key = "deathFog",
-    label = "Death Fog",
-    json = SavedObjectData.deathFog,
-    sourceGuid = "dcc277",
-    objectPositionOffset = {x = 0, y = 0.03, z = 0},
-    rotationOffsetY = 30,
-    isDeathFog = true,
-    addEditButtons = false
-}
+for _, definition in ipairs(SurfaceDefinitions) do
+    if definition.key == "deathFog" then
+        return definition.placementTemplate
+    end
+end
+
+error("SurfaceConfig must define deathFog.")

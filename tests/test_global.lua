@@ -22,6 +22,7 @@ local callbackNames = {
     "onDeckSelectionUiClicked",
     "onHexGridObjectClicked",
     "onHexGridMenuUiClicked",
+    "onSurfaceUiClicked",
     "onHexGridSpawnSelectorUiClicked",
     "onSettingsUiClicked",
     "onSettingsJsonEdited",
@@ -58,6 +59,7 @@ local gameMethods = {
     "onDeckSelectionUiClicked",
     "onHexGridObjectClicked",
     "onHexGridMenuUiClicked",
+    "onSurfaceUiClicked",
     "onHexGridSpawnSelectorUiClicked",
     "onSettingsUiClicked",
     "onSettingsJsonEdited",
@@ -269,6 +271,10 @@ Test.case("global menu callbacks unwrap player and action values", function()
         onDeckSelectionUiClicked(player, "9636", "deck")
         onHexGridMenuUiClicked(player, "tree", "hex")
         Test.equal(
+            "result-onSurfaceUiClicked",
+            onSurfaceUiClicked(player, "deathFog", "surface")
+        )
+        Test.equal(
             "result-onHexGridSpawnSelectorUiClicked",
             onHexGridSpawnSelectorUiClicked(player, "4", "spawn")
         )
@@ -281,6 +287,7 @@ Test.case("global menu callbacks unwrap player and action values", function()
         Test.equal("Teal", context.callsByName.onDeckSelectionUiClicked.arguments[1])
         Test.equal("9636", context.callsByName.onDeckSelectionUiClicked.arguments[2])
         Test.equal("tree", context.callsByName.onHexGridMenuUiClicked.arguments[2])
+        Test.equal("deathFog", context.callsByName.onSurfaceUiClicked.arguments[2])
         Test.equal("4", context.callsByName.onHexGridSpawnSelectorUiClicked.arguments[2])
         Test.equal("save", context.callsByName.onSettingsUiClicked.arguments[2])
         Test.equal("{}", context.callsByName.onSettingsJsonEdited.arguments[2])

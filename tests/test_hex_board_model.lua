@@ -1,6 +1,7 @@
 local Test = require("tests/support/Test")
 local HexBoardCodec = require("src/hex/HexBoardCodec")
 local HexBoardModel = require("src/hex/HexBoardModel")
+local DeathFogDefinition = require("src/hex/DeathFogDefinition")
 local HexGeometry = require("src/hex/HexGeometry")
 local HexGridController = require("src/hex/HexGridController")
 local HexGridView = require("src/hex/HexGridView")
@@ -290,8 +291,10 @@ Test.case("hex grid controller owns import and export configuration", function()
     Test.truthy(controller:getModel().selectedCells['0:0'])
 end)
 
-local function makeGridHarness(name, surfaceY)
+local function makeGridHarness(name, surfaceY, options)
+    options = options or {}
     local callbacks = {}
+    local destroyed = {}
     local objectsByGuid = {}
     local trace = {}
     local player = {
@@ -368,7 +371,8 @@ local function makeGridHarness(name, surfaceY)
         getObjectsWithTag = function()
             return {}
         end,
-        destroyObject = function()
+        destroyObject = function(object)
+            destroyed[#destroyed + 1] = object
         end,
         broadcastToColor = function()
         end,
@@ -418,13 +422,19 @@ local function makeGridHarness(name, surfaceY)
         objectSpawner = {
             spawn = function(parameters)
                 spawnedParameters = parameters
+
+                if options.spawn ~= nil then
+                    return options.spawn(parameters)
+                end
+
                 parameters.onSpawned(spawnedObject)
                 return true
             end,
             place = function()
                 return true
             end
-        }
+        },
+        surfaceDefinitions = options.surfaceDefinitions
     })
 
     return {
@@ -432,6 +442,7 @@ local function makeGridHarness(name, surfaceY)
         callbacks = callbacks,
         cells = cells,
         controller = controller,
+        destroyed = destroyed,
         getMenuContext = function()
             return menuContext
         end,
@@ -567,6 +578,165 @@ Test.case("hex grid places death fog only on its outer candidates", function()
     Test.nilValue(
         harness.controller.getSessionSnapshot().deathFogRequest
     )
+end)
+
+Test.case("normal tile clicks open the surface picker and place death fog", function()
+    local harness = makeGridHarness("surface-picker", 1.25)
+
+    harness.controller.onLoad(nil)
+    harness.callbacks[1].callback()
+    harness.controller.onClicked("Red", false)
+
+    local activeMenu = harness.controller.getSessionSnapshot().surfaceMenu
+    Test.truthy(activeMenu ~= nil)
+    Test.equal("Red", activeMenu.playerColor)
+    Test.equal(0, activeMenu.cell.row)
+    Test.falsy(
+        harness.controller.onSurfaceUiClicked("Blue", "deathFog")
+    )
+    Test.truthy(
+        harness.controller.onSurfaceUiClicked("Red", "deathFog")
+    )
+
+    local placements = harness.controller.getModel().placements
+    Test.equal(1, #placements)
+    Test.equal("deathFog", placements[1].templateKey)
+    Test.nilValue(harness.controller.getSessionSnapshot().surfaceMenu)
+end)
+
+Test.case("normal surface picker places configured surface variants", function()
+    local harness = makeGridHarness("configured-surface", 1.25)
+
+    harness.controller.onLoad(nil)
+    harness.callbacks[1].callback()
+    harness.controller.onClicked("Red", false)
+
+    Test.truthy(harness.controller.onSurfaceUiClicked("Red", "fire"))
+    Test.equal(
+        "fire",
+        harness.controller.getModel().placements[1].templateKey
+    )
+    Test.equal("Fire", harness.getSpawnedParameters().template.label)
+    Test.contains(
+        harness.getSpawnedParameters().template.json,
+        '"ColorDiffuse":{"r":0.85,"g":0.08,"b":0.04,"a":0.65}'
+    )
+end)
+
+Test.case("rejected surface spawns preserve the picker and board state", function()
+    local harness = makeGridHarness("surface-rejected", 1.25, {
+        spawn = function()
+            return false
+        end
+    })
+
+    harness.controller.onLoad(nil)
+    harness.callbacks[1].callback()
+    harness.controller.onClicked("Red", false)
+
+    Test.falsy(
+        harness.controller.onSurfaceUiClicked("Red", "deathFog")
+    )
+    Test.equal(0, #harness.controller.getModel().placements)
+    Test.truthy(
+        harness.controller.getSessionSnapshot().surfaceMenu ~= nil
+    )
+end)
+
+Test.case("surface picker excludes ordinary objects but allows source stones", function()
+    local harness = makeGridHarness("surface-availability", 1.25)
+
+    harness.controller.onLoad(nil)
+    harness.callbacks[1].callback()
+    HexBoardModel.addPlacement(harness.controller.getModel(), {
+        templateKey = "tree",
+        cell = {row = 0, column = 0},
+        facingCell = {row = 0, column = 1}
+    })
+    harness.controller.onClicked("Red", false)
+    Test.nilValue(harness.controller.getSessionSnapshot().surfaceMenu)
+
+    harness.controller.getModel().placements = {
+        {
+            templateKey = "sourceStone",
+            cell = {row = 0, column = 0},
+            facingCell = {row = 0, column = 1}
+        }
+    }
+    harness.callbacks[#harness.callbacks].callback()
+    harness.controller.onClicked("Red", false)
+    Test.truthy(
+        harness.controller.getSessionSnapshot().surfaceMenu ~= nil
+    )
+end)
+
+Test.case("placing a surface atomically replaces the previous surface", function()
+    local mudTemplate = {
+        key = "mud",
+        label = "Mud",
+        json = "mud-json",
+        isSurface = true,
+        addEditButtons = false
+    }
+    local fireTemplate = {
+        key = "fire",
+        label = "Fire",
+        json = "fire-json",
+        isSurface = true,
+        addEditButtons = false
+    }
+    local harness = makeGridHarness("surface-replacement", 1.25, {
+        surfaceDefinitions = {
+            {
+                key = "deathFog",
+                label = "Death Fog",
+                placementTemplate = DeathFogDefinition
+            },
+            {
+                key = "mud",
+                label = "Mud",
+                placementTemplate = mudTemplate
+            },
+            {
+                key = "fire",
+                label = "Fire",
+                placementTemplate = fireTemplate
+            }
+        }
+    })
+    local oldObject = {}
+
+    harness.controller.onLoad(nil)
+    harness.callbacks[1].callback()
+    harness.objectsByGuid["old-mud"] = oldObject
+    HexBoardModel.addPlacement(harness.controller.getModel(), {
+        templateKey = "mud",
+        cell = {row = 0, column = 0},
+        facingCell = {row = 0, column = 1},
+        guid = "old-mud"
+    })
+    harness.controller.onClicked("Red", false)
+    Test.truthy(harness.controller.onSurfaceUiClicked("Red", "fire"))
+
+    local placements = harness.controller.getModel().placements
+    Test.equal(1, #placements)
+    Test.equal("fire", placements[1].templateKey)
+    Test.equal(1, #harness.destroyed)
+    Test.equal(oldObject, harness.destroyed[1])
+end)
+
+Test.case("death fog prevents reopening the surface picker", function()
+    local harness = makeGridHarness("protected-fog", 1.25)
+
+    harness.controller.onLoad(nil)
+    harness.callbacks[1].callback()
+    HexBoardModel.addPlacement(harness.controller.getModel(), {
+        templateKey = "deathFog",
+        cell = {row = 0, column = 0},
+        facingCell = {row = 0, column = 1}
+    })
+    harness.controller.onClicked("Red", false)
+    Test.nilValue(harness.controller.getSessionSnapshot().surfaceMenu)
 end)
 
 Test.case("constructed hex grid supports bound dot calls", function()

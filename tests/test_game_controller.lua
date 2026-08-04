@@ -267,3 +267,21 @@ Test.case("game controller preserves nil returns from legacy event wrappers", fu
         Test.equal(nil, call())
     end
 end)
+
+Test.case("game controller returns surface picker results", function()
+    local expected = {}
+    local values = dependencies()
+    values.hexGrid.onSurfaceUiClicked = function(playerColor, action)
+        Test.equal("Red", playerColor)
+        Test.equal("deathFog", action)
+        return expected
+    end
+
+    Test.equal(
+        expected,
+        GameController.new(values):onSurfaceUiClicked(
+            "Red",
+            "deathFog"
+        )
+    )
+end)

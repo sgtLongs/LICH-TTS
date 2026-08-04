@@ -1,11 +1,25 @@
 local Test = require("tests/support/Test")
 local DeathFogDefinition = require("src/hex/DeathFogDefinition")
 local HexObjectSpawner = require("src/hex/HexObjectSpawner")
+local SurfaceDefinitions = require("src/surfaces/SurfaceDefinitions")
 
 Test.case("death fog has a saved template after its source is removed", function()
     Test.truthy(type(DeathFogDefinition.json) == "string")
     Test.truthy(#DeathFogDefinition.json > 0)
     Test.contains(DeathFogDefinition.json, '"MaterialIndex":2')
+end)
+
+Test.case("every configured surface has a saved shared-model template", function()
+    for _, definition in ipairs(SurfaceDefinitions) do
+        local template = definition.placementTemplate
+
+        Test.truthy(type(template.json) == "string")
+        Test.truthy(#template.json > 0)
+        Test.contains(template.json, '"MaterialIndex":2')
+        Test.contains(template.json, '"a":' .. tostring(
+            definition.opacity
+        ))
+    end
 end)
 
 Test.case("hex spawner can read a live GUID-backed template", function()

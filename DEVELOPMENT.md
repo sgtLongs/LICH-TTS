@@ -49,6 +49,16 @@ Board state belongs to `HexBoardModel`; validation and import/export belong to
 owns the model and board codec configuration. Keep spawning, tags, correction
 frames, buttons, and destruction in the TTS-facing layer.
 
+Surface names, colors, opacity, and stable keys live in
+`SurfaceConfig.surfaces`. `SurfaceDefinitions` derives every placement template
+from that configuration and the shared surface model; add future surfaces to
+the config instead of copying saved-object JSON. Placement eligibility and
+replacement decisions live in `SurfaceRules`, and the player-owned picker is
+coordinated by `SurfaceController`. A surface placement still uses
+`HexGridController` for TTS spawning and board persistence. The end-phase
+death-fog flow selects the death-fog surface through this same feature; do not
+add a second death-fog-only placement rule.
+
 For a new placement rule, change the pure rule/model first and add boundary
 tests in `tests/test_hex_board_model.lua`. Add a TTS adapter/controller test
 only when the rule needs a new side effect.

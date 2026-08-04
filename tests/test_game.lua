@@ -96,6 +96,11 @@ local HexGrid = {
     end,
     onMenuUiClicked = function()
     end,
+    onSurfaceUiClicked = function(playerColor, action)
+        calls.surfacePlayerColor = playerColor
+        calls.surfaceAction = action
+        return true
+    end,
     onSpawnSelectorUiClicked = function(playerColor, action)
         calls.spawnSelectorPlayerColor = playerColor
         calls.spawnSelectorAction = action
@@ -349,6 +354,13 @@ Test.case("game routes spawn palette choices", function()
 
     Test.equal("Red", calls.spawnSelectorPlayerColor)
     Test.equal("9", calls.spawnSelectorAction)
+end)
+
+Test.case("game routes surface picker choices", function()
+    Test.truthy(Game.onSurfaceUiClicked("Red", "deathFog"))
+
+    Test.equal("Red", calls.surfacePlayerColor)
+    Test.equal("deathFog", calls.surfaceAction)
 end)
 
 Test.case("game load tolerates invalid JSON", function()

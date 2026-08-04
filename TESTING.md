@@ -89,6 +89,8 @@ the full suite. Normal test runs also reject generated-region drift.
 - `tests/test_object_scripts.lua`: canonical cabinet, board, state-toggle, and
   decoration behavior plus legacy cabinet lock-state compatibility.
 - `tests/test_hex_geometry.lua`: grid construction, adjacency, and hit testing.
+- `tests/test_surfaces.lua`: surface eligibility, replacement, protected death
+  fog, player ownership, and picker UI patches.
 - `tests/test_hex_board_state.lua`: strict imported-board validation.
 - `tests/test_hex_board_model.lua`: model isolation, placement rules, codec,
   controller, and view boundaries.
@@ -169,7 +171,10 @@ TTS after changing those boundaries and before publishing a save:
    move it across fields, and verify original locks are restored.
 6. Enter board edit mode; place one-cell and two-cell objects, rotate, replace,
    delete, save/export, clear/load/import, and verify buttons/tags and collider
-   positions settle correctly.
+   positions settle correctly. Leave edit mode, open the surface picker from
+   empty and Source Stone hexes, place each configured surface, and verify its
+   tint/opacity. Confirm the Source Stone settles on top, one non-fog surface
+   replaces another, and death-fog hexes reject placement.
 7. Save several named boards, paginate/select them in Settings and DungeonMap,
    traverse adjacent levels, and confirm failed/timed-out loads leave traversal
    usable.

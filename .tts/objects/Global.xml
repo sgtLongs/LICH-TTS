@@ -1571,6 +1571,148 @@
 </Panel>
 
 <Panel
+    id="surfaceMenuRoot"
+    rectAlignment="MiddleLeft"
+    width="430"
+    height="420"
+    offsetXY="28 0"
+    color="#090C12F5"
+    padding="16 16 16 16"
+    active="false"
+>
+    <VerticalLayout spacing="14" childAlignment="UpperCenter">
+        <HorizontalLayout
+            preferredHeight="54"
+            spacing="10"
+            childAlignment="MiddleCenter"
+        >
+            <Text
+                id="surfaceMenuTitle"
+                text="SURFACES"
+                fontSize="23"
+                fontStyle="Bold"
+                alignment="MiddleLeft"
+                preferredWidth="320"
+                preferredHeight="48"
+            />
+            <Button
+                text="X"
+                fontSize="25"
+                colors="#751D24|#A62A34|#5A151B|#5A151B"
+                onClick="onSurfaceUiClicked(close)"
+                preferredWidth="52"
+                preferredHeight="48"
+                tooltip="Close"
+            />
+        </HorizontalLayout>
+        <Text
+            text="CHOOSE A SURFACE"
+            fontSize="17"
+            color="#C4B5FD"
+            preferredWidth="386"
+            preferredHeight="28"
+        />
+        <!-- BEGIN GENERATED:surface-choice-buttons -->
+        <HorizontalLayout
+            preferredHeight="58"
+            spacing="10"
+            childAlignment="MiddleCenter"
+        >
+            <Button
+                id="surfaceMenuChoice1"
+                text="DEATH FOG"
+                fontSize="19"
+                fontStyle="Bold"
+                colors="#4C1D6F|#6B2998|#35134E|#35134E"
+                onClick="onSurfaceUiClicked(deathFog)"
+                preferredWidth="185"
+                preferredHeight="54"
+            />
+            <Button
+                id="surfaceMenuChoice2"
+                text="FIRE"
+                fontSize="19"
+                fontStyle="Bold"
+                colors="#4C1D6F|#6B2998|#35134E|#35134E"
+                onClick="onSurfaceUiClicked(fire)"
+                preferredWidth="185"
+                preferredHeight="54"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout
+            preferredHeight="58"
+            spacing="10"
+            childAlignment="MiddleCenter"
+        >
+            <Button
+                id="surfaceMenuChoice3"
+                text="SMOKE"
+                fontSize="19"
+                fontStyle="Bold"
+                colors="#4C1D6F|#6B2998|#35134E|#35134E"
+                onClick="onSurfaceUiClicked(smoke)"
+                preferredWidth="185"
+                preferredHeight="54"
+            />
+            <Button
+                id="surfaceMenuChoice4"
+                text="WATER"
+                fontSize="19"
+                fontStyle="Bold"
+                colors="#4C1D6F|#6B2998|#35134E|#35134E"
+                onClick="onSurfaceUiClicked(water)"
+                preferredWidth="185"
+                preferredHeight="54"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout
+            preferredHeight="58"
+            spacing="10"
+            childAlignment="MiddleCenter"
+        >
+            <Button
+                id="surfaceMenuChoice5"
+                text="STEAM"
+                fontSize="19"
+                fontStyle="Bold"
+                colors="#4C1D6F|#6B2998|#35134E|#35134E"
+                onClick="onSurfaceUiClicked(steam)"
+                preferredWidth="185"
+                preferredHeight="54"
+            />
+            <Button
+                id="surfaceMenuChoice6"
+                text="SLUDGE"
+                fontSize="19"
+                fontStyle="Bold"
+                colors="#4C1D6F|#6B2998|#35134E|#35134E"
+                onClick="onSurfaceUiClicked(sludge)"
+                preferredWidth="185"
+                preferredHeight="54"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout
+            preferredHeight="58"
+            spacing="10"
+            childAlignment="MiddleCenter"
+        >
+            <Button
+                id="surfaceMenuChoice7"
+                text="VINES"
+                fontSize="19"
+                fontStyle="Bold"
+                colors="#4C1D6F|#6B2998|#35134E|#35134E"
+                onClick="onSurfaceUiClicked(vines)"
+                preferredWidth="185"
+                preferredHeight="54"
+            />
+            <Panel preferredWidth="185" preferredHeight="54" />
+        </HorizontalLayout>
+        <!-- END GENERATED:surface-choice-buttons -->
+    </VerticalLayout>
+</Panel>
+
+<Panel
     id="hexGridSpawnSelectorRoot"
     rectAlignment="UpperCenter"
     width="660"

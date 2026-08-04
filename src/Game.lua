@@ -85,6 +85,7 @@ local publicMethods = {
     "onActionZoneCardRotationChanged",
     "onHexGridObjectClicked",
     "onHexGridMenuUiClicked",
+    "onSurfaceUiClicked",
     "onHexGridSpawnSelectorUiClicked",
     "onSettingsUiClicked",
     "onSettingsJsonEdited",
