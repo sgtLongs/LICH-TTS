@@ -707,6 +707,34 @@ Test.case("surface picker removes a source stone without its surface", function(
     Test.equal(sourceObject, harness.destroyed[1])
 end)
 
+Test.case("surface picker removes an existing surface", function()
+    local harness = makeGridHarness("remove-surface", 1.25)
+    local surfaceObject = {}
+
+    harness.controller.onLoad(nil)
+    harness.callbacks[1].callback()
+    harness.objectsByGuid["fire-surface"] = surfaceObject
+    HexBoardModel.addPlacement(harness.controller.getModel(), {
+        templateKey = "fire",
+        cell = {row = 0, column = 0},
+        facingCell = {row = 0, column = 1},
+        guid = "fire-surface"
+    })
+
+    harness.controller.onClicked("Red", false)
+    local activeMenu = harness.controller.getSessionSnapshot().surfaceMenu
+    Test.truthy(activeMenu.canRemoveSurface)
+    Test.truthy(harness.controller.onSurfaceUiClicked(
+        "Red",
+        "removeSurface"
+    ))
+
+    Test.equal(0, #harness.controller.getModel().placements)
+    Test.equal(1, #harness.destroyed)
+    Test.equal(surfaceObject, harness.destroyed[1])
+    Test.nilValue(harness.controller.getSessionSnapshot().surfaceMenu)
+end)
+
 Test.case("placing a surface atomically replaces the previous surface", function()
     local mudTemplate = {
         key = "mud",

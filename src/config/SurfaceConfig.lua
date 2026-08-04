@@ -50,11 +50,16 @@ local SurfaceConfig = {
         rootId = "surfaceMenuRoot",
         titleId = "surfaceMenuTitle",
         buttonPrefix = "surfaceMenuChoice",
-        removeSourceStoneButtonId = "surfaceMenuRemoveSourceStone"
+        removeSourceStoneButtonId = "surfaceMenuRemoveSourceStone",
+        removeSurfaceButtonId = "surfaceMenuRemoveSurface"
     },
     removeSourceStoneAction = {
         key = "removeSourceStone",
         label = "Remove Source Stone"
+    },
+    removeSurfaceAction = {
+        key = "removeSurface",
+        label = "Remove Surface"
     }
 }
 

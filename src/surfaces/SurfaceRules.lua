@@ -107,6 +107,33 @@ function SurfaceRules.getReplacedPlacements(
     return replaced
 end
 
+function SurfaceRules.getRemovableSurfacePlacement(
+    cell,
+    placements,
+    templatesByKey
+)
+    if cell == nil then
+        return nil
+    end
+
+    for _, placement in ipairs(placements or {}) do
+        local template = templatesByKey[placement.templateKey]
+
+        if isSurface(template)
+            and not blocksSurfaces(template)
+            and HexPlacementRules.occupiesCell(
+                placement,
+                cell,
+                templatesByKey
+            )
+        then
+            return placement
+        end
+    end
+
+    return nil
+end
+
 function SurfaceRules.getCandidates(
     surfaceDefinition,
     cells,

@@ -174,7 +174,8 @@ TTS after changing those boundaries and before publishing a save:
    positions settle correctly. Leave edit mode, open the surface picker from
    empty and Source Stone hexes, place each configured surface, and verify its
    tint/opacity. Confirm the Source Stone settles on top, one non-fog surface
-   replaces another, and death-fog hexes reject placement.
+   replaces another, the red remove button deletes a selected non-fog surface,
+   and death-fog hexes reject placement and removal.
 7. Save several named boards, paginate/select them in Settings and DungeonMap,
    traverse adjacent levels, and confirm failed/timed-out loads leave traversal
    usable.

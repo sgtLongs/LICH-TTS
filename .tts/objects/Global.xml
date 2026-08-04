@@ -1583,7 +1583,7 @@
     id="surfaceMenuRoot"
     rectAlignment="MiddleLeft"
     width="430"
-    height="420"
+    height="490"
     offsetXY="28 0"
     color="#090C12F5"
     padding="16 16 16 16"
@@ -1725,6 +1725,23 @@
                 preferredWidth="185"
                 preferredHeight="54"
             />
+        </HorizontalLayout>
+        <HorizontalLayout
+            preferredHeight="58"
+            spacing="10"
+            childAlignment="MiddleCenter"
+        >
+            <Button
+                id="surfaceMenuRemoveSurface"
+                text="REMOVE SURFACE"
+                fontSize="19"
+                fontStyle="Bold"
+                colors="#751D24|#A62A34|#5A151B|#5A151B"
+                onClick="onSurfaceUiClicked(removeSurface)"
+                preferredWidth="185"
+                preferredHeight="54"
+            />
+            <Panel preferredWidth="185" preferredHeight="54" />
         </HorizontalLayout>
         <!-- END GENERATED:surface-choice-buttons -->
     </VerticalLayout>

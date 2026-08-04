@@ -23,7 +23,8 @@ function SurfaceController.new(dependencies)
     local context = {
         getPlacements = nil,
         onSurfaceChoice = nil,
-        onRemoveSourceStone = nil
+        onRemoveSourceStone = nil,
+        onRemoveSurface = nil
     }
     local controller = {}
 
@@ -53,6 +54,7 @@ function SurfaceController.new(dependencies)
         context.getPlacements = parameters.getPlacements
         context.onSurfaceChoice = parameters.onSurfaceChoice
         context.onRemoveSourceStone = parameters.onRemoveSourceStone
+        context.onRemoveSurface = parameters.onRemoveSurface
         close()
     end
 
@@ -89,6 +91,14 @@ function SurfaceController.new(dependencies)
         )
     end
 
+    function controller.getRemovableSurfacePlacement(cell, placements)
+        return rules.getRemovableSurfacePlacement(
+            cell,
+            placements or getPlacements(),
+            templatesByKey
+        )
+    end
+
     function controller.getCandidates(
         definition,
         cells,
@@ -116,6 +126,8 @@ function SurfaceController.new(dependencies)
         local availableSurfaceKeys = {}
         local canRemoveSourceStone =
             controller.getSourceStonePlacement(cell) ~= nil
+        local canRemoveSurface =
+            controller.getRemovableSurfacePlacement(cell) ~= nil
 
         for _, definition in ipairs(definitions) do
             if controller.canPlace(definition, cell) then
@@ -125,6 +137,7 @@ function SurfaceController.new(dependencies)
 
         if next(availableSurfaceKeys) == nil
             and not canRemoveSourceStone
+            and not canRemoveSurface
         then
             close()
             return false
@@ -133,6 +146,7 @@ function SurfaceController.new(dependencies)
         local activeMenu = modelApi.open(model, playerColor, cell)
         activeMenu.availableSurfaceKeys = availableSurfaceKeys
         activeMenu.canRemoveSourceStone = canRemoveSourceStone
+        activeMenu.canRemoveSurface = canRemoveSurface
         apply(view.buildOpenPatch(config, definitions, activeMenu))
         return true
     end
@@ -158,6 +172,25 @@ function SurfaceController.new(dependencies)
                 or context.onRemoveSourceStone == nil
                 or context.onRemoveSourceStone(
                     sourceStone,
+                    playerColor
+                ) ~= true
+            then
+                return false
+            end
+
+            close()
+            return true
+        end
+
+        if action == config.removeSurfaceAction.key then
+            local surface = controller.getRemovableSurfacePlacement(
+                activeMenu.cell
+            )
+
+            if surface == nil
+                or context.onRemoveSurface == nil
+                or context.onRemoveSurface(
+                    surface,
                     playerColor
                 ) ~= true
             then

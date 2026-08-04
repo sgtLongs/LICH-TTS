@@ -1528,6 +1528,9 @@ local function buildGrid(self)
         end,
         onRemoveSourceStone = function(placement, playerColor)
             return deletePlacement(self, placement, playerColor)
+        end,
+        onRemoveSurface = function(placement, playerColor)
+            return deletePlacement(self, placement, playerColor)
         end
     })
 

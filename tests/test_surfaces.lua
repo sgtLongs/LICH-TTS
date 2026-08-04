@@ -193,6 +193,16 @@ Test.case("surfaces replace surfaces but never death fog", function()
         placements,
         templatesByKey
     ))
+    Test.equal(mud, SurfaceRules.getRemovableSurfacePlacement(
+        {row = 0, column = 0},
+        placements,
+        templatesByKey
+    ))
+    Test.nilValue(SurfaceRules.getRemovableSurfacePlacement(
+        {row = 0, column = 1},
+        placements,
+        templatesByKey
+    ))
 end)
 
 Test.case("outermost surface candidates reuse general availability", function()
@@ -227,7 +237,8 @@ Test.case("surface view targets one player's left-side picker", function()
         {
             playerColor = "Red",
             cell = {row = -1, column = 2},
-            availableSurfaceKeys = {mud = true}
+            availableSurfaceKeys = {mud = true},
+            canRemoveSurface = true
         }
     )
 
@@ -245,10 +256,51 @@ Test.case("surface view targets one player's left-side picker", function()
         value = "false"
     }, patches[5])
     Test.deepEqual({
-        id = Config.ui.rootId,
+        id = Config.ui.removeSurfaceButtonId,
         attribute = "active",
         value = "true"
     }, patches[6])
+    Test.deepEqual({
+        id = Config.ui.rootId,
+        attribute = "active",
+        value = "true"
+    }, patches[7])
+end)
+
+Test.case("surface controller removes a revalidated surface", function()
+    local mud = placement("mud", 0, 0)
+    local placements = {mud}
+    local removed = nil
+    local controller = SurfaceController.new({
+        definitions = definitions,
+        templatesByKey = templatesByKey,
+        uiAdapter = {apply = function()
+        end}
+    })
+
+    controller.initialize({
+        getPlacements = function()
+            return placements
+        end,
+        onRemoveSurface = function(surface, playerColor)
+            removed = {surface = surface, playerColor = playerColor}
+            return true
+        end
+    })
+
+    Test.truthy(controller.open("Red", {row = 0, column = 0}))
+    Test.truthy(controller.getActiveMenu().canRemoveSurface)
+    Test.falsy(controller.handleAction("Blue", "removeSurface"))
+
+    placements = {}
+    Test.falsy(controller.handleAction("Red", "removeSurface"))
+    Test.nilValue(removed)
+
+    placements = {mud}
+    Test.truthy(controller.handleAction("Red", "removeSurface"))
+    Test.equal(mud, removed.surface)
+    Test.equal("Red", removed.playerColor)
+    Test.nilValue(controller.getActiveMenu())
 end)
 
 Test.case("surface controller removes a revalidated source stone", function()

@@ -870,12 +870,15 @@ static string RenderHexMenuChoiceRows(IReadOnlyList<string> definitions)
 static string RenderSurfaceChoiceButtons(
     IReadOnlyList<string> definitions,
     string idPrefix,
-    IReadOnlyList<string> removeSourceStoneAction)
+    IReadOnlyList<string> removeSourceStoneAction,
+    IReadOnlyList<string> removeSurfaceAction)
 {
     var lines = new List<string>();
     var choices = definitions.Concat(new[] {
         removeSourceStoneAction[0] + "\t" + removeSourceStoneAction[1]
-            + "\t" + removeSourceStoneAction[2]
+            + "\t" + removeSourceStoneAction[2],
+        removeSurfaceAction[0] + "\t" + removeSurfaceAction[1]
+            + "\t" + removeSurfaceAction[2]
     }).ToArray();
 
     for (var rowStart = 0; rowStart < choices.Length; rowStart += 2)
@@ -910,7 +913,10 @@ static string RenderSurfaceChoiceButtons(
                 $"                text=\"{EscapeXmlAttribute(fields[1].ToUpperInvariant())}\"");
             lines.Add("                fontSize=\"19\"");
             lines.Add("                fontStyle=\"Bold\"");
-            lines.Add("                colors=\"#4C1D6F|#6B2998|#35134E|#35134E\"");
+            var colors = index == choices.Length - 1
+                ? "#751D24|#A62A34|#5A151B|#5A151B"
+                : "#4C1D6F|#6B2998|#35134E|#35134E";
+            lines.Add($"                colors=\"{colors}\"");
             lines.Add(
                 $"                onClick=\"onSurfaceUiClicked({fields[0]})\"");
             lines.Add("                preferredWidth=\"185\"");
@@ -988,6 +994,10 @@ static IReadOnlyDictionary<string, string> BuildGlobalUiRegions(Script script)
         script,
         "local config = require('src/config/SurfaceConfig'); return {config.removeSourceStoneAction.key, config.removeSourceStoneAction.label, config.ui.removeSourceStoneButtonId}",
         "remove Source Stone action");
+    var removeSurfaceAction = EvaluateLuaStrings(
+        script,
+        "local config = require('src/config/SurfaceConfig'); return {config.removeSurfaceAction.key, config.removeSurfaceAction.label, config.ui.removeSurfaceButtonId}",
+        "remove surface action");
 
     return new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -1011,7 +1021,8 @@ static IReadOnlyDictionary<string, string> BuildGlobalUiRegions(Script script)
         ["surface-choice-buttons"] = RenderSurfaceChoiceButtons(
             surfaceDefinitions,
             surfaceButtonPrefix,
-            removeSourceStoneAction)
+            removeSourceStoneAction,
+            removeSurfaceAction)
     };
 }
 
@@ -1193,7 +1204,7 @@ static void ValidateTrackedAssets(string repositoryRoot, Script script)
     var expectedSurfaceArguments = EvaluateLuaStrings(
         script,
         "local config = require('src/config/SurfaceConfig'); local values = {'close'}; for _, definition in ipairs(require('src/surfaces/SurfaceDefinitions')) do "
-            + "values[#values + 1] = definition.key; end; values[#values + 1] = config.removeSourceStoneAction.key; return values",
+            + "values[#values + 1] = definition.key; end; values[#values + 1] = config.removeSourceStoneAction.key; values[#values + 1] = config.removeSurfaceAction.key; return values",
         "surface callback arguments");
     RequireExactSequence(
         "surface callback arguments",
