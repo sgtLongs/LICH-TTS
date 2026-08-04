@@ -650,6 +650,32 @@ Test.case("renewing a deck slot reports a missing surface", function()
     end)
 end)
 
+Test.case("restart resets every deck spawn button and field state", function()
+    withFixture(function(environment)
+        local redSurface = environment.addSurface("red-surface")
+        local blueSurface = environment.addSurface("blue-surface")
+        CardFields.onLoad({
+            deckSpawnedByPlayer = {Red = true, Blue = true},
+            heroStatsByPlayer = {
+                Red = {intelligence = 4, health = 10},
+                Blue = {intelligence = 3, health = 8}
+            }
+        })
+
+        Test.equal(0, countDeckButtons(redSurface))
+        Test.equal(0, countDeckButtons(blueSurface))
+        Test.truthy(CardFields.resetForRestart())
+
+        local state = CardFields.getSaveState()
+        Test.falsy(state.deckSpawnedByPlayer.Red)
+        Test.falsy(state.deckSpawnedByPlayer.Blue)
+        Test.nilValue(state.heroStatsByPlayer.Red)
+        Test.nilValue(state.heroStatsByPlayer.Blue)
+        Test.equal(1, countDeckButtons(redSurface))
+        Test.equal(1, countDeckButtons(blueSurface))
+    end)
+end)
+
 Test.case("card field events delegate to their focused collaborators", function()
     withFixture(function(environment)
         addBothSurfaces(environment)

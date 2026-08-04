@@ -58,6 +58,20 @@ Test.case("turn system restores state and updates the TTS boundary", function()
     Test.equal("Ben (Blue), it is your turn!", announcements[1].message)
 end)
 
+Test.case("restart clears all active players and turn progress", function()
+    TurnSystem.onLoad({
+        currentTurnColor = "Blue",
+        currentPhase = "status",
+        activePlayerColors = {"White", "Blue"}
+    })
+
+    Test.truthy(TurnSystem.resetForRestart())
+    local state = TurnSystem.getSaveState()
+    Test.equal(0, #state.activePlayerColors)
+    Test.nilValue(state.currentTurnColor)
+    Test.equal("start", state.currentPhase)
+end)
+
 Test.case("turn system advances phases and ends after end phase", function()
     TurnSystem.onLoad({
         currentTurnColor = "White",

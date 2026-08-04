@@ -52,6 +52,9 @@ local CardFields = {
     end,
     renewDeckSlotButton = function()
         return true
+    end,
+    resetForRestart = function()
+        calls.cardFieldsRestarted = true
     end
 }
 local DungeonMap = {
@@ -87,6 +90,10 @@ local HexGrid = {
     loadBoardStateJson = function()
     end,
     setEditMode = function()
+    end,
+    clearSurfacesForRestart = function()
+        calls.surfacesCleared = true
+        return true
     end,
     onObjectHover = function()
     end,
@@ -160,6 +167,9 @@ local TurnSystem = {
         return true
     end,
     refreshUi = function()
+    end,
+    resetForRestart = function()
+        calls.turnsRestarted = true
     end,
     activatePlayer = function(playerColor)
         calls.activatedPlayerColor = playerColor
@@ -242,6 +252,7 @@ Test.case("game load wires subsystems to saved state", function()
         CardFields.renewDeckSlotButton,
         calls.settingsContext.renewDeckSlotButton
     )
+    Test.truthy(type(calls.settingsContext.restartGame) == "function")
     Test.equal(
         SettingsMenu.loadSavedBoardById,
         calls.dungeonContext.loadSavedBoardById

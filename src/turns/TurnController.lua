@@ -367,6 +367,11 @@ function TurnController.new(dependencies)
         end, 1)
     end
 
+    function controller.resetForRestart()
+        controller.onLoad({})
+        return true
+    end
+
     function controller.getSaveState()
         local saveState = stateApi.getSaveState(turnState)
         saveState.activePlayerColors = getActivePlayerColors()

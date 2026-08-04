@@ -131,6 +131,7 @@ Test.case("game controller loads legacy saves through injected ports", function(
     Test.equal(catalog, loaded.dungeonContext.savedBoardCatalog)
     Test.equal(coordinator, loaded.settingsContext.boardLoadCoordinator)
     Test.equal(coordinator, loaded.dungeonContext.boardLoadCoordinator)
+    Test.truthy(type(loaded.settingsContext.restartGame) == "function")
 end)
 
 Test.case("game controller persistence uses only its runtime port", function()
@@ -161,6 +162,67 @@ Test.case("game controller persistence uses only its runtime port", function()
     Test.truthy(GameController.new(values):persistState())
     Test.equal("encoded-game", capturedState)
     Test.falsy(capturedIncludeCurrent)
+end)
+
+Test.case("game restart clears play objects and preserves the map", function()
+    local card = {tag = "Card"}
+    local deck = {tag = "Deck"}
+    local handOnlyObject = {tag = "Card"}
+    local mapObject = {tag = "Tile"}
+    local destroyed = {}
+    local cardFieldsReset = 0
+    local turnsReset = 0
+    local surfacesCleared = 0
+    local hexLoads = 0
+    local values = dependencies()
+
+    values.cardFields.resetForRestart = function()
+        cardFieldsReset = cardFieldsReset + 1
+    end
+    values.turnSystem.resetForRestart = function()
+        turnsReset = turnsReset + 1
+    end
+    values.hexGrid.onLoad = function()
+        hexLoads = hexLoads + 1
+    end
+    values.hexGrid.clearSurfacesForRestart = function()
+        surfacesCleared = surfacesCleared + 1
+        return true
+    end
+    values.runtime = {
+        getAllObjects = function()
+            return {card, deck, mapObject}
+        end,
+        getPlayers = function()
+            return {
+                {
+                    getHandObjects = function()
+                        return {card, handOnlyObject}
+                    end
+                }
+            }
+        end,
+        destroyObject = function(object)
+            destroyed[#destroyed + 1] = object
+        end,
+        setGlobalScriptState = function()
+            return true
+        end,
+        storeRewindState = function()
+        end,
+        log = function()
+        end
+    }
+
+    Test.truthy(GameController.new(values):restartGame())
+    Test.equal(3, #destroyed)
+    Test.equal(card, destroyed[1])
+    Test.equal(deck, destroyed[2])
+    Test.equal(handOnlyObject, destroyed[3])
+    Test.equal(1, cardFieldsReset)
+    Test.equal(1, turnsReset)
+    Test.equal(1, surfacesCleared)
+    Test.equal(0, hexLoads)
 end)
 
 Test.case("game controller reports but contains persistence failures", function()

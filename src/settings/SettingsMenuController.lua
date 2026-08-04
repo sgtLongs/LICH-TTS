@@ -19,7 +19,8 @@ local function makeContext(parameters)
         onBoardLoadStarted = parameters.onBoardLoadStarted,
         onBoardLoadCompleted = parameters.onBoardLoadCompleted,
         setEditMode = parameters.setEditMode,
-        renewDeckSlotButton = parameters.renewDeckSlotButton
+        renewDeckSlotButton = parameters.renewDeckSlotButton,
+        restartGame = parameters.restartGame
     }
 end
 
@@ -252,6 +253,11 @@ function SettingsMenuController.new(dependencies)
             "interactable",
             playerIsAdmin and "true" or "false"
         )
+        uiAdapter.setAttribute(
+            config.ui.restartGameButtonId,
+            "interactable",
+            playerIsAdmin and "true" or "false"
+        )
         setStatus(getEditModeStatus(), "#CBD5E1")
         uiAdapter.setAttribute(config.ui.rootId, "active", "true")
     end
@@ -376,6 +382,28 @@ function SettingsMenuController.new(dependencies)
 
             setStatus(
                 "Your deck spawn button was renewed. You may spawn another deck.",
+                "#86EFAC"
+            )
+            return
+        end
+
+        if action == "restartGame" then
+            if not requireAdmin(playerColor) then
+                return
+            end
+
+            if context.restartGame == nil
+                or not context.restartGame(playerColor)
+            then
+                setStatus(
+                    "The game could not be restarted.",
+                    "#FCA5A5"
+                )
+                return
+            end
+
+            setStatus(
+                "Game restarted. The current map was preserved and all surfaces were removed.",
                 "#86EFAC"
             )
             return

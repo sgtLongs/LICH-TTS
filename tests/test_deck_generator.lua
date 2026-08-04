@@ -863,6 +863,65 @@ Test.case("deck generator instances isolate in-flight fields", function()
     Test.truthy(generatorB:fetch(field, nil, 801))
 end)
 
+Test.case("cancelled deck requests cannot spawn after restart", function()
+    local pendingRequest = nil
+    local spawnCount = 0
+    local spawnParameters = nil
+    local destroyedObject = nil
+    local generator = DeckGenerator.new({
+        runtime = {
+            log = function()
+            end,
+            broadcastToColor = function()
+            end,
+            spawnObjectData = function(parameters)
+                spawnCount = spawnCount + 1
+                spawnParameters = parameters
+                return {}
+            end,
+            destroyObject = function(object)
+                destroyedObject = object
+            end
+        },
+        scheduler = {
+            condition = function()
+            end
+        },
+        web = {
+            get = function(_, callback)
+                pendingRequest = callback
+            end
+        },
+        decodeJson = function()
+            return {
+                backImageUrl = "back.png",
+                cards = {
+                    {
+                        name = "Arysa Andrews",
+                        frontImageURL = "front.png",
+                        quantity = 1
+                    }
+                }
+            }
+        end
+    })
+    local field = makeFailureField()
+
+    Test.truthy(generator:fetch(field, nil, 802))
+    generator:cancelAll()
+    pendingRequest({is_error = false, text = "ignored"})
+
+    Test.equal(0, spawnCount)
+    Test.truthy(generator:fetch(field, nil, 802))
+    pendingRequest({is_error = false, text = "valid"})
+    Test.equal(1, spawnCount)
+
+    local lateDeck = {}
+    generator:cancelAll()
+    spawnParameters.callback_function(lateDeck)
+    Test.equal(lateDeck, destroyedObject)
+end)
+
 Test.case("deck generator uses injected adapters in order", function()
     local events = {}
     local takenParameters = nil

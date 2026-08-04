@@ -42,6 +42,7 @@ local publicMethodNames = {
     "onScriptingButtonDown",
     "onObjectNumberTyped",
     "setEditMode",
+    "clearSurfacesForRestart",
     "beginDeathFogPlacement",
     "cancelDeathFogPlacement"
 }
@@ -1165,6 +1166,88 @@ local function refreshDeathFogCandidates(self)
     else
         drawGrid(self)
     end
+end
+
+function Controller:clearSurfacesForRestart()
+    local succeeded = true
+    local surfacePlacements = {}
+
+    self.surfaces.close()
+    finishDeathFogPlacement(self, false)
+
+    for _, placement in ipairs(self.model.placements) do
+        local template = self.templatesByKey[placement.templateKey]
+
+        if template ~= nil and template.isSurface == true then
+            surfacePlacements[#surfacePlacements + 1] = placement
+        end
+    end
+
+    for _, placement in ipairs(surfacePlacements) do
+        local object = getPlacementObject(self, placement)
+        removePlacement(self, placement)
+
+        if object ~= nil then
+            local destroyed, destroyError = pcall(
+                self.runtime.destroyObject,
+                object
+            )
+
+            if not destroyed then
+                succeeded = false
+                self.runtime.log(
+                    "HexGrid: could not remove a surface during restart: "
+                        .. tostring(destroyError)
+                )
+            end
+        end
+    end
+
+    if self.board ~= nil then
+        for _, placement in ipairs(self.model.placements) do
+            local template = self.templatesByKey[placement.templateKey]
+            local object = getPlacementObject(self, placement)
+            local targetCell = self.cellsByKey[
+                self.cellKey(
+                    placement.cell.row,
+                    placement.cell.column
+                )
+            ]
+            local facingCell = self.cellsByKey[
+                self.cellKey(
+                    placement.facingCell.row,
+                    placement.facingCell.column
+                )
+            ]
+
+            if template ~= nil
+                and template.isSourceStone == true
+                and object ~= nil
+                and targetCell ~= nil
+                and facingCell ~= nil
+            then
+                local _, localRotationY = getFacingRotations(
+                    self,
+                    targetCell,
+                    facingCell,
+                    template
+                )
+
+                self.objectSpawner.place({
+                    board = self.board,
+                    surfaceY = self.resolvedSurfaceY,
+                    object = object,
+                    cell = targetCell,
+                    template = template,
+                    localRotationY = localRotationY
+                })
+            end
+        end
+    end
+
+    self.deathFogCandidateCells = {}
+    drawGrid(self)
+    return succeeded
 end
 
 local function getDeathFogFacingCell(self, targetCell)

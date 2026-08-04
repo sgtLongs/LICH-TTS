@@ -20,6 +20,10 @@ function TurnSystem.onLoad(savedTurnState)
     return defaultController.onLoad(savedTurnState)
 end
 
+function TurnSystem.resetForRestart()
+    return defaultController.resetForRestart()
+end
+
 function TurnSystem.getSaveState()
     return defaultController.getSaveState()
 end

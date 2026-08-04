@@ -145,12 +145,17 @@ end
 
 local function placeHero(
     controller,
+    generation,
     field,
     deck,
     rotation,
     heroCard,
     heroDefinition
 )
+    if generation ~= controller.generation then
+        return
+    end
+
     if field.heroSlot == nil then
         controller.runtime.log("Card field did not contain a hero slot.")
         finish(controller, field)
@@ -207,6 +212,7 @@ end
 
 local function waitForLoadedDeck(
     controller,
+    generation,
     field,
     deck,
     rotation,
@@ -216,6 +222,10 @@ local function waitForLoadedDeck(
     local loadedHeroDefinition = nil
 
     local function deckIsFullyLoaded()
+        if generation ~= controller.generation then
+            return true
+        end
+
         if deck.spawning == true or deck.loading_custom == true then
             return false
         end
@@ -245,6 +255,7 @@ local function waitForLoadedDeck(
         function()
             placeHero(
                 controller,
+                generation,
                 field,
                 deck,
                 rotation,
@@ -255,6 +266,10 @@ local function waitForLoadedDeck(
         deckIsFullyLoaded,
         Config.heroSlot.loadTimeoutSeconds,
         function()
+            if generation ~= controller.generation then
+                return
+            end
+
             controller.runtime.log(
                 "Timed out waiting for the complete deck and its Hero card "
                     .. "to load."
@@ -274,6 +289,7 @@ end
 
 local function spawnDeck(
     controller,
+    generation,
     field,
     spawnPosition,
     definitions,
@@ -341,6 +357,11 @@ local function spawnDeck(
         position = position,
         rotation = deckRotation,
         callback_function = function(deck)
+            if generation ~= controller.generation then
+                controller.runtime.destroyObject(deck)
+                return
+            end
+
             -- Asset loading can slightly displace custom objects. Correct the
             -- one spawned deck after initialization rather than settling every
             -- card independently through the physics engine.
@@ -358,6 +379,7 @@ local function spawnDeck(
 
             waitForLoadedDeck(
                 controller,
+                generation,
                 field,
                 deck,
                 heroRotation,
@@ -394,7 +416,8 @@ function DeckGenerator.new(dependencies)
             or dependencies.webAdapter
             or WebAdapter.default(),
         decodeJson = dependencies.decodeJson or defaultDecodeJson,
-        generatingByField = {}
+        generatingByField = {},
+        generation = 0
     }, Controller)
 end
 
@@ -413,6 +436,7 @@ function Controller:fetch(field, spawnPosition, lootId)
     end
 
     self.generatingByField[key] = true
+    local generation = self.generation
     self.runtime.log(
         "Fetching deck data for " .. field.playerColor .. "..."
     )
@@ -421,6 +445,10 @@ function Controller:fetch(field, spawnPosition, lootId)
         self.web.get,
         getApiUrl(lootId),
         function(response)
+            if generation ~= self.generation then
+                return
+            end
+
             if response.is_error then
                 self.runtime.log(
                     "Deck API request failed: " .. tostring(response.error)
@@ -458,6 +486,7 @@ function Controller:fetch(field, spawnPosition, lootId)
 
             spawnDeck(
                 self,
+                generation,
                 field,
                 spawnPosition or field.deckSlot,
                 definitions,
@@ -476,6 +505,11 @@ function Controller:fetch(field, spawnPosition, lootId)
     return true
 end
 
+function Controller:cancelAll()
+    self.generation = self.generation + 1
+    self.generatingByField = {}
+end
+
 local function getDefaultController()
     if defaultController == nil then
         defaultController = DeckGenerator.new()
@@ -492,6 +526,10 @@ end
 
 function DeckGenerator.fetch(field, spawnPosition, lootId)
     return getDefaultController():fetch(field, spawnPosition, lootId)
+end
+
+function DeckGenerator.cancelAll()
+    return getDefaultController():cancelAll()
 end
 
 return DeckGenerator

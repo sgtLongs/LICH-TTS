@@ -10,6 +10,8 @@ local persistCalls = 0
 local persistSucceeded = true
 local renewedPlayerColor = nil
 local renewSucceeded = true
+local restartedPlayerColor = nil
+local restartSucceeded = true
 local savedBoardsChangedCalls = 0
 local currentBoardState = nil
 local currentBoardJson = nil
@@ -42,6 +44,8 @@ local function initialize(savedState, options)
     persistSucceeded = options.persistSucceeded ~= false
     renewedPlayerColor = nil
     renewSucceeded = options.renewSucceeded ~= false
+    restartedPlayerColor = nil
+    restartSucceeded = options.restartSucceeded ~= false
     savedBoardsChangedCalls = 0
     currentBoardState = options.currentBoardState or {marker = "current"}
     currentBoardJson = options.currentBoardJson or "current-json"
@@ -144,6 +148,10 @@ local function initialize(savedState, options)
         renewDeckSlotButton = function(playerColor)
             renewedPlayerColor = playerColor
             return renewSucceeded
+        end,
+        restartGame = function(playerColor)
+            restartedPlayerColor = playerColor
+            return restartSucceeded
         end
     }, savedState)
 end
@@ -175,6 +183,38 @@ Test.case("players can renew only their own deck spawn button", function()
     )
     Test.equal("false", attributes["settingsEditMode.interactable"])
     Test.equal("false", attributes["settingsSaveTab.interactable"])
+    Test.equal("false", attributes["settingsRestartGame.interactable"])
+end)
+
+Test.case("only admins can restart the game from settings", function()
+    initialize(nil)
+    SettingsMenu.handleAction("Blue", "toggle")
+    SettingsMenu.handleAction("Blue", "restartGame")
+
+    Test.nilValue(restartedPlayerColor)
+    Test.contains(messages[#messages].message, "Only an admin")
+
+    SettingsMenu.handleAction("Red", "toggle")
+    SettingsMenu.handleAction("Red", "restartGame")
+
+    Test.equal("Red", restartedPlayerColor)
+    Test.equal(
+        "Game restarted. The current map was preserved and all surfaces were removed.",
+        attributes["settingsMenuStatus.text"]
+    )
+    Test.equal("true", attributes["settingsRestartGame.interactable"])
+end)
+
+Test.case("settings reports restart failures", function()
+    initialize(nil, {restartSucceeded = false})
+    SettingsMenu.handleAction("Red", "toggle")
+    SettingsMenu.handleAction("Red", "restartGame")
+
+    Test.equal("Red", restartedPlayerColor)
+    Test.equal(
+        "The game could not be restarted.",
+        attributes["settingsMenuStatus.text"]
+    )
 end)
 
 Test.case("edit mode defaults off and is forwarded to the hex grid", function()

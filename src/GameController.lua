@@ -99,6 +99,9 @@ function GameController:onLoad(saveState)
         onSavedBoardsChanged = self.dungeonMap.onSavedBoardsChanged,
         setEditMode = self.hexGrid.setEditMode,
         renewDeckSlotButton = self.cardFields.renewDeckSlotButton,
+        restartGame = function(playerColor)
+            return self:restartGame(playerColor)
+        end,
         persistState = persistState,
         savedBoardCatalog = self.savedBoardCatalog,
         boardLoadCoordinator = self.boardLoadCoordinator,
@@ -112,6 +115,60 @@ function GameController:onLoad(saveState)
         boardLoadCoordinator = self.boardLoadCoordinator,
         uiAdapter = self.uiAdapter
     }, savedGame.dungeonMap)
+end
+
+function GameController:restartGame()
+    local objectsToDestroy = {}
+    local seenObjects = {}
+    local succeeded = true
+
+    local function include(object)
+        if object ~= nil and not seenObjects[object] then
+            seenObjects[object] = true
+            objectsToDestroy[#objectsToDestroy + 1] = object
+        end
+    end
+
+    for _, object in ipairs(self.runtime.getAllObjects()) do
+        if object.tag == "Card" or object.tag == "Deck" then
+            include(object)
+        end
+    end
+
+    for _, player in ipairs(self.runtime.getPlayers()) do
+        if type(player.getHandObjects) == "function" then
+            local succeeded, handObjects = pcall(player.getHandObjects)
+
+            if succeeded and type(handObjects) == "table" then
+                for _, object in ipairs(handObjects) do
+                    include(object)
+                end
+            end
+        end
+    end
+
+    for _, object in ipairs(objectsToDestroy) do
+        local destroyed, destroyError = pcall(
+            self.runtime.destroyObject,
+            object
+        )
+
+        if not destroyed then
+            succeeded = false
+            self.runtime.log(
+                "Could not clear a card or deck during restart: "
+                    .. tostring(destroyError)
+            )
+        end
+    end
+
+    self.cardFields.resetForRestart()
+    self.turnSystem.resetForRestart()
+    if not self.hexGrid.clearSurfacesForRestart() then
+        succeeded = false
+    end
+    self:persistState()
+    return succeeded
 end
 
 function GameController:onSave()

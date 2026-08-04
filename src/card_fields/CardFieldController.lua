@@ -17,6 +17,7 @@ CardFieldController.__index = CardFieldController
 
 local publicMethodNames = {
     "renewDeckSlotButton",
+    "resetForRestart",
     "onLoad",
     "getSaveState",
     "getFields",
@@ -520,6 +521,11 @@ end
 
 function CardFieldController:getFields()
     return self.fields
+end
+
+function CardFieldController:resetForRestart()
+    self:onLoad({})
+    return true
 end
 
 function CardFieldController:getPlayerDrawInfo(playerColor)

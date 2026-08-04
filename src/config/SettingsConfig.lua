@@ -14,6 +14,7 @@ local SettingsConfig = {
         savePageId = "settingsSavePage",
         jsonPageId = "settingsJsonPage",
         editModeToggleId = "settingsEditMode",
+        restartGameButtonId = "settingsRestartGame",
         generalTabButtonId = "settingsGeneralTab",
         saveTabButtonId = "settingsSaveTab",
         boardNameInputId = "settingsBoardName",

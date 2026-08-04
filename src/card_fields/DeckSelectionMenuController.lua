@@ -22,6 +22,8 @@ function DeckSelectionMenuController.new(dependencies)
     local view = dependencies.view or DeckSelectionMenuView
     local uiAdapter = dependencies.uiAdapter or UiAdapter.default()
     local fetchDeck = dependencies.fetchDeck or defaultFetchDeck
+    local cancelDeckGeneration = dependencies.cancelDeckGeneration
+        or DeckGenerator.cancelAll
     local model = modelApi.new()
     local decksByLootId = {}
     local controller = {}
@@ -35,6 +37,7 @@ function DeckSelectionMenuController.new(dependencies)
     end
 
     function controller.initialize()
+        cancelDeckGeneration()
         modelApi.clear(model)
         hide()
     end

@@ -242,6 +242,41 @@ local function newHarness(options)
     return harness
 end
 
+Test.case("restart removes surfaces while preserving map objects", function()
+    local harness = newHarness()
+    local surfaceObject = makeSpawnedObject("surface-guid")
+    local treeObject = makeSpawnedObject("tree-guid")
+    local surfacePlacement = makePlacement(
+        "mist-surface", 0, 0, 0, 1, "surface-guid"
+    )
+    local treePlacement = makePlacement(
+        "tree", 0, 0, 0, 1, "tree-guid"
+    )
+
+    harness.controller.templatesByKey["mist-surface"] = {
+        key = "mist-surface",
+        isSurface = true
+    }
+    harness.objectsByGuid["surface-guid"] = surfaceObject
+    harness.objectsByGuid["tree-guid"] = treeObject
+    HexBoardModel.addPlacement(
+        harness.controller:getModel(),
+        surfacePlacement
+    )
+    HexBoardModel.addPlacement(
+        harness.controller:getModel(),
+        treePlacement
+    )
+
+    Test.truthy(harness.controller:clearSurfacesForRestart())
+    Test.equal(1, #harness.destroyed)
+    Test.equal(surfaceObject, harness.destroyed[1])
+
+    local state = harness.controller:getSaveState()
+    Test.equal(1, #state.placedObjects)
+    Test.equal("tree", state.placedObjects[1].templateKey)
+end)
+
 local function addPlacement(harness, placement)
     HexBoardModel.addPlacement(
         harness.controller:getModel(),
