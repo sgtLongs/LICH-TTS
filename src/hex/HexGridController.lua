@@ -1525,6 +1525,9 @@ local function buildGrid(self)
                 targetCell,
                 playerColor
             )
+        end,
+        onRemoveSourceStone = function(placement, playerColor)
+            return deletePlacement(self, placement, playerColor)
         end
     })
 

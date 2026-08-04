@@ -33,6 +33,13 @@ function SurfaceView.buildOpenPatch(config, definitions, activeMenu)
         )
     end
 
+    UiPatch.append(
+        patches,
+        config.ui.removeSourceStoneButtonId,
+        "active",
+        activeMenu.canRemoveSourceStone and "true" or "false"
+    )
+
     UiPatch.append(patches, config.ui.rootId, "active", "true")
     return patches
 end

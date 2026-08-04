@@ -28,6 +28,30 @@ local function distanceFromCenter(cell)
     )
 end
 
+function SurfaceRules.getSourceStonePlacement(
+    cell,
+    placements,
+    templatesByKey
+)
+    if cell == nil then
+        return nil
+    end
+
+    for _, placement in ipairs(placements or {}) do
+        if isSourceStone(templatesByKey[placement.templateKey])
+            and HexPlacementRules.occupiesCell(
+                placement,
+                cell,
+                templatesByKey
+            )
+        then
+            return placement
+        end
+    end
+
+    return nil
+end
+
 function SurfaceRules.canPlace(
     surfaceDefinition,
     cell,

@@ -136,6 +136,26 @@ Test.case("surface rules allow empty and source-stone hexes", function()
     ))
 end)
 
+Test.case("surface rules find only source stones on a hex", function()
+    local sourceStone = placement("sourceStone", 0, 0)
+    local placements = {
+        placement("mud", 0, 0),
+        sourceStone,
+        placement("sourceStone", 0, 1)
+    }
+
+    Test.equal(sourceStone, SurfaceRules.getSourceStonePlacement(
+        {row = 0, column = 0},
+        placements,
+        templatesByKey
+    ))
+    Test.nilValue(SurfaceRules.getSourceStonePlacement(
+        {row = 1, column = 0},
+        placements,
+        templatesByKey
+    ))
+end)
+
 Test.case("surface rules reject ordinary occupied hexes", function()
     Test.falsy(SurfaceRules.canPlace(
         definitions[1],
@@ -220,10 +240,74 @@ Test.case("surface view targets one player's left-side picker", function()
     Test.equal("true", patches[3].value)
     Test.equal("false", patches[4].value)
     Test.deepEqual({
+        id = Config.ui.removeSourceStoneButtonId,
+        attribute = "active",
+        value = "false"
+    }, patches[5])
+    Test.deepEqual({
         id = Config.ui.rootId,
         attribute = "active",
         value = "true"
-    }, patches[5])
+    }, patches[6])
+end)
+
+Test.case("surface controller removes a revalidated source stone", function()
+    local sourceStone = placement("sourceStone", 0, 0)
+    local placements = {sourceStone}
+    local removed = nil
+    local controller = SurfaceController.new({
+        definitions = definitions,
+        templatesByKey = templatesByKey,
+        uiAdapter = {apply = function()
+        end}
+    })
+
+    controller.initialize({
+        getPlacements = function()
+            return placements
+        end,
+        onRemoveSourceStone = function(placement, playerColor)
+            removed = {placement = placement, playerColor = playerColor}
+            return true
+        end
+    })
+
+    Test.truthy(controller.open("Red", {row = 0, column = 0}))
+    Test.truthy(controller.getActiveMenu().canRemoveSourceStone)
+    Test.falsy(controller.handleAction("Blue", "removeSourceStone"))
+
+    placements = {}
+    Test.falsy(controller.handleAction("Red", "removeSourceStone"))
+    Test.nilValue(removed)
+
+    placements = {sourceStone}
+    Test.truthy(controller.handleAction("Red", "removeSourceStone"))
+    Test.equal(sourceStone, removed.placement)
+    Test.equal("Red", removed.playerColor)
+    Test.nilValue(controller.getActiveMenu())
+end)
+
+Test.case("source stone removal remains available on death fog", function()
+    local controller = SurfaceController.new({
+        definitions = definitions,
+        templatesByKey = templatesByKey,
+        uiAdapter = {apply = function()
+        end}
+    })
+
+    controller.initialize({
+        getPlacements = function()
+            return {
+                placement("deathFog", 0, 0),
+                placement("sourceStone", 0, 0)
+            }
+        end
+    })
+
+    Test.truthy(controller.open("Red", {row = 0, column = 0}))
+    local activeMenu = controller.getActiveMenu()
+    Test.truthy(activeMenu.canRemoveSourceStone)
+    Test.nilValue(next(activeMenu.availableSurfaceKeys))
 end)
 
 Test.case("surface controller owns picker permission and revalidation", function()

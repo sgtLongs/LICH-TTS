@@ -1715,7 +1715,16 @@
                 preferredWidth="185"
                 preferredHeight="54"
             />
-            <Panel preferredWidth="185" preferredHeight="54" />
+            <Button
+                id="surfaceMenuRemoveSourceStone"
+                text="REMOVE SOURCE STONE"
+                fontSize="19"
+                fontStyle="Bold"
+                colors="#4C1D6F|#6B2998|#35134E|#35134E"
+                onClick="onSurfaceUiClicked(removeSourceStone)"
+                preferredWidth="185"
+                preferredHeight="54"
+            />
         </HorizontalLayout>
         <!-- END GENERATED:surface-choice-buttons -->
     </VerticalLayout>
