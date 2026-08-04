@@ -41,12 +41,16 @@ Test.case("hex board selection mutations have explicit semantics", function()
 
     Test.truthy(HexBoardModel.toggleSelected(model, "0:0"))
     Test.truthy(HexBoardModel.isSelected(model, "0:0"))
-    Test.falsy(HexBoardModel.toggleSelected(model, "0:0"))
+    Test.truthy(HexBoardModel.setSelected(model, "1:-1", true))
     Test.nilValue(model.selectedCells["0:0"])
+    Test.truthy(model.selectedCells["1:-1"])
 
-    HexBoardModel.setSelected(model, "1:-1", true)
-    HexBoardModel.clear(model)
+    Test.falsy(HexBoardModel.toggleSelected(model, "1:-1"))
     Test.nilValue(model.selectedCells["1:-1"])
+
+    HexBoardModel.setSelected(model, "0:0", true)
+    HexBoardModel.clear(model)
+    Test.nilValue(model.selectedCells["0:0"])
     Test.equal(0, #model.placements)
 end)
 

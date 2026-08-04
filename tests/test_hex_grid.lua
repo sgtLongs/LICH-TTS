@@ -176,6 +176,7 @@ Test.case("object and board clicks share hex behavior", function()
     local objectButtons = {}
     local placedPosition = nil
     local objectWorldPosition = {x = 0, y = 1, z = 0}
+    local pointerPosition = {x = 0, y = 0, z = 0}
     local board = {
         createButton = function()
         end,
@@ -250,7 +251,7 @@ Test.case("object and board clicks share hex behavior", function()
         Red = {
             admin = true,
             getPointerPosition = function()
-                return {x = 0, y = 0, z = 0}
+                return pointerPosition
             end
         }
     }
@@ -310,9 +311,15 @@ Test.case("object and board clicks share hex behavior", function()
     Test.equal("false", attributes["hexGridMenuRoot.active"])
     Test.truthy(HexGrid.getSaveState().selectedCells["0:0"])
 
+    pointerPosition = {x = math.sqrt(3) * 1.5, y = 0, z = 0}
     HexGrid.onClicked("Red", false)
     Test.falsy(HexGrid.getSaveState().selectedCells["0:0"])
+    Test.truthy(HexGrid.getSaveState().selectedCells["0:1"])
 
+    HexGrid.onClicked("Red", false)
+    Test.falsy(HexGrid.getSaveState().selectedCells["0:1"])
+
+    pointerPosition = {x = 0, y = 0, z = 0}
     HexGrid.setEditMode(true)
     HexGrid.onObjectClicked(placedObject, "Red", false)
 

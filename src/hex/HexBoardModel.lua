@@ -67,7 +67,12 @@ function HexBoardModel.isSelected(model, cellKey)
 end
 
 function HexBoardModel.setSelected(model, cellKey, selected)
-    model.selectedCells[cellKey] = selected == true and true or nil
+    if selected == true then
+        model.selectedCells = {[cellKey] = true}
+    else
+        model.selectedCells[cellKey] = nil
+    end
+
     return model.selectedCells[cellKey] == true
 end
 
