@@ -30,6 +30,10 @@ function CardFields.renewDeckSlotButton(playerColor)
     return defaultController:renewDeckSlotButton(playerColor)
 end
 
+function CardFields.refreshDeckSlotGlow()
+    return defaultController:refreshDeckSlotGlow()
+end
+
 function CardFields.resetForRestart()
     return defaultController:resetForRestart()
 end

@@ -17,6 +17,7 @@ CardFieldController.__index = CardFieldController
 
 local publicMethodNames = {
     "renewDeckSlotButton",
+    "refreshDeckSlotGlow",
     "resetForRestart",
     "onLoad",
     "getSaveState",
@@ -155,9 +156,6 @@ function CardFieldController.new(dependencies)
         or scheduler.time
         or runtime.waitTime
         or defaultScheduler.time
-    controller.stopWait = dependencies.stopWait
-        or scheduler.stop
-        or defaultScheduler.stop
     controller.getGlobalOwner = dependencies.getGlobalOwner
         or runtime.getGlobalOwner
         or defaultRuntime.getGlobalOwner
@@ -165,9 +163,6 @@ function CardFieldController.new(dependencies)
     controller.fields = {}
     controller.baseVectorLines = {}
     controller.state = CardFieldState.new({}, nil)
-    controller.deckGlowPhase = 0
-    controller.deckGlowWaitId = nil
-    controller.deckGlowGeneration = 0
 
     -- GameController consumes subsystem ports with dot calls, while feature
     -- tests and direct users commonly use colon calls. Keep both forms valid
@@ -363,16 +358,13 @@ end
 function CardFieldController:deckSlotGlowColor()
     local glow = self.config.deckSlot.glow or {}
     local baseColor = glow.color or {1, 1, 0}
-    local minimumOpacity = glow.minimumOpacity or 0
     local maximumOpacity = glow.maximumOpacity or 1
-    local wave = (math.sin(self.deckGlowPhase) + 1) * 0.5
 
     return {
         baseColor[1] or 1,
         baseColor[2] or 1,
         baseColor[3] or 0,
-        minimumOpacity
-            + (maximumOpacity - minimumOpacity) * wave
+        maximumOpacity
     }
 end
 
@@ -415,40 +407,6 @@ function CardFieldController:refreshDeckSlotGlow()
     end
 
     self.setVectorLines(lines)
-end
-
-function CardFieldController:startDeckSlotGlow()
-    if self.deckGlowWaitId ~= nil then
-        self.stopWait(self.deckGlowWaitId)
-        self.deckGlowWaitId = nil
-    end
-
-    local glow = self.config.deckSlot.glow
-
-    if type(glow) ~= "table" then
-        return
-    end
-
-    local interval = tonumber(glow.updateIntervalSeconds) or 0.1
-    local period = tonumber(glow.periodSeconds) or 2
-
-    if interval <= 0 or period <= 0 then
-        return
-    end
-
-    self.deckGlowGeneration = self.deckGlowGeneration + 1
-    local generation = self.deckGlowGeneration
-    local phaseStep = 2 * math.pi * interval / period
-
-    self.deckGlowWaitId = self.waitTime(function()
-        if generation ~= self.deckGlowGeneration then
-            return
-        end
-
-        self.deckGlowPhase = (self.deckGlowPhase + phaseStep)
-            % (2 * math.pi)
-        self:refreshDeckSlotGlow()
-    end, interval, -1)
 end
 
 function CardFieldController:onHeroIntelligenceIncreaseClicked(surface, playerColor)
@@ -595,7 +553,6 @@ function CardFieldController:onLoad(savedState)
     self.baseVectorLines = built.lines
     self:refreshDeckSlotGlow()
     self:refreshDeckSlotButtons()
-    self:startDeckSlotGlow()
 
     self.waitTime(function()
         self.zoneBehaviors:refresh(self.fields)

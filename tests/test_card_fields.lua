@@ -361,14 +361,9 @@ Test.case("card fields load geometry, state, drawing, and action zones", functio
         Test.truthy(fields[1].deckSpawned)
         Test.falsy(fields[2].deckSpawned)
         Test.deepEqual(records.built.lines, environment.getVectorLines())
-        Test.equal(3, #records.waits)
-        Test.equal(
-            Config.deckSlot.glow.updateIntervalSeconds,
-            records.waits[1].delay
-        )
-        Test.equal(-1, records.waits[1].repetitions)
-        Test.equal(0.5, records.waits[2].delay)
-        Test.equal(1, records.waits[3].delay)
+        Test.equal(2, #records.waits)
+        Test.equal(0.5, records.waits[1].delay)
+        Test.equal(1, records.waits[2].delay)
         Test.equal(0, countDeckButtons(redSurface))
         Test.equal(1, countDeckButtons(blueSurface))
         Test.equal(
@@ -405,7 +400,7 @@ Test.case("card fields load geometry, state, drawing, and action zones", functio
             Test.truthy(findCreatedButtonByClick(redSurface, callback))
         end
 
-        records.waits[2].callback()
+        records.waits[1].callback()
         Test.equal(fields, records.actionRefreshFields)
     end)
 end)
@@ -585,7 +580,7 @@ Test.case("Hero stat displays update and use configured geometry", function()
     end)
 end)
 
-Test.case("unchosen deck zones pulse yellow until a deck is chosen", function()
+Test.case("unchosen deck zones stay yellow until a deck is chosen", function()
     withFixture(function(environment)
         makeBuiltFields = function()
             local built = makeFields()
@@ -606,16 +601,10 @@ Test.case("unchosen deck zones pulse yellow until a deck is chosen", function()
         Test.equal(0, glowLine.color[3])
         Test.equal(Config.deckSlot.glow.lineThickness, glowLine.thickness)
         Test.near(
-            (Config.deckSlot.glow.minimumOpacity
-                + Config.deckSlot.glow.maximumOpacity) * 0.5,
+            Config.deckSlot.glow.maximumOpacity,
             glowLine.color[4],
             0.0001
         )
-        local initialOpacity = glowLine.color[4]
-
-        records.waits[1].callback()
-        glowLine = environment.getVectorLines()[2]
-        Test.truthy(glowLine.color[4] > initialOpacity)
 
         CardFields.getFields()[1].onDeckSpawned()
         Test.equal(1, #environment.getVectorLines())
@@ -638,38 +627,27 @@ Test.case("deck glow follows whether the field owner is seated", function()
         CardFields.onLoad({deckSpawnedByPlayer = {Blue = true}})
         Test.equal(1, #environment.getVectorLines())
 
-        records.waits[1].callback()
+        CardFields.refreshDeckSlotGlow()
         Test.equal(1, #environment.getVectorLines())
 
         environment.setPlayerSeated("Red", true)
-        records.waits[1].callback()
+        CardFields.refreshDeckSlotGlow()
         Test.equal(2, #environment.getVectorLines())
 
         environment.setPlayerSeated("Red", false)
-        records.waits[1].callback()
+        CardFields.refreshDeckSlotGlow()
         Test.equal(1, #environment.getVectorLines())
     end)
 end)
 
-Test.case("reloading card fields replaces the deck glow timer", function()
+Test.case("card field timers do not republish static vector lines", function()
     withFixture(function(environment)
         addBothSurfaces(environment)
         CardFields.onLoad(nil)
-        local stalePulse = records.waits[1].callback
-
-        CardFields.onLoad(nil)
-        Test.equal(1, #records.stoppedWaits)
-        Test.equal(1, records.stoppedWaits[1])
-
         local updateCount = environment.getVectorLineUpdateCount()
-        stalePulse()
+        records.waits[1].callback()
+        records.waits[2].callback()
         Test.equal(updateCount, environment.getVectorLineUpdateCount())
-
-        records.waits[4].callback()
-        Test.equal(
-            updateCount + 1,
-            environment.getVectorLineUpdateCount()
-        )
     end)
 end)
 

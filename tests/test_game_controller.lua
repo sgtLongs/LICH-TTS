@@ -47,6 +47,9 @@ local function dependencies(overrides)
         }
     }
 
+    values.cardFields.refreshDeckSlotGlow = function()
+    end
+
     for key, value in pairs(overrides or {}) do
         values[key] = value
     end
@@ -253,6 +256,7 @@ Test.case("game controller preserves nil returns from legacy event wrappers", fu
     local values = dependencies()
     values.cardFields.onDeckSlotClicked = sentinel
     values.cardFields.onDeckMenuUiClicked = sentinel
+    values.cardFields.refreshDeckSlotGlow = sentinel
     values.cardLogic.refreshExistingButtons = sentinel
     values.cardLogic.suppressButtonsUntilPlaced = sentinel
     values.cardLogic.removeAllButtons = sentinel

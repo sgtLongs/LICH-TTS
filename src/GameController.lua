@@ -344,6 +344,7 @@ function GameController:onObjectDestroy(object)
 end
 
 function GameController:onPlayerConnect()
+    self.cardFields.refreshDeckSlotGlow()
     self.turnSystem.refreshUi()
 end
 
