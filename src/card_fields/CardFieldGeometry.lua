@@ -83,6 +83,7 @@ end
 
 function CardFieldGeometry.buildField(field, config)
     local lines = {}
+    local deckZoneLines = {}
     local cells = {}
     local zoneCenters = {}
     local actionZone = nil
@@ -138,6 +139,7 @@ function CardFieldGeometry.buildField(field, config)
         local zoneRight = zoneBounds.right - config.zoneInset
         local zoneBottom = zoneBounds.bottom - config.zoneInset
 
+        local firstZoneLine = #lines + 1
         addRectangle(
             lines,
             field,
@@ -149,6 +151,12 @@ function CardFieldGeometry.buildField(field, config)
             zone.color or config.gridColor,
             config.zoneLineThickness
         )
+
+        if (zone.type or zone.key) == "deck" then
+            for index = firstZoneLine, #lines do
+                deckZoneLines[#deckZoneLines + 1] = lines[index]
+            end
+        end
 
         zoneCenters[zone.key] = makeCellPoint(
             field,
@@ -197,6 +205,7 @@ function CardFieldGeometry.buildField(field, config)
 
     return {
         lines = lines,
+        deckZoneLines = deckZoneLines,
         cells = cells,
         playerColor = field.playerColor,
         ownerColor = field.ownerColor or field.playerColor,

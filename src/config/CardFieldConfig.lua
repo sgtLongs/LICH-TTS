@@ -56,6 +56,14 @@ local CardFieldConfig = {
         buttonHeight = 27,
         buttonSurfaceOffset = 0.03,
         invisibleButtonColor = {0, 0, 0, 0},
+        glow = {
+            color = {1, 1, 0},
+            minimumOpacity = 0.08,
+            maximumOpacity = 0.5,
+            periodSeconds = 2,
+            updateIntervalSeconds = 0.1,
+            lineThickness = 0.5
+        },
         debugLabel = "DECK",
         debugFontSize = 80,
         debugColor = {1, 0.45, 0.05, 0.55},

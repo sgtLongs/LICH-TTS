@@ -157,6 +157,7 @@ local function makeSurface(guid, initialButtons)
     local nextButtonIndex = 100
     local surface = {
         createdButtons = {},
+        editedButtons = {},
         localPositionInputs = {},
         removedButtonIndexes = {}
     }
@@ -191,6 +192,18 @@ local function makeSurface(guid, initialButtons)
         nextButtonIndex = nextButtonIndex + 1
         buttons[#buttons + 1] = parameters
         surface.createdButtons[#surface.createdButtons + 1] = parameters
+    end
+    surface.editButton = function(parameters)
+        surface.editedButtons[#surface.editedButtons + 1] = parameters
+
+        for _, button in ipairs(buttons) do
+            if button.index == parameters.index then
+                for key, value in pairs(parameters) do
+                    button[key] = value
+                end
+                return
+            end
+        end
     end
     surface.buttons = buttons
     return surface
@@ -232,6 +245,7 @@ end
 
 local function withFixture(testFunction)
     local previousGlobal = Global
+    local previousPlayer = Player
     local previousWait = Wait
     local previousGetObjectFromGuid = getObjectFromGUID
     local surfaces = {}
@@ -250,6 +264,8 @@ local function withFixture(testFunction)
         menuInitializeCount = 0,
         menuOpenResult = true,
         menuActionResult = "menu-result",
+        stoppedWaits = {},
+        vectorLineUpdates = 0,
         waits = {}
     }
     makeBuiltFields = makeFields
@@ -257,14 +273,24 @@ local function withFixture(testFunction)
     Global = {
         setVectorLines = function(lines)
             vectorLines = lines
+            records.vectorLineUpdates = records.vectorLineUpdates + 1
         end
     }
+    Player = {
+        Red = {seated = true},
+        Blue = {seated = true}
+    }
     Wait = {
-        time = function(callback, delay)
+        time = function(callback, delay, repetitions)
             records.waits[#records.waits + 1] = {
                 callback = callback,
-                delay = delay
+                delay = delay,
+                repetitions = repetitions
             }
+            return #records.waits
+        end,
+        stop = function(identifier)
+            records.stoppedWaits[#records.stoppedWaits + 1] = identifier
         end
     }
     getObjectFromGUID = function(guid)
@@ -286,11 +312,19 @@ local function withFixture(testFunction)
         end,
         getVectorLines = function()
             return vectorLines
+        end,
+        getVectorLineUpdateCount = function()
+            return records.vectorLineUpdates
+        end,
+        setPlayerSeated = function(playerColor, seated)
+            Player[playerColor] = Player[playerColor] or {}
+            Player[playerColor].seated = seated == true
         end
     }
     local succeeded, failure = pcall(testFunction, environment)
 
     Global = previousGlobal
+    Player = previousPlayer
     Wait = previousWait
     getObjectFromGUID = previousGetObjectFromGuid
 
@@ -326,10 +360,15 @@ Test.case("card fields load geometry, state, drawing, and action zones", functio
         Test.equal(savedActionState, records.actionLoad.savedState)
         Test.truthy(fields[1].deckSpawned)
         Test.falsy(fields[2].deckSpawned)
-        Test.equal(records.built.lines, environment.getVectorLines())
-        Test.equal(2, #records.waits)
-        Test.equal(0.5, records.waits[1].delay)
-        Test.equal(1, records.waits[2].delay)
+        Test.deepEqual(records.built.lines, environment.getVectorLines())
+        Test.equal(3, #records.waits)
+        Test.equal(
+            Config.deckSlot.glow.updateIntervalSeconds,
+            records.waits[1].delay
+        )
+        Test.equal(-1, records.waits[1].repetitions)
+        Test.equal(0.5, records.waits[2].delay)
+        Test.equal(1, records.waits[3].delay)
         Test.equal(0, countDeckButtons(redSurface))
         Test.equal(1, countDeckButtons(blueSurface))
         Test.equal(
@@ -366,7 +405,7 @@ Test.case("card fields load geometry, state, drawing, and action zones", functio
             Test.truthy(findCreatedButtonByClick(redSurface, callback))
         end
 
-        records.waits[1].callback()
+        records.waits[2].callback()
         Test.equal(fields, records.actionRefreshFields)
     end)
 end)
@@ -543,6 +582,94 @@ Test.case("Hero stat displays update and use configured geometry", function()
         Test.equal(14, drawInfo.deckPosition.x)
         Test.equal(22, drawInfo.deckPosition.z)
         Test.nilValue(CardFields.getPlayerDrawInfo("Green"))
+    end)
+end)
+
+Test.case("unchosen deck zones pulse yellow until a deck is chosen", function()
+    withFixture(function(environment)
+        makeBuiltFields = function()
+            local built = makeFields()
+            built.fields[1].deckZoneLines = {{
+                points = {{x = 1}, {x = 2}},
+                thickness = Config.zoneLineThickness
+            }}
+            return built
+        end
+        environment.addSurface("red-surface")
+        environment.addSurface("blue-surface")
+        CardFields.onLoad({deckSpawnedByPlayer = {Blue = true}})
+
+        local glowLine = environment.getVectorLines()[2]
+        Test.truthy(glowLine)
+        Test.equal(1, glowLine.color[1])
+        Test.equal(1, glowLine.color[2])
+        Test.equal(0, glowLine.color[3])
+        Test.equal(Config.deckSlot.glow.lineThickness, glowLine.thickness)
+        Test.near(
+            (Config.deckSlot.glow.minimumOpacity
+                + Config.deckSlot.glow.maximumOpacity) * 0.5,
+            glowLine.color[4],
+            0.0001
+        )
+        local initialOpacity = glowLine.color[4]
+
+        records.waits[1].callback()
+        glowLine = environment.getVectorLines()[2]
+        Test.truthy(glowLine.color[4] > initialOpacity)
+
+        CardFields.getFields()[1].onDeckSpawned()
+        Test.equal(1, #environment.getVectorLines())
+    end)
+end)
+
+Test.case("deck glow follows whether the field owner is seated", function()
+    withFixture(function(environment)
+        makeBuiltFields = function()
+            local built = makeFields()
+            built.fields[1].deckZoneLines = {{
+                points = {{x = 1}, {x = 2}},
+                thickness = Config.zoneLineThickness
+            }}
+            return built
+        end
+        environment.setPlayerSeated("Red", false)
+        environment.addSurface("red-surface")
+        environment.addSurface("blue-surface")
+        CardFields.onLoad({deckSpawnedByPlayer = {Blue = true}})
+        Test.equal(1, #environment.getVectorLines())
+
+        records.waits[1].callback()
+        Test.equal(1, #environment.getVectorLines())
+
+        environment.setPlayerSeated("Red", true)
+        records.waits[1].callback()
+        Test.equal(2, #environment.getVectorLines())
+
+        environment.setPlayerSeated("Red", false)
+        records.waits[1].callback()
+        Test.equal(1, #environment.getVectorLines())
+    end)
+end)
+
+Test.case("reloading card fields replaces the deck glow timer", function()
+    withFixture(function(environment)
+        addBothSurfaces(environment)
+        CardFields.onLoad(nil)
+        local stalePulse = records.waits[1].callback
+
+        CardFields.onLoad(nil)
+        Test.equal(1, #records.stoppedWaits)
+        Test.equal(1, records.stoppedWaits[1])
+
+        local updateCount = environment.getVectorLineUpdateCount()
+        stalePulse()
+        Test.equal(updateCount, environment.getVectorLineUpdateCount())
+
+        records.waits[4].callback()
+        Test.equal(
+            updateCount + 1,
+            environment.getVectorLineUpdateCount()
+        )
     end)
 end)
 
