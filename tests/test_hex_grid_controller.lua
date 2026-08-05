@@ -68,6 +68,7 @@ local function newHarness(options)
         destroyed = {},
         logs = {},
         objectsByGuid = {},
+        pointerPosition = {x = 0, y = 0, z = 0},
         scheduledFrames = {},
         spawnCalls = {},
         taggedObjects = {}
@@ -93,7 +94,7 @@ local function newHarness(options)
         admin = true,
         color = "Red",
         getPointerPosition = function()
-            return {x = 0, y = 0, z = 0}
+            return harness.pointerPosition
         end
     }
     local templates = {
@@ -299,6 +300,23 @@ Test.case("surfaces receive three selectable top hitboxes", function()
     harness.controller:onObjectClicked(surfaceObject, "Red", false)
     Test.truthy(
         harness.controller:getModel().selectedCells["0:0"]
+    )
+end)
+
+Test.case("hex hover polling ignores players without a pointer", function()
+    local harness = newHarness()
+    harness.controller:onLoad(nil)
+    harness.pointerCell = harness.cellsByKey["0:0"]
+
+    harness.controller:onObjectHover()
+    Test.truthy(
+        harness.controller:getSessionSnapshot().hoveredCells["0:0"]
+    )
+
+    harness.pointerPosition = nil
+    harness.controller:onObjectHover()
+    Test.nilValue(
+        harness.controller:getSessionSnapshot().hoveredCells["0:0"]
     )
 end)
 

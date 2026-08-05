@@ -948,9 +948,13 @@ local function getPlayerPointerCell(self, playerColor)
         return nil
     end
 
-    local localPointer = self.board.positionToLocal(
-        player.getPointerPosition()
-    )
+    local pointerPosition = player.getPointerPosition()
+
+    if pointerPosition == nil then
+        return nil
+    end
+
+    local localPointer = self.board.positionToLocal(pointerPosition)
     return self.builder.findCellAt(self.cells, localPointer)
 end
 
@@ -1199,18 +1203,20 @@ local function updateHoveredCells(self)
     local nextHoveredCells = {}
 
     for _, player in ipairs(self.runtime.getPlayers()) do
-        local localPointer = self.board.positionToLocal(
-            player.getPointerPosition()
-        )
-        local cell = self.builder.findCellAt(
-            self.cells,
-            localPointer
-        )
+        local pointerPosition = player.getPointerPosition()
 
-        if cell ~= nil then
-            nextHoveredCells[
-                self.cellKey(cell.row, cell.column)
-            ] = true
+        if pointerPosition ~= nil then
+            local localPointer = self.board.positionToLocal(pointerPosition)
+            local cell = self.builder.findCellAt(
+                self.cells,
+                localPointer
+            )
+
+            if cell ~= nil then
+                nextHoveredCells[
+                    self.cellKey(cell.row, cell.column)
+                ] = true
+            end
         end
     end
 
