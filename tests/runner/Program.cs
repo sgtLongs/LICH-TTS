@@ -1,5 +1,6 @@
 using MoonSharp.Interpreter;
 using MoonSharp.Interpreter.Loaders;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -26,6 +27,35 @@ static string FindRepositoryRoot()
 static string NormalizeLineEndings(string value) =>
     value.Replace("\r\n", "\n", StringComparison.Ordinal)
         .Replace('\r', '\n');
+
+static Table LuaStringArray(Script script, IEnumerable<string> values)
+{
+    var result = new Table(script);
+
+    foreach (var value in values)
+    {
+        result.Append(DynValue.NewString(value));
+    }
+
+    return result;
+}
+
+static string RunnerUsage() =>
+    "Usage: LichTts.TestRunner [generated-asset command]\n"
+    + "       LichTts.TestRunner [test options]\n\n"
+    + "Generated-asset commands:\n"
+    + "  --check-object-scripts | --sync-object-scripts\n"
+    + "  --check-global-ui      | --sync-global-ui\n\n"
+    + "Test options:\n"
+    + "  --file <fragment>        Run tests from matching modules (repeatable)\n"
+    + "  --filter <fragment>      Run tests with matching names (repeatable)\n"
+    + "  --tag <tag>              Include tests with any selected tag (repeatable)\n"
+    + "  --exclude-tag <tag>      Exclude tests with this tag (repeatable)\n"
+    + "  --fail-fast              Stop after the first failure\n"
+    + "  --failed                 Re-run failures from the previous run\n"
+    + "  --timing                 Show timing beside every test\n"
+    + "  --slowest <count>        Report the slowest selected tests\n"
+    + "  --help                    Show this help";
 
 static void RequireCount(string description, int actual, int expected)
 {
@@ -1430,21 +1460,128 @@ static void CompileGeneratedCardScripts(Script script)
 
 try
 {
-    var command = args.Length == 0 ? null : args[0];
-
-    if (args.Length > 1
-        || command is not null
-            and not "--check-object-scripts"
-            and not "--sync-object-scripts"
-            and not "--check-global-ui"
-            and not "--sync-global-ui")
+    string? command = null;
+    var filters = new List<string>();
+    var files = new List<string>();
+    var tags = new List<string>();
+    var excludedTags = new List<string>();
+    var failedOnly = false;
+    var failFast = false;
+    var timing = false;
+    var slowest = 0;
+    var generatedAssetCommands = new HashSet<string>(StringComparer.Ordinal)
     {
-        throw new InvalidOperationException(
-            "Usage: LichTts.TestRunner [--check-object-scripts|"
-            + "--sync-object-scripts|--check-global-ui|--sync-global-ui]");
+        "--check-object-scripts",
+        "--sync-object-scripts",
+        "--check-global-ui",
+        "--sync-global-ui"
+    };
+
+    if (args.Length == 1 && args[0] == "--help")
+    {
+        Console.WriteLine(RunnerUsage());
+        return 0;
+    }
+
+    if (args.Length > 0 && generatedAssetCommands.Contains(args[0]))
+    {
+        if (args.Length != 1)
+        {
+            throw new InvalidOperationException(
+                "Generated-asset commands cannot be combined with test options.\n\n"
+                + RunnerUsage());
+        }
+
+        command = args[0];
+    }
+    else
+    {
+        for (var index = 0; index < args.Length; index++)
+        {
+            var argument = args[index];
+
+            string NextValue()
+            {
+                if (index + 1 >= args.Length)
+                {
+                    throw new InvalidOperationException(
+                        $"Option '{argument}' requires a value.\n\n{RunnerUsage()}");
+                }
+
+                index += 1;
+                return args[index];
+            }
+
+            switch (argument)
+            {
+                case "--filter":
+                    filters.Add(NextValue());
+                    break;
+                case "--file":
+                    var file = NextValue().Replace('\\', '/');
+
+                    if (file.EndsWith(".lua", StringComparison.OrdinalIgnoreCase))
+                    {
+                        file = file[..^4];
+                    }
+
+                    files.Add(file);
+                    break;
+                case "--tag":
+                    tags.Add(NextValue().ToLowerInvariant());
+                    break;
+                case "--exclude-tag":
+                    excludedTags.Add(NextValue().ToLowerInvariant());
+                    break;
+                case "--fail-fast":
+                    failFast = true;
+                    break;
+                case "--failed":
+                    failedOnly = true;
+                    break;
+                case "--timing":
+                    timing = true;
+                    break;
+                case "--slowest":
+                    var value = NextValue();
+
+                    if (!int.TryParse(value, out slowest) || slowest <= 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"Option '--slowest' requires a positive integer, got '{value}'.");
+                    }
+
+                    break;
+                default:
+                    throw new InvalidOperationException(
+                        $"Unknown option '{argument}'.\n\n{RunnerUsage()}");
+            }
+        }
     }
 
     var repositoryRoot = FindRepositoryRoot();
+    var failureFile = Path.Combine(
+        repositoryRoot,
+        "tests",
+        ".last-failures");
+    var failedTests = new List<string>();
+
+    if (failedOnly)
+    {
+        if (File.Exists(failureFile))
+        {
+            failedTests.AddRange(
+                File.ReadLines(failureFile)
+                    .Select(line => line.Trim())
+                    .Where(line => line.Length > 0));
+        }
+
+        if (failedTests.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "There are no recorded failed tests to re-run.");
+        }
+    }
 
     if (command == "--sync-object-scripts")
     {
@@ -1465,6 +1602,28 @@ try
     script.Options.ScriptLoader = loader;
     script.Options.DebugPrint = Console.WriteLine;
     script.Globals["TEST_REPOSITORY_ROOT"] = repositoryRoot;
+    script.Globals.Set(
+        "TEST_CLOCK",
+        DynValue.NewCallback((_, _) => DynValue.NewNumber(
+            (double)Stopwatch.GetTimestamp() / Stopwatch.Frequency)));
+
+    var runnerOptions = new Table(script);
+    runnerOptions.Set("filters", DynValue.NewTable(LuaStringArray(script, filters)));
+    runnerOptions.Set("files", DynValue.NewTable(LuaStringArray(script, files)));
+    runnerOptions.Set("tags", DynValue.NewTable(LuaStringArray(script, tags)));
+    runnerOptions.Set(
+        "excludeTags",
+        DynValue.NewTable(LuaStringArray(script, excludedTags)));
+    runnerOptions.Set(
+        "failedTests",
+        DynValue.NewTable(LuaStringArray(script, failedTests)));
+    runnerOptions.Set("failFast", DynValue.NewBoolean(failFast));
+    runnerOptions.Set("timing", DynValue.NewBoolean(timing));
+    runnerOptions.Set("slowest", DynValue.NewNumber(slowest));
+    runnerOptions.Set("failureFile", DynValue.NewString(failureFile));
+    script.Globals.Set(
+        "TEST_RUNNER_OPTIONS",
+        DynValue.NewTable(runnerOptions));
 
     if (command == "--sync-global-ui")
     {

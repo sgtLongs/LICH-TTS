@@ -1,0 +1,22 @@
+{
+  "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  "runtime.version": "Lua 5.2",
+  "runtime.path": [
+    "?.lua",
+    "?/init.lua"
+  ],
+  "runtime.pathStrict": true,
+  "workspace.library": [
+    "types"
+  ],
+  "workspace.checkThirdParty": false,
+  "workspace.ignoreDir": [
+    ".tts",
+    "tests/runner/bin",
+    "tests/runner/obj"
+  ],
+  "diagnostics.libraryFiles": "Disable",
+  "diagnostics.workspaceEvent": "OnSave",
+  "hint.enable": true,
+  "format.enable": false
+}

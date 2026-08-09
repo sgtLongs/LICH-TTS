@@ -163,3 +163,31 @@ it.
 
 See `TESTING.md` for automated commands, object-script synchronization, and the
 manual TTS smoke checklist.
+
+## Lua editor and formatting tools
+
+The repository-level `.luarc.json` configures Lua Language Server for Lua 5.2,
+the local `require` paths, and the TTS definitions under `types/tts/`. Add
+LuaLS annotations first at shared data and adapter boundaries; annotations are
+development metadata and must not replace runtime validation of saved or
+external data.
+
+StyLua is configured by `stylua.toml`. After installing the `stylua` executable,
+format the canonical Lua files changed by a task with:
+
+```console
+format-lua.cmd src/Game.lua tests/test_game.lua
+```
+
+Check formatting without changing files with:
+
+```console
+check-lua-format.cmd src/Game.lua tests/test_game.lua
+```
+
+Adopt formatting incrementally rather than creating a repository-wide
+format-only diff. The `.styluaignore` file excludes `.tts/`, so published and
+generated copies continue to be owned exclusively by the synchronization
+commands even if one is passed explicitly. When an `object_logic/` source
+changes through formatting, run the object-script synchronization command and
+review the generated diff.

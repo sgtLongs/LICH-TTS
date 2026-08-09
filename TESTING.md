@@ -23,6 +23,43 @@ On macOS or Linux, run the underlying cross-platform command:
 dotnet run --project tests/runner/LichTts.TestRunner.csproj --configuration Release
 ```
 
+### Focused test runs
+
+The runner accepts repeatable file, name, and tag filters. Multiple values for
+the same option are combined as alternatives; different option types are
+intersected.
+
+```console
+run-tests.cmd --file board_load_coordinator
+run-tests.cmd --filter timeout --filter stale
+run-tests.cmd --tag unit --exclude-tag generated
+run-tests.cmd --file hex_grid --filter placement
+```
+
+Available module tags are `unit`, `integration`, `generated`, and
+`compatibility`. A `Test.case` can add tags with an optional third argument,
+for example `Test.case("description", callback, {"slow"})`.
+
+Useful feedback options are:
+
+```console
+run-tests.cmd --fail-fast
+run-tests.cmd --timing --slowest 10
+run-tests.cmd --failed
+run-tests.cmd --help
+```
+
+`--failed` reruns the exact failures recorded by the previous test run. The
+local record is stored in the ignored `tests/.last-failures` file. A successful
+run clears it. Deep-table assertion failures report the first mismatched path
+and its expected and actual values.
+
+For cross-platform invocation, place runner options after `--`:
+
+```console
+dotnet run --project tests/runner/LichTts.TestRunner.csproj --configuration Release -- --tag unit --slowest 5
+```
+
 The first run restores the pinned MoonSharp NuGet package. Later runs use the
 local NuGet cache.
 

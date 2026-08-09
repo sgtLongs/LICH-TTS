@@ -1,0 +1,6 @@
+# Published/generated TTS scripts must only be updated by the sync tooling.
+.tts/
+
+# Build outputs can contain copied source files.
+tests/runner/bin/
+tests/runner/obj/

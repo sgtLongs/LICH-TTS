@@ -27,6 +27,28 @@ loading the entire repository.
 - `.tts/objects/`: synchronized/published TTS assets; some files are generated.
 - `tests/`: Lua tests and deterministic TTS fakes.
 - `tests/runner/`: .NET 8/MoonSharp runner, validation, and sync tooling.
+- `types/tts/`: LuaLS-only definitions for TTS globals and APIs; never loaded
+  by the game.
+
+## Lua development infrastructure
+
+- Lua Language Server is configured by `.luarc.json` for Lua 5.2, repository
+  `require` paths, and the definitions in `types/tts/`. Prefer adding focused
+  LuaLS annotations to shared data contracts and injected boundaries. Keep
+  runtime validation for saved, generated, and external data.
+- StyLua is configured by `stylua.toml`. Adopt it incrementally: format or
+  check only canonical Lua files changed by the task:
+
+  ```console
+  format-lua.cmd src/path/File.lua tests/test_file.lua
+  check-lua-format.cmd src/path/File.lua tests/test_file.lua
+  ```
+
+- `.styluaignore` excludes `.tts/`. Never use formatting to modify published
+  or generated copies. Formatting an `object_logic/` source still requires the
+  normal object-script synchronization step.
+- Do not mass-format unrelated files. Keep formatting changes in the same
+  cohesive diff as the source changes that required them.
 
 ## Architecture rules
 
@@ -112,11 +134,30 @@ dotnet run --project tests/runner/LichTts.TestRunner.csproj --configuration Rele
 dotnet run --project tests/runner/LichTts.TestRunner.csproj --configuration Release -- --check-global-ui
 ```
 
-Tests use `Test.case("description", function() ... end)`. Prefer deterministic
-plain-value assertions and the fakes in `tests/support/`. For every accepted
-asynchronous operation, cover success, synchronous completion, delayed
-completion, failure, timeout, duplicate callbacks, and stale callbacks when
-applicable.
+Use the focused runner during development:
+
+```console
+run-tests.cmd --file board_load_coordinator
+run-tests.cmd --filter timeout --filter stale
+run-tests.cmd --tag unit --exclude-tag generated
+run-tests.cmd --fail-fast
+run-tests.cmd --timing --slowest 10
+run-tests.cmd --failed
+```
+
+`--file`, `--filter`, `--tag`, and `--exclude-tag` are repeatable. File/name
+filters are case-insensitive; repeated values of one kind are alternatives,
+while different filter kinds are intersected. Module tags are `unit`,
+`integration`, `generated`, and `compatibility`. `--failed` uses the ignored
+`tests/.last-failures` record from the previous run. See `run-tests.cmd --help`
+and `TESTING.md` for the complete interface.
+
+Tests use `Test.case("description", function() ... end)` and may add case tags
+with an optional third argument such as `{"slow"}`. Prefer deterministic
+plain-value assertions and the fakes in `tests/support/`. `Test.deepEqual`
+reports the first mismatched value path. For every accepted asynchronous
+operation, cover success, synchronous completion, delayed completion, failure,
+timeout, duplicate callbacks, and stale callbacks when applicable.
 
 Run the manual TTS smoke checklist in `TESTING.md` after changing physics,
 colliders, hands, state replacement, remote assets, or other engine boundaries.

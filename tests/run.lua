@@ -1,41 +1,73 @@
 local Test = require("tests/support/Test")
 
-require("tests/test_game_save_codec")
-require("tests/test_compatibility_fixtures")
-require("tests/test_tts_adapters")
-require("tests/test_object_scripts")
-require("tests/test_hex_geometry")
-require("tests/test_death_fog_rules")
-require("tests/test_surfaces")
-require("tests/test_hex_board_model")
-require("tests/test_hex_grid_controller")
-require("tests/test_card_field_geometry")
-require("tests/test_card_fields")
-require("tests/test_action_zone")
-require("tests/test_action_zone_regressions")
-require("tests/test_deck_generator")
-require("tests/test_card_api_normalizer")
-require("tests/test_card_logic")
-require("tests/test_card_definitions")
-require("tests/test_generated_card_runtime")
-require("tests/test_deck_selection_menu")
-require("tests/test_hex_grid_builder")
-require("tests/test_hex_grid_menu")
-require("tests/test_hex_grid")
-require("tests/test_hex_object_spawner")
-require("tests/test_hex_board_state")
-require("tests/test_saved_board_catalog")
-require("tests/test_board_load_coordinator")
-require("tests/test_dungeon_map_state")
-require("tests/test_dungeon_map_rules")
-require("tests/test_settings_dungeon_views")
-require("tests/test_dungeon_map")
-require("tests/test_turn_state")
-require("tests/test_turn_system")
-require("tests/test_settings_menu")
-require("tests/test_composition_smoke")
-require("tests/test_global")
-require("tests/test_game_controller")
-require("tests/test_game")
+local modules = {
+    { "tests/test_test_support", { "unit" } },
+    { "tests/test_game_save_codec", { "unit" } },
+    { "tests/test_compatibility_fixtures", { "compatibility" } },
+    { "tests/test_tts_adapters", { "unit", "integration" } },
+    { "tests/test_object_scripts", { "generated", "integration" } },
+    { "tests/test_hex_geometry", { "unit" } },
+    { "tests/test_death_fog_rules", { "unit" } },
+    { "tests/test_surfaces", { "unit", "integration" } },
+    { "tests/test_hex_board_model", { "unit", "integration" } },
+    { "tests/test_hex_grid_controller", { "integration" } },
+    { "tests/test_card_field_geometry", { "unit" } },
+    { "tests/test_card_fields", { "integration" } },
+    { "tests/test_action_zone", { "integration" } },
+    { "tests/test_action_zone_regressions", { "unit", "integration" } },
+    { "tests/test_deck_generator", { "integration" } },
+    { "tests/test_card_api_normalizer", { "unit" } },
+    { "tests/test_card_logic", { "generated", "integration" } },
+    { "tests/test_card_definitions", { "unit", "generated" } },
+    { "tests/test_generated_card_runtime", { "generated", "integration" } },
+    { "tests/test_deck_selection_menu", { "unit", "integration" } },
+    { "tests/test_hex_grid_builder", { "integration" } },
+    { "tests/test_hex_grid_menu", { "unit", "integration" } },
+    { "tests/test_hex_grid", { "integration" } },
+    { "tests/test_hex_object_spawner", { "integration" } },
+    { "tests/test_hex_board_state", { "unit" } },
+    { "tests/test_saved_board_catalog", { "unit" } },
+    { "tests/test_board_load_coordinator", { "unit" } },
+    { "tests/test_dungeon_map_state", { "unit" } },
+    { "tests/test_dungeon_map_rules", { "unit" } },
+    { "tests/test_settings_dungeon_views", { "unit" } },
+    { "tests/test_dungeon_map", { "integration" } },
+    { "tests/test_turn_state", { "unit" } },
+    { "tests/test_turn_system", { "integration" } },
+    { "tests/test_settings_menu", { "integration" } },
+    { "tests/test_composition_smoke", { "integration" } },
+    { "tests/test_global", { "integration" } },
+    { "tests/test_game_controller", { "integration" } },
+    { "tests/test_game", { "integration" } },
+}
 
-Test.run()
+local options = TEST_RUNNER_OPTIONS or {}
+
+for _, module in ipairs(modules) do
+    local moduleName = module[1]
+    local shouldLoad = options.files == nil or #options.files == 0
+
+    if not shouldLoad then
+        for _, fragment in ipairs(options.files) do
+            if
+                string.find(
+                    string.lower(moduleName),
+                    string.lower(fragment),
+                    1,
+                    true
+                ) ~= nil
+            then
+                shouldLoad = true
+                break
+            end
+        end
+    end
+
+    if shouldLoad then
+        Test.beginModule(moduleName, module[2])
+        require(moduleName)
+        Test.endModule()
+    end
+end
+
+Test.run(options)
