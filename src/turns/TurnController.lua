@@ -324,6 +324,12 @@ function TurnController.new(dependencies)
 
         if stateApi.getCurrentPhase(turnState) == "start" then
             untapAllCards()
+
+            if cardFields ~= nil
+                and type(cardFields.renewActionPoints) == "function"
+            then
+                cardFields.renewActionPoints(currentColor)
+            end
         end
 
         local advanced = stateApi.advancePhase(turnState, playerColor)

@@ -243,6 +243,10 @@ function GameController:onHeroHealthDecreaseFiveClicked(object, playerColor)
     )
 end
 
+function GameController:onActionPointClicked(index, object, playerColor)
+    return self.cardFields.onActionPointClicked(index, object, playerColor)
+end
+
 function GameController:onObjectPickUp(_, object)
     return self.cardFields.onObjectPickUp(object)
 end

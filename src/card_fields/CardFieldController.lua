@@ -24,6 +24,8 @@ local publicMethodNames = {
     "getFields",
     "getPlayerDrawInfo",
     "getCardFieldDestination",
+    "renewActionPoints",
+    "onActionPointClicked",
     "onDeckSlotClicked",
     "onDeckMenuUiClicked",
     "onHeroIntelligenceIncreaseClicked",
@@ -355,6 +357,85 @@ function CardFieldController:adjustHeroStat(
     return true
 end
 
+function CardFieldController:removeActionPointDisplays(surface)
+    local displayConfig = self.config.actionPointsDisplay
+
+    if type(displayConfig) ~= "table" then
+        return
+    end
+
+    local tooltipPrefix = displayConfig.tooltipPrefix or "Action point "
+    local buttons = self.objectAdapter.getButtons(surface)
+
+    for index = #buttons, 1, -1 do
+        local button = buttons[index]
+
+        if type(button.tooltip) == "string"
+            and string.sub(button.tooltip, 1, #tooltipPrefix)
+                == tooltipPrefix
+        then
+            self.objectAdapter.removeButton(surface, button.index)
+        end
+    end
+end
+
+function CardFieldController:addActionPointDisplays(field)
+    local displayConfig = self.config.actionPointsDisplay
+
+    if type(displayConfig) ~= "table" then
+        return true
+    end
+
+    local surface = self.getObjectFromGuid(field.surfaceObjectGuid)
+
+    if surface == nil then
+        return false
+    end
+
+    self:removeActionPointDisplays(surface)
+    local actionPointsUsed = CardFieldState.getActionPointsUsed(
+        self.state,
+        field
+    )
+    local position = displayConfig.position or {}
+    local spacing = displayConfig.spacing or {}
+    local size = displayConfig.size or {}
+    local tooltipPrefix = displayConfig.tooltipPrefix or "Action point "
+
+    for index = 1, #actionPointsUsed do
+        local used = actionPointsUsed[index] == true
+        local buttonPosition = {
+            x = (position.x or 0) + (index - 1) * (spacing.x or 0),
+            y = position.y or 0,
+            z = (position.z or 0) + (index - 1) * (spacing.z or 0)
+        }
+        local color = used
+            and displayConfig.usedColor or displayConfig.usableColor
+
+        self.objectAdapter.createButton(surface, {
+            label = "",
+            click_function = (displayConfig.clickFunctionPrefix
+                or "onActionPoint") .. tostring(index) .. "Clicked",
+            function_owner = self.getGlobalOwner(),
+            position = surface.positionToLocal(
+                displayWorldPosition(field, buttonPosition)
+            ),
+            rotation = {0, 0, 0},
+            width = math.floor((size.width or 0.5) * 100 + 0.5),
+            height = math.floor((size.height or 0.5) * 100 + 0.5),
+            font_size = 1,
+            color = color,
+            font_color = color,
+            hover_color = color,
+            press_color = color,
+            tooltip = tooltipPrefix .. tostring(index)
+                .. (used and ": used" or ": usable")
+        })
+    end
+
+    return true
+end
+
 function CardFieldController:deckSlotGlowColor()
     local glow = self.config.deckSlot.glow or {}
     local baseColor = glow.color or {1, 1, 0}
@@ -431,6 +512,42 @@ end
 
 function CardFieldController:onHeroHealthDecreaseFiveClicked(surface, playerColor)
     return self:adjustHeroStat("health", surface, playerColor, -5)
+end
+
+function CardFieldController:onActionPointClicked(
+    index,
+    surface,
+    playerColor
+)
+    if surface == nil or type(surface.getGUID) ~= "function" then
+        return false
+    end
+
+    local field = self.layout.findFieldBySurface(
+        self.fields,
+        surface.getGUID()
+    )
+
+    if field == nil
+        or CardFieldDefinitions.ownerColor(field) ~= playerColor
+        or not CardFieldState.toggleActionPoint(self.state, field, index)
+    then
+        return false
+    end
+
+    self:addActionPointDisplays(field)
+    return true
+end
+
+function CardFieldController:renewActionPoints(playerColor)
+    for _, field in ipairs(self.fields) do
+        if CardFieldDefinitions.ownerColor(field) == playerColor then
+            CardFieldState.renewActionPoints(self.state, field)
+            return self:addActionPointDisplays(field)
+        end
+    end
+
+    return false
 end
 
 function CardFieldController:configureFieldCallbacks(field)
@@ -520,6 +637,7 @@ function CardFieldController:refreshDeckSlotButtons()
         self:configureFieldCallbacks(field)
         self:addHeroStatDisplays(field)
         self:addDeckSlotButton(field)
+        self:addActionPointDisplays(field)
     end
 end
 
@@ -545,7 +663,12 @@ function CardFieldController:onLoad(savedState)
 
     local built = self.layout.buildAll(self.definitions)
     self.fields = built.fields
-    self.state = CardFieldState.new(self.fields, savedState)
+    local actionPointConfig = self.config.actionPointsDisplay or {}
+    self.state = CardFieldState.new(
+        self.fields,
+        savedState,
+        actionPointConfig.count
+    )
     self.zoneBehaviors:load(self.fields, savedState)
 
     -- Zone outlines are gameplay geometry and remain visible independently of

@@ -58,6 +58,14 @@ function CardFields.getCardFieldDestination(fieldId, destination)
     return defaultController:getCardFieldDestination(fieldId, destination)
 end
 
+function CardFields.renewActionPoints(playerColor)
+    return defaultController:renewActionPoints(playerColor)
+end
+
+function CardFields.onActionPointClicked(index, surface, playerColor)
+    return defaultController:onActionPointClicked(index, surface, playerColor)
+end
+
 function CardFields.onDeckSlotClicked(surface, playerColor)
     return defaultController:onDeckSlotClicked(surface, playerColor)
 end

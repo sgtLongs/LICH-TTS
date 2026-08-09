@@ -177,6 +177,17 @@ local CardFieldConfig = {
         tooltipPrefix = "Hero stat: "
     },
 
+    actionPointsDisplay = {
+        count = 4,
+        position = {x = 0, y = 1.72, z = 13},
+        spacing = {x = 0.8, z = 0},
+        size = {width = 5, height = 5},
+        usableColor = {1, 1, 1, 1},
+        usedColor = {0, 0, 0, 1},
+        clickFunctionPrefix = "onActionPoint",
+        tooltipPrefix = "Action point "
+    },
+
     -- Inclusive geometry coordinates. CSV rows are written from the player's
     -- top to bottom, while geometry rows run from the player outward, so the
     -- CSV's first row is geometry row 3.

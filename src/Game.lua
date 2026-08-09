@@ -74,6 +74,7 @@ local publicMethods = {
     "onHeroHealthDecreaseClicked",
     "onHeroHealthIncreaseFiveClicked",
     "onHeroHealthDecreaseFiveClicked",
+    "onActionPointClicked",
     "onObjectPickUp",
     "onObjectDrop",
     "onObjectLeaveContainer",

@@ -363,6 +363,7 @@ end)
 
 Test.case("start phase untaps every tapped card before advancing", function()
     local events = {}
+    local renewedColor = nil
     local tappedCard = {tag = "Card"}
     local untappedCard = {tag = "Card"}
     local deck = {tag = "Deck"}
@@ -385,6 +386,11 @@ Test.case("start phase untaps every tapped card before advancing", function()
     end
 
     local controller = TurnSystem.new({
+        cardFields = {
+            renewActionPoints = function(color)
+                renewedColor = color
+            end
+        },
         runtime = {
             getAllObjects = function()
                 return {tappedCard, untappedCard, deck}
@@ -402,6 +408,7 @@ Test.case("start phase untaps every tapped card before advancing", function()
     controller.onLoad({activePlayerColors = {"White"}})
     Test.truthy(controller.advancePhase("White"))
     Test.equal("main", controller.getSaveState().currentPhase)
+    Test.equal("White", renewedColor)
     Test.deepEqual({
         "tapped:getActionZoneTapRotation",
         "tapped:onCardTapped",
@@ -409,8 +416,10 @@ Test.case("start phase untaps every tapped card before advancing", function()
     }, events)
 
     events = {}
+    renewedColor = nil
     Test.truthy(controller.advancePhase("White"))
     Test.deepEqual({}, events)
+    Test.nilValue(renewedColor)
 end)
 
 Test.case("turn system advances a valid turn", function()

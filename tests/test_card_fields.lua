@@ -243,6 +243,16 @@ local function findCreatedButtonByClick(surface, clickFunction)
     return nil
 end
 
+local function findCurrentButton(surface, tooltip)
+    for _, button in ipairs(surface.getButtons()) do
+        if button.tooltip == tooltip then
+            return button
+        end
+    end
+
+    return nil
+end
+
 local function withFixture(testFunction)
     local previousGlobal = Global
     local previousPlayer = Player
@@ -400,6 +410,19 @@ Test.case("card fields load geometry, state, drawing, and action zones", functio
             Test.truthy(findCreatedButtonByClick(redSurface, callback))
         end
 
+        for index = 1, Config.actionPointsDisplay.count do
+            local button = findCurrentButton(
+                redSurface,
+                Config.actionPointsDisplay.tooltipPrefix
+                    .. index .. ": usable"
+            )
+            Test.truthy(button)
+            Test.deepEqual(
+                Config.actionPointsDisplay.usableColor,
+                button.color
+            )
+        end
+
         records.waits[1].callback()
         Test.equal(fields, records.actionRefreshFields)
     end)
@@ -480,7 +503,7 @@ Test.case("card fields replace duplicate deck buttons with configured one", func
         CardFields.onLoad(nil)
 
         Test.equal(1, countDeckButtons(redSurface))
-        Test.equal(9, #redSurface.createdButtons)
+        Test.equal(13, #redSurface.createdButtons)
         Test.equal(2, #redSurface.removedButtonIndexes)
         Test.equal(8, redSurface.removedButtonIndexes[1])
         Test.equal(4, redSurface.removedButtonIndexes[2])
@@ -508,15 +531,15 @@ Test.case("Hero stat displays update and use configured geometry", function()
 
         field.onHeroStatsAvailable({intelligence = 5, health = 60})
 
-        local intelligence = redSurface.createdButtons[10]
-        local intelligenceUp = redSurface.createdButtons[11]
-        local intelligenceDown = redSurface.createdButtons[12]
-        local health = redSurface.createdButtons[13]
-        local healthUp = redSurface.createdButtons[14]
-        local healthUpFive = redSurface.createdButtons[15]
-        local healthDown = redSurface.createdButtons[16]
-        local healthDownFive = redSurface.createdButtons[17]
-        local intelligenceWorld = redSurface.localPositionInputs[10]
+        local intelligence = redSurface.createdButtons[14]
+        local intelligenceUp = redSurface.createdButtons[15]
+        local intelligenceDown = redSurface.createdButtons[16]
+        local health = redSurface.createdButtons[17]
+        local healthUp = redSurface.createdButtons[18]
+        local healthUpFive = redSurface.createdButtons[19]
+        local healthDown = redSurface.createdButtons[20]
+        local healthDownFive = redSurface.createdButtons[21]
+        local intelligenceWorld = redSurface.localPositionInputs[14]
         Test.equal("INT :  5", intelligence.label)
         Test.equal("HP  : 60", health.label)
         Test.equal("none", intelligence.click_function)
@@ -577,6 +600,40 @@ Test.case("Hero stat displays update and use configured geometry", function()
         Test.equal(14, drawInfo.deckPosition.x)
         Test.equal(22, drawInfo.deckPosition.z)
         Test.nilValue(CardFields.getPlayerDrawInfo("Green"))
+    end)
+end)
+
+Test.case("action point buttons toggle for their owner and renew together", function()
+    withFixture(function(environment)
+        local redSurface = environment.addSurface("red-surface")
+        environment.addSurface("blue-surface")
+        CardFields.onLoad(nil)
+
+        Test.falsy(CardFields.onActionPointClicked(2, redSurface, "Blue"))
+        Test.truthy(CardFields.onActionPointClicked(2, redSurface, "Red"))
+        local usedButton = findCurrentButton(
+            redSurface,
+            Config.actionPointsDisplay.tooltipPrefix .. "2: used"
+        )
+        Test.truthy(usedButton)
+        Test.deepEqual(Config.actionPointsDisplay.usedColor, usedButton.color)
+        Test.truthy(
+            CardFields.getSaveState().actionPointsUsedByPlayer.Red[2]
+        )
+
+        Test.truthy(CardFields.renewActionPoints("Red"))
+        local usableButton = findCurrentButton(
+            redSurface,
+            Config.actionPointsDisplay.tooltipPrefix .. "2: usable"
+        )
+        Test.truthy(usableButton)
+        Test.deepEqual(
+            Config.actionPointsDisplay.usableColor,
+            usableButton.color
+        )
+        Test.falsy(
+            CardFields.getSaveState().actionPointsUsedByPlayer.Red[2]
+        )
     end)
 end)
 
@@ -881,6 +938,30 @@ Test.case("card field state restores valid Hero stats by owner", function()
     Test.equal(40, fields[1].heroStats.health)
     RealCardFieldState.setHeroStats(state, fields[1], nil)
     Test.nilValue(RealCardFieldState.getHeroStats(state, fields[1]))
+end)
+
+Test.case("card field state restores configured action points by owner", function()
+    local fields = {{
+        fieldId = "physical-red-field",
+        playerColor = "White",
+        ownerColor = "Red"
+    }}
+    local state = RealCardFieldState.new(fields, {
+        actionPointsUsedByPlayer = {
+            Red = {true, false, true, true, true}
+        }
+    }, 4)
+
+    Test.deepEqual(
+        {true, false, true, true},
+        RealCardFieldState.getActionPointsUsed(state, fields[1])
+    )
+    Test.truthy(RealCardFieldState.toggleActionPoint(state, fields[1], 2))
+    Test.falsy(RealCardFieldState.toggleActionPoint(state, fields[1], 5))
+    Test.deepEqual(
+        {true, true, true, true},
+        RealCardFieldState.save(state, fields).actionPointsUsedByPlayer.Red
+    )
 end)
 
 Test.case("a registered zone handles events without facade changes", function()

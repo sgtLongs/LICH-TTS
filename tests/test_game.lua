@@ -28,6 +28,12 @@ local CardFields = {
         calls.deckMenuPlayerColor = playerColor
         calls.deckMenuAction = action
     end,
+    onActionPointClicked = function(index, object, playerColor)
+        calls.actionPointIndex = index
+        calls.actionPointObject = object
+        calls.actionPointPlayerColor = playerColor
+        return true
+    end,
     onObjectPickUp = function(object)
         calls.pickedUpCard = object
         return true
@@ -299,6 +305,15 @@ Test.case("game routes deck slot and deck menu choices", function()
     Test.equal("Blue", calls.deckSlotPlayerColor)
     Test.equal("Blue", calls.deckMenuPlayerColor)
     Test.equal("9636", calls.deckMenuAction)
+end)
+
+Test.case("game routes action point buttons", function()
+    local object = {}
+
+    Test.truthy(Game.onActionPointClicked(3, object, "Blue"))
+    Test.equal(3, calls.actionPointIndex)
+    Test.equal(object, calls.actionPointObject)
+    Test.equal("Blue", calls.actionPointPlayerColor)
 end)
 
 Test.case("game routes card pickup and drop events", function()
