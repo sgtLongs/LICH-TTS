@@ -3,18 +3,15 @@ local CardFieldDefinitions =
 
 local CardFieldState = {}
 
-function CardFieldState.new(fields, savedState, actionPointCount)
+function CardFieldState.new(fields, savedState)
     local state = {
         deckSpawnedByField = {},
-        heroStatsByField = {},
-        actionPointsUsedByField = {}
+        heroStatsByField = {}
     }
     local spawnedByPlayer = type(savedState) == "table"
         and savedState.deckSpawnedByPlayer or {}
     local statsByPlayer = type(savedState) == "table"
         and savedState.heroStatsByPlayer or {}
-    local actionPointsByPlayer = type(savedState) == "table"
-        and savedState.actionPointsUsedByPlayer or {}
 
     if type(spawnedByPlayer) ~= "table" then
         spawnedByPlayer = {}
@@ -23,14 +20,6 @@ function CardFieldState.new(fields, savedState, actionPointCount)
     if type(statsByPlayer) ~= "table" then
         statsByPlayer = {}
     end
-
-    if type(actionPointsByPlayer) ~= "table" then
-        actionPointsByPlayer = {}
-    end
-
-    actionPointCount = math.max(0, math.floor(
-        tonumber(actionPointCount) or 0
-    ))
 
     for _, field in ipairs(fields or {}) do
         local fieldId = CardFieldDefinitions.fieldId(field)
@@ -53,15 +42,6 @@ function CardFieldState.new(fields, savedState, actionPointCount)
         end
 
         state.heroStatsByField[fieldId] = heroStats
-        local savedActionPoints = actionPointsByPlayer[ownerColor]
-        local actionPointsUsed = {}
-
-        for index = 1, actionPointCount do
-            actionPointsUsed[index] = type(savedActionPoints) == "table"
-                and savedActionPoints[index] == true or false
-        end
-
-        state.actionPointsUsedByField[fieldId] = actionPointsUsed
         -- Keep this established runtime property for DeckGenerator and callers
         -- that inspect the legacy field value directly.
         field.deckSpawned = deckSpawned
@@ -69,30 +49,6 @@ function CardFieldState.new(fields, savedState, actionPointCount)
     end
 
     return state
-end
-
-function CardFieldState.getActionPointsUsed(state, field)
-    local fieldId = CardFieldDefinitions.fieldId(field)
-    return state.actionPointsUsedByField[fieldId] or {}
-end
-
-function CardFieldState.toggleActionPoint(state, field, index)
-    local actionPointsUsed = CardFieldState.getActionPointsUsed(state, field)
-
-    if type(index) ~= "number" or actionPointsUsed[index] == nil then
-        return false
-    end
-
-    actionPointsUsed[index] = not actionPointsUsed[index]
-    return true
-end
-
-function CardFieldState.renewActionPoints(state, field)
-    local actionPointsUsed = CardFieldState.getActionPointsUsed(state, field)
-
-    for index = 1, #actionPointsUsed do
-        actionPointsUsed[index] = false
-    end
 end
 
 function CardFieldState.getHeroStats(state, field)
@@ -137,7 +93,6 @@ end
 function CardFieldState.save(state, fields)
     local deckSpawnedByPlayer = {}
     local heroStatsByPlayer = {}
-    local actionPointsUsedByPlayer = {}
 
     for _, field in ipairs(fields or {}) do
         local ownerColor = CardFieldDefinitions.ownerColor(field)
@@ -154,24 +109,11 @@ function CardFieldState.save(state, fields)
                 health = heroStats.health
             }
         end
-
-        local actionPointsUsed = CardFieldState.getActionPointsUsed(
-            state,
-            field
-        )
-        local savedActionPoints = {}
-
-        for index = 1, #actionPointsUsed do
-            savedActionPoints[index] = actionPointsUsed[index] == true
-        end
-
-        actionPointsUsedByPlayer[ownerColor] = savedActionPoints
     end
 
     return {
         deckSpawnedByPlayer = deckSpawnedByPlayer,
-        heroStatsByPlayer = heroStatsByPlayer,
-        actionPointsUsedByPlayer = actionPointsUsedByPlayer
+        heroStatsByPlayer = heroStatsByPlayer
     }
 end
 

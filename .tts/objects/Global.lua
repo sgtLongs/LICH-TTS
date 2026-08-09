@@ -175,6 +175,22 @@ function onHeroHealthDecreaseFiveClicked(object, playerColor)
     return Game.onHeroHealthDecreaseFiveClicked(object, playerColor)
 end
 
+function onActionPoint1Clicked(object, playerColor)
+    return Game.onActionPoint1Clicked(object, playerColor)
+end
+
+function onActionPoint2Clicked(object, playerColor)
+    return Game.onActionPoint2Clicked(object, playerColor)
+end
+
+function onActionPoint3Clicked(object, playerColor)
+    return Game.onActionPoint3Clicked(object, playerColor)
+end
+
+function onActionPoint4Clicked(object, playerColor)
+    return Game.onActionPoint4Clicked(object, playerColor)
+end
+
 function onObjectDestroy(object)
     Game.onObjectDestroy(object)
 end

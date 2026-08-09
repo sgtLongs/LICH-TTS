@@ -1,6 +1,7 @@
 local Config = require("src/config/CardFieldConfig")
 local DebugConfig = require("src/config/GlobalDebugConfig")
 local ActionZone = require("src/card_fields/ActionZone")
+local ActionPoints = require("src/action_points/ActionPoints")
 local CardFieldDefinitions =
     require("src/card_fields/CardFieldDefinitions")
 local CardFieldLayout = require("src/card_fields/CardFieldLayout")
@@ -25,6 +26,9 @@ local publicMethodNames = {
     "getPlayerDrawInfo",
     "getCardFieldDestination",
     "renewActionPoints",
+    "useActionPoint",
+    "restoreActionPoint",
+    "getActionPointStatus",
     "onActionPointClicked",
     "onDeckSlotClicked",
     "onDeckMenuUiClicked",
@@ -139,6 +143,9 @@ function CardFieldController.new(dependencies)
         or CardFieldDefinitions.fromConfig(controller.config)
     controller.layout = dependencies.layout or CardFieldLayout
     controller.deckMenu = dependencies.deckMenu or DeckSelectionMenu
+    controller.actionPoints = dependencies.actionPoints or ActionPoints.new(
+        controller.config.actionPointsDisplay
+    )
     controller.zoneBehaviors = dependencies.zoneBehaviors
         or makeDefaultZoneBehaviors(dependencies)
     controller.onDeckSpawned = dependencies.onDeckSpawned or function()
@@ -393,9 +400,8 @@ function CardFieldController:addActionPointDisplays(field)
     end
 
     self:removeActionPointDisplays(surface)
-    local actionPointsUsed = CardFieldState.getActionPointsUsed(
-        self.state,
-        field
+    local actionPointsUsed = self.actionPoints:getUsed(
+        CardFieldDefinitions.ownerColor(field)
     )
     local position = displayConfig.position or {}
     local spacing = displayConfig.spacing or {}
@@ -530,7 +536,7 @@ function CardFieldController:onActionPointClicked(
 
     if field == nil
         or CardFieldDefinitions.ownerColor(field) ~= playerColor
-        or not CardFieldState.toggleActionPoint(self.state, field, index)
+        or not self.actionPoints:toggle(playerColor, index)
     then
         return false
     end
@@ -539,15 +545,62 @@ function CardFieldController:onActionPointClicked(
     return true
 end
 
-function CardFieldController:renewActionPoints(playerColor)
+function CardFieldController:findFieldByOwner(playerColor)
     for _, field in ipairs(self.fields) do
         if CardFieldDefinitions.ownerColor(field) == playerColor then
-            CardFieldState.renewActionPoints(self.state, field)
-            return self:addActionPointDisplays(field)
+            return field
         end
     end
 
-    return false
+    return nil
+end
+
+function CardFieldController:getActionPointStatus(playerColor)
+    local field = self:findFieldByOwner(playerColor)
+    return field ~= nil and self.actionPoints:getStatus(playerColor) or nil
+end
+
+function CardFieldController:getActionPointPlayerColors()
+    local playerColors = {}
+
+    for _, field in ipairs(self.fields) do
+        playerColors[#playerColors + 1] =
+            CardFieldDefinitions.ownerColor(field)
+    end
+
+    return playerColors
+end
+
+function CardFieldController:useActionPoint(playerColor, index)
+    local field = self:findFieldByOwner(playerColor)
+
+    if field == nil or not self.actionPoints:use(playerColor, index) then
+        return false
+    end
+
+    self:addActionPointDisplays(field)
+    return true
+end
+
+function CardFieldController:restoreActionPoint(playerColor, index)
+    local field = self:findFieldByOwner(playerColor)
+
+    if field == nil or not self.actionPoints:restore(playerColor, index) then
+        return false
+    end
+
+    self:addActionPointDisplays(field)
+    return true
+end
+
+function CardFieldController:renewActionPoints(playerColor)
+    local field = self:findFieldByOwner(playerColor)
+
+    if field == nil or not self.actionPoints:renew(playerColor) then
+        return false
+    end
+
+    return self:addActionPointDisplays(field)
 end
 
 function CardFieldController:configureFieldCallbacks(field)
@@ -663,11 +716,11 @@ function CardFieldController:onLoad(savedState)
 
     local built = self.layout.buildAll(self.definitions)
     self.fields = built.fields
-    local actionPointConfig = self.config.actionPointsDisplay or {}
-    self.state = CardFieldState.new(
-        self.fields,
-        savedState,
-        actionPointConfig.count
+    self.state = CardFieldState.new(self.fields, savedState)
+    self.actionPoints:load(
+        self:getActionPointPlayerColors(),
+        type(savedState) == "table"
+            and savedState.actionPointsUsedByPlayer or nil
     )
     self.zoneBehaviors:load(self.fields, savedState)
 
@@ -697,6 +750,9 @@ end
 
 function CardFieldController:getSaveState()
     local savedState = CardFieldState.save(self.state, self.fields)
+    savedState.actionPointsUsedByPlayer = self.actionPoints:save(
+        self:getActionPointPlayerColors()
+    )
     local savedZones = self.zoneBehaviors:save(self.fields)
 
     for key, value in pairs(savedZones) do

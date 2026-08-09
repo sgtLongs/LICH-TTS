@@ -13,6 +13,7 @@ local modules = {
     { "tests/test_hex_grid_controller", { "integration" } },
     { "tests/test_card_field_geometry", { "unit" } },
     { "tests/test_card_fields", { "integration" } },
+    { "tests/test_action_points", { "unit" } },
     { "tests/test_action_zone", { "integration" } },
     { "tests/test_action_zone_regressions", { "unit", "integration" } },
     { "tests/test_deck_generator", { "integration" } },

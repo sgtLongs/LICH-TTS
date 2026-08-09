@@ -62,6 +62,18 @@ function CardFields.renewActionPoints(playerColor)
     return defaultController:renewActionPoints(playerColor)
 end
 
+function CardFields.useActionPoint(playerColor, index)
+    return defaultController:useActionPoint(playerColor, index)
+end
+
+function CardFields.restoreActionPoint(playerColor, index)
+    return defaultController:restoreActionPoint(playerColor, index)
+end
+
+function CardFields.getActionPointStatus(playerColor)
+    return defaultController:getActionPointStatus(playerColor)
+end
+
 function CardFields.onActionPointClicked(index, surface, playerColor)
     return defaultController:onActionPointClicked(index, surface, playerColor)
 end

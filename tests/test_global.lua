@@ -58,7 +58,10 @@ local gameMethods = {
     "onActionZoneCardRotationChanged",
     "onEndTurnClicked",
     "onAdvancePhaseClicked",
-    "onActionPointClicked",
+    "onActionPoint1Clicked",
+    "onActionPoint2Clicked",
+    "onActionPoint3Clicked",
+    "onActionPoint4Clicked",
     "onHexGridClicked",
     "onCardFieldDeckSlotClicked",
     "onDeckSelectionUiClicked",
@@ -267,9 +270,8 @@ Test.case("global turn and action buttons unwrap player data", function()
         )
         Test.equal(card, context.callsByName.onActionStackUpClicked.arguments[1])
         Test.equal(card, context.callsByName.onActionStackDownClicked.arguments[1])
-        Test.equal(3, context.callsByName.onActionPointClicked.arguments[1])
-        Test.equal(card, context.callsByName.onActionPointClicked.arguments[2])
-        Test.equal("Red", context.callsByName.onActionPointClicked.arguments[3])
+        Test.equal(card, context.callsByName.onActionPoint3Clicked.arguments[1])
+        Test.equal("Red", context.callsByName.onActionPoint3Clicked.arguments[2])
     end)
 end)
 

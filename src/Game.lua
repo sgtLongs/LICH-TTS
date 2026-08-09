@@ -74,7 +74,6 @@ local publicMethods = {
     "onHeroHealthDecreaseClicked",
     "onHeroHealthIncreaseFiveClicked",
     "onHeroHealthDecreaseFiveClicked",
-    "onActionPointClicked",
     "onObjectPickUp",
     "onObjectDrop",
     "onObjectLeaveContainer",
@@ -105,6 +104,22 @@ for _, methodName in ipairs(publicMethods) do
     Game[name] = function(...)
         return controller[name](controller, ...)
     end
+end
+
+function Game.onActionPoint1Clicked(object, playerColor)
+    return CardFields.onActionPointClicked(1, object, playerColor)
+end
+
+function Game.onActionPoint2Clicked(object, playerColor)
+    return CardFields.onActionPointClicked(2, object, playerColor)
+end
+
+function Game.onActionPoint3Clicked(object, playerColor)
+    return CardFields.onActionPointClicked(3, object, playerColor)
+end
+
+function Game.onActionPoint4Clicked(object, playerColor)
+    return CardFields.onActionPointClicked(4, object, playerColor)
 end
 
 return Game

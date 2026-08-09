@@ -168,6 +168,7 @@ the full suite. Normal test runs also reject generated-region drift.
 - `tests/test_dungeon_map.lua`: dungeon UI assignment and asynchronous traversal.
 - `tests/test_turn_state.lua`: pure turn progression.
 - `tests/test_turn_system.lua`: integration with mocked TTS globals.
+- `tests/test_action_points.lua`: pure AP use, restoration, renewal, and saves.
 - `tests/test_settings_dungeon_views.lua`: pure UI patch snapshots.
 - `tests/test_game_controller.lua`: dependency-injected composition, load/save,
   persistence failure behavior, and legacy callback return contracts.

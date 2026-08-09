@@ -307,10 +307,10 @@ Test.case("game routes deck slot and deck menu choices", function()
     Test.equal("9636", calls.deckMenuAction)
 end)
 
-Test.case("game routes action point buttons", function()
+Test.case("game routes explicit action point buttons", function()
     local object = {}
 
-    Test.truthy(Game.onActionPointClicked(3, object, "Blue"))
+    Test.truthy(Game.onActionPoint3Clicked(object, "Blue"))
     Test.equal(3, calls.actionPointIndex)
     Test.equal(object, calls.actionPointObject)
     Test.equal("Blue", calls.actionPointPlayerColor)

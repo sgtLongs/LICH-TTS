@@ -92,6 +92,7 @@ end
 local dependencyNames = {
     "src/card_fields/CardFieldGeometry",
     "src/card_fields/ActionZone",
+    "src/action_points/ActionPoints",
     "src/card_fields/DeckSelectionMenu",
     "src/card_fields/CardFieldDefinitions",
     "src/card_fields/CardFieldLayout",
@@ -634,6 +635,17 @@ Test.case("action point buttons toggle for their owner and renew together", func
         Test.falsy(
             CardFields.getSaveState().actionPointsUsedByPlayer.Red[2]
         )
+
+        Test.truthy(CardFields.useActionPoint("Red", 3))
+        Test.falsy(CardFields.useActionPoint("Red", 3))
+        local status = CardFields.getActionPointStatus("Red")
+        Test.equal(3, status.usableCount)
+        Test.equal(4, status.total)
+        Test.deepEqual({false, false, true, false}, status.used)
+        Test.truthy(CardFields.restoreActionPoint("Red", 3))
+        Test.falsy(CardFields.restoreActionPoint("Red", 3))
+        Test.equal(4, CardFields.getActionPointStatus("Red").usableCount)
+        Test.nilValue(CardFields.getActionPointStatus("Green"))
     end)
 end)
 
@@ -938,30 +950,6 @@ Test.case("card field state restores valid Hero stats by owner", function()
     Test.equal(40, fields[1].heroStats.health)
     RealCardFieldState.setHeroStats(state, fields[1], nil)
     Test.nilValue(RealCardFieldState.getHeroStats(state, fields[1]))
-end)
-
-Test.case("card field state restores configured action points by owner", function()
-    local fields = {{
-        fieldId = "physical-red-field",
-        playerColor = "White",
-        ownerColor = "Red"
-    }}
-    local state = RealCardFieldState.new(fields, {
-        actionPointsUsedByPlayer = {
-            Red = {true, false, true, true, true}
-        }
-    }, 4)
-
-    Test.deepEqual(
-        {true, false, true, true},
-        RealCardFieldState.getActionPointsUsed(state, fields[1])
-    )
-    Test.truthy(RealCardFieldState.toggleActionPoint(state, fields[1], 2))
-    Test.falsy(RealCardFieldState.toggleActionPoint(state, fields[1], 5))
-    Test.deepEqual(
-        {true, true, true, true},
-        RealCardFieldState.save(state, fields).actionPointsUsedByPlayer.Red
-    )
 end)
 
 Test.case("a registered zone handles events without facade changes", function()

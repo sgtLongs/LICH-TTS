@@ -116,12 +116,12 @@ local CardFieldConfig = {
         -- world-space height because the central play area is raised above
         -- the card fields.
         intelligence = {
-            position = {x = 4, y = 1.7, z = 13},
+            position = {x = 8, y = 1.7, z = 13},
             label = "INT : ",
             fontColor = {0.2, 0.55, 1, 1}
         },
         health = {
-            position = {x = -4, y = 1.7, z = 13},
+            position = {x = 0, y = 1.7, z = 13},
             label = "HP  :",
             fontColor = {1, 0.2, 0.2, 1}
         },
@@ -179,9 +179,9 @@ local CardFieldConfig = {
 
     actionPointsDisplay = {
         count = 4,
-        position = {x = 0, y = 1.72, z = 13},
-        spacing = {x = 0.8, z = 0},
-        size = {width = 5, height = 5},
+        position = {x = -10, y = 1.72, z = 13},
+        spacing = {x = 1.5, z = 0},
+        size = {width = 6, height = 8},
         usableColor = {1, 1, 1, 1},
         usedColor = {0, 0, 0, 1},
         clickFunctionPrefix = "onActionPoint",
