@@ -30,6 +30,193 @@ loading the entire repository.
 - `types/tts/`: LuaLS-only definitions for TTS globals and APIs; never loaded
   by the game.
 
+## Feature ownership index
+
+Use this index before broad searches. Start with the section that matches the
+requested behavior, then read the named config/data, pure state or rules,
+controller, and closest tests. Cross subsystem boundaries through
+`GameController` or an injected dependency rather than reaching directly into
+another subsystem's state.
+
+### Game lifecycle and callback routing
+
+- `Global.lua` owns only TTS callback signatures and forwards them to
+  `src/Game.lua`; `.tts/objects/Global.lua` is its synchronized published copy.
+- `src/Game.lua` constructs shared services and subsystem defaults.
+  `src/GameController.lua` coordinates load, save, restart, object events, and
+  UI callbacks. Add gameplay decisions to the owning subsystem, not these
+  facades.
+- Start with `tests/test_global.lua`, `tests/test_game.lua`,
+  `tests/test_game_controller.lua`, and `tests/test_composition_smoke.lua`.
+
+### Player card fields, hero stats, and action points
+
+- `src/config/CardFieldConfig.lua` owns stable field/surface GUID mappings,
+  owner colors, zone definitions, deck and hero slots, stat displays, and
+  action-point controls. `playerColor` identifies a physical configured
+  position; `ownerColor` identifies the player who owns it. Do not treat them
+  as interchangeable.
+- `CardFieldDefinitions`, `CardFieldGeometry`, and `CardFieldLayout` derive
+  immutable field geometry. `CardFieldState` owns persisted deck-spawn and hero
+  state. `src/action_points/ActionPoints.lua` owns action-point transitions.
+- `CardFieldController` owns TTS objects, buttons, authorization, and event
+  routing; `CardFields.lua` is the compatibility facade.
+- Start with `tests/test_card_field_geometry.lua`,
+  `tests/test_card_fields.lua`, and `tests/test_action_points.lua`.
+
+### Deck selection, remote deck generation, and card definitions
+
+- Deck choices and spawn geometry live in
+  `src/config/CardFieldConfig.lua`. Selection state/controller/view live in
+  `src/card_fields/DeckSelectionMenu*.lua`.
+- `src/card_fields/DeckGenerator.lua` owns the asynchronous API fetch and TTS
+  deck/hero spawning. `CardApiNormalizer` converts the response to immutable
+  `CardDefinition` values; keep untrusted response validation at that boundary.
+- `data/CardDefinitions.lua` selects stable card feature IDs by API card ID or
+  name and defines defaults. `data/Cards.lua` is currently empty and unused;
+  do not put new definitions or mechanics there.
+- Start with `tests/test_deck_selection_menu.lua`,
+  `tests/test_deck_generator.lua`, `tests/test_card_api_normalizer.lua`, and
+  `tests/test_card_definitions.lua`.
+
+### Generated individual-card behavior
+
+- `src/cards/CardFeatureRegistry.lua` validates and resolves feature
+  descriptors. `src/cards/CardLogic.lua` registers built-ins and keeps the
+  legacy facade. Feature implementations live in `src/cards/features/`.
+- `CardScriptBuilder` combines selected features with the shared lifecycle in
+  `CardRuntimeSource`; `CardHostService` owns Global-side operations performed
+  on live card objects. Configuration for buttons, previews, and generated
+  script context lives in `src/config/CardLogicConfig.lua`.
+- Feature IDs and state versions are save contracts. Test lifecycle behavior
+  and feature combinations, not only generated source text.
+- Start with `tests/test_card_logic.lua`,
+  `tests/test_generated_card_runtime.lua`, and
+  `tests/test_card_definitions.lua`.
+
+### Action-zone stacks and card movement
+
+- `src/card_fields/zones/ActionZoneState.lua` owns persisted stacks and
+  selection. `ActionZoneRules` owns drop/remove/prefer/navigate transitions,
+  and `ActionZoneLayout` calculates card transforms.
+- `ActionZoneController` owns live-card movement, locking, buttons, delayed
+  correction, and event handling. `ZoneBehaviorRegistry` connects it to
+  `CardFieldController`; `src/card_fields/ActionZone.lua` is the compatibility
+  facade.
+- Card-local action buttons that send a card to a field destination live in
+  `src/cards/features/FieldActions.lua`; coordinate changes on both sides of
+  this boundary.
+- Start with `tests/test_action_zone.lua`,
+  `tests/test_action_zone_regressions.lua`, and relevant generated-card tests.
+
+### Turns, drawing, and end-phase death fog
+
+- `src/config/TurnConfig.lua` owns player order, phases, draw timing, and UI
+  IDs. `TurnState` owns pure turn transitions, `DrawPhase` owns draw-count and
+  deck-selection rules, and `TurnView` renders UI patches.
+- `TurnController` owns authorization and asynchronous draws;
+  `TurnSystem.lua` is the compatibility facade. Deck spawning activates a
+  player through the dependency wired in `src/Game.lua`.
+- End-phase placement is coordinated through `HexGridController`.
+  `src/turns/DeathFogRules.lua` selects candidates using the shared surface
+  definitions and rules; do not create a parallel death-fog placement model.
+- Start with `tests/test_turn_state.lua`, `tests/test_turn_system.lua`, and
+  `tests/test_death_fog_rules.lua`.
+
+### Hex board, edit mode, and object placement
+
+- `src/config/HexGridConfig.lua` owns board GUID, schema/tag contracts, grid
+  scale, and interaction visuals. `HexGeometry` owns coordinate math;
+  `HexBoardModel` owns board state; `HexBoardCodec` validates import/export;
+  `HexPlacementRules` owns occupancy and facing decisions.
+- `HexGridBuilder` and `HexGridView` create grid interaction visuals.
+  `HexGridMenu*` owns the cell/spawn picker. `HexGridController` orchestrates
+  edit mode and persistence and delegates live spawning to `HexObjectSpawner`.
+- Spawnable definitions live in `src/hex/HexSpawnDefinitions.lua`; their saved
+  TTS templates live in `data/HexGridObjectTemplates.lua`. Stable template
+  keys are persisted.
+- Start with `tests/test_hex_geometry.lua`, `tests/test_hex_board_model.lua`,
+  `tests/test_hex_board_state.lua`, `tests/test_hex_grid_controller.lua`,
+  `tests/test_hex_grid_menu.lua`, and `tests/test_hex_object_spawner.lua`.
+
+### Board surfaces
+
+- `src/config/SurfaceConfig.lua` is the canonical list of surface keys,
+  appearance, special flags, and menu IDs. `SurfaceDefinitions` derives
+  placement definitions and `SurfaceTemplateFactory` derives TTS templates;
+  do not duplicate a saved-object template per surface.
+- `SurfaceRules` owns placement/removal eligibility, `SurfaceMenuModel` owns
+  picker state, and `SurfaceController` owns the player interaction and routes
+  spawning through the hex-grid boundary.
+- Start with `tests/test_surfaces.lua` and
+  `tests/test_death_fog_rules.lua`.
+
+### Settings, saved boards, and restart
+
+- `src/config/SettingsConfig.lua` owns menu/schema constants and only exposes
+  legacy aliases for hex-board contracts. `SettingsView` renders the menu;
+  `SettingsMenuController` owns admin authorization, edit mode, save/load,
+  JSON import/export, deck renewal, and restart actions.
+- `src/boards/SavedBoardCatalog.lua` owns saved-board identity, naming,
+  selection, paging, and serialization. It is constructed once in
+  `src/Game.lua` and shared with Dungeon Map. `src/SettingsMenu.lua` is the
+  compatibility facade.
+- Restart orchestration belongs in `GameController`; preserve the documented
+  distinction between resetting game state, preserving the current map, and
+  clearing placed surfaces.
+- Start with `tests/test_settings_menu.lua`,
+  `tests/test_saved_board_catalog.lua`, and `tests/test_game_controller.lua`.
+
+### Dungeon map and board traversal
+
+- `src/dungeon/DungeonMapConfig.lua` owns map schema, radius, load-lock timing,
+  and UI IDs. `DungeonMapState` owns cells, assignments, current level, and
+  serialization; `DungeonMapRules` owns assignment, paging, adjacency, and
+  traversal validation; `DungeonMapView` renders patches.
+- `DungeonMapController` owns admin edit mode and asynchronous traversal. It
+  refers to saved boards by stable catalog ID and loads them through injected
+  Settings/board-loading boundaries. `DungeonMap.lua` is the compatibility
+  facade.
+- Start with `tests/test_dungeon_map_state.lua`,
+  `tests/test_dungeon_map_rules.lua`, `tests/test_dungeon_map.lua`, and
+  `tests/test_settings_dungeon_views.lua`.
+
+### Persistence and shared asynchronous coordination
+
+- `src/persistence/GameSaveCodec.lua` owns the root save envelope, schema, and
+  legacy migration. Each subsystem owns its normalized nested save state; keep
+  unknown fields when practical.
+- `src/boards/BoardLoadCoordinator.lua` is the single generation/timeout
+  authority for Settings and Dungeon loads and is shared from `src/Game.lua`.
+  `src/tts/Scheduler.lua` adapts `Wait`; use `tests/support/FakeWait.lua` for
+  deterministic frames, time, conditions, cancellation, and timeout coverage.
+- Start with `tests/test_game_save_codec.lua`,
+  `tests/test_compatibility_fixtures.lua`, and
+  `tests/test_board_load_coordinator.lua`.
+
+### Global UI and TTS boundary adapters
+
+- UI IDs and visual constants belong to the owning config. Views return
+  ordered `src/ui/UiPatch.lua` records; only `src/tts/UiAdapter.lua` applies
+  them. `Runtime`, `Scheduler`, `WebAdapter`, and `ObjectAdapter` isolate other
+  TTS APIs.
+- `.tts/objects/Global.xml` is the published UI. Repeated generated regions are
+  rendered by `tests/runner/Program.cs` from their owning Lua definitions;
+  follow the synchronization workflow below.
+- Start with the feature's view test, `tests/test_tts_adapters.lua`,
+  `tests/test_global.lua`, and generated-UI validation.
+
+### Object-local scripts
+
+- `object_logic/*.lua` contains canonical scripts for boards, cabinet storage,
+  state toggles, and static decoration. `ObjectScriptManifest.json` maps each
+  canonical source to sidecar and embedded published copies under
+  `.tts/objects/`.
+- Preserve `CabinetStorage.lua`'s established `script_state` shape and object
+  identity assumptions. Read `object_logic/README.md`, edit only the canonical
+  source, then synchronize as described below.
+- Start with `tests/test_object_scripts.lua` and the object-script drift check.
+
 ## Lua development infrastructure
 
 - Lua Language Server is configured by `.luarc.json` for Lua 5.2, repository

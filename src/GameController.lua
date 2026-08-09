@@ -28,7 +28,8 @@ function GameController.new(dependencies)
         json = dependencies.json,
         savedBoardCatalog = dependencies.savedBoardCatalog,
         boardLoadCoordinator = dependencies.boardLoadCoordinator,
-        uiAdapter = dependencies.uiAdapter
+        uiAdapter = dependencies.uiAdapter,
+        cardPreview = nil
     }, GameController)
 end
 
@@ -187,6 +188,65 @@ function GameController:getCardButtonConfig()
     return self.cardLogic.getButtonConfig()
 end
 
+function GameController:showCardPreview(card, playerColor, imageUrl)
+    local previewConfig = type(self.cardLogic.getPreviewConfig) == "function"
+        and self.cardLogic.getPreviewConfig() or nil
+
+    if card == nil
+        or type(playerColor) ~= "string"
+        or playerColor == ""
+        or type(imageUrl) ~= "string"
+        or imageUrl == ""
+        or type(previewConfig) ~= "table"
+        or self.uiAdapter == nil
+    then
+        return false
+    end
+
+    if self.cardPreview ~= nil then
+        self:hideCardPreview(
+            self.cardPreview.card,
+            self.cardPreview.playerColor
+        )
+    end
+
+    self.cardPreview = {card = card, playerColor = playerColor}
+    self.uiAdapter.setAttribute(previewConfig.imageId, "image", imageUrl)
+    self.uiAdapter.setAttribute(
+        previewConfig.rootId,
+        "visibility",
+        playerColor
+    )
+    self.uiAdapter.setAttribute(previewConfig.rootId, "active", "true")
+    return true
+end
+
+function GameController:hideCardPreview(card, playerColor)
+    local preview = self.cardPreview
+
+    if preview == nil
+        or preview.card ~= card
+        or preview.playerColor ~= playerColor
+    then
+        return false
+    end
+
+    local previewConfig = self.cardLogic.getPreviewConfig()
+    self.cardPreview = nil
+
+    if self.uiAdapter == nil or type(previewConfig) ~= "table" then
+        return false
+    end
+
+    self.uiAdapter.setAttribute(previewConfig.rootId, "active", "false")
+
+    if type(card.call) == "function" then
+        pcall(card.call, "hideCardActions")
+    end
+
+    return true
+end
+
 function GameController:getCardFieldDestination(fieldId, destination)
     return self.cardFields.getCardFieldDestination(fieldId, destination)
 end
@@ -332,6 +392,16 @@ function GameController:onDungeonMapUiClicked(playerColor, action)
 end
 
 function GameController:onPlayerAction(player, action, targets)
+    if self.cardPreview ~= nil
+        and player ~= nil
+        and player.color == self.cardPreview.playerColor
+    then
+        self:hideCardPreview(
+            self.cardPreview.card,
+            self.cardPreview.playerColor
+        )
+    end
+
     return self.hexGrid.onPlayerAction(player, action, targets)
 end
 
@@ -344,6 +414,10 @@ function GameController:onObjectNumberTyped(object, playerColor, number, alt)
 end
 
 function GameController:onObjectDestroy(object)
+    if self.cardPreview ~= nil and self.cardPreview.card == object then
+        self:hideCardPreview(object, self.cardPreview.playerColor)
+    end
+
     self.hexGrid.onObjectDestroy(object)
 end
 

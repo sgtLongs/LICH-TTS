@@ -202,9 +202,12 @@ TTS after changing those boundaries and before publishing a save:
    and another request cannot start for the same field while loading.
 3. Draw and return cards through a multi-card deck, a one-card deck, and after
    the original deck is gone. Confirm hand cards expose no scripted buttons.
-4. Open and close the actions menu, then destroy, damn, unequip, and return
-   representative generated cards. Save/reload an older tapped card and a card
-   with unversioned feature state.
+4. Open the actions menu and confirm gravity is disabled so the card stays
+   raised while its player-only preview is visible on the left. Click elsewhere
+   and each action button; confirm the prior gravity setting is restored,
+   the preview closes, and the card lowers before destroy, damn, unequip, or
+   return continues. Save/reload an older tapped card and a card with
+   unversioned feature state.
 5. Drop cards into every rotated action field, create/navigate/dissolve a stack,
    move it across fields, and verify original locks are restored.
 6. Enter board edit mode; place one-cell and two-cell objects, rotate, replace,

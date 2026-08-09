@@ -4,6 +4,8 @@ local callbackNames = {
     "onLoad",
     "onSave",
     "getCardButtonConfig",
+    "showCardPreview",
+    "hideCardPreview",
     "getCardFieldDestination",
     "onObjectHover",
     "onObjectPickUp",
@@ -44,6 +46,8 @@ local gameMethods = {
     "onLoad",
     "onSave",
     "getCardButtonConfig",
+    "showCardPreview",
+    "hideCardPreview",
     "getCardFieldDestination",
     "refreshCardButtons",
     "onObjectHover",
@@ -198,6 +202,8 @@ end)
 
 Test.case("global card routes validate parameter tables", function()
     withGlobalCallbacks(function(context)
+        Test.falsy(showCardPreview(nil))
+        Test.falsy(hideCardPreview("card"))
         Test.nilValue(getCardFieldDestination(nil))
         Test.falsy(returnCardToHandThroughDeck(nil))
         Test.falsy(onCardLeavesActionZone("card"))
@@ -206,6 +212,26 @@ Test.case("global card routes validate parameter tables", function()
 
         local card = {}
         local deck = {}
+        Test.equal(
+            "result-showCardPreview",
+            showCardPreview({
+                card = card,
+                playerColor = "Red",
+                imageUrl = "front.png"
+            })
+        )
+        Test.equal(
+            card,
+            context.callsByName.showCardPreview.arguments[1]
+        )
+        Test.equal(
+            "front.png",
+            context.callsByName.showCardPreview.arguments[3]
+        )
+        Test.equal(
+            "result-hideCardPreview",
+            hideCardPreview({card = card, playerColor = "Red"})
+        )
         local destination = getCardFieldDestination({
             fieldId = "field-a",
             destination = "abyss"

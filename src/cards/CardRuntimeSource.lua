@@ -114,6 +114,8 @@ local function makeRuntimeConfigRefresh(descriptors)
             or cardContext.actionsButtonWidth
         cardContext.actionsButtonHeight = tonumber(config.actions.height)
             or cardContext.actionsButtonHeight
+        cardContext.actionsLiftHeight = tonumber(config.actions.liftHeight)
+            or cardContext.actionsLiftHeight
     end
 ]=]
     end
@@ -227,6 +229,10 @@ local function removeExistingFeatureButtons()
 end
 
 local function removeAllCardButtons()
+    if type(hideCardActions) == "function" then
+        hideCardActions()
+    end
+
     if type(self.clearButtons) == "function" then
         self.clearButtons()
         return

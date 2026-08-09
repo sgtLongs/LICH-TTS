@@ -303,6 +303,10 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
         spawnParameters.data.LuaScript,
         '"actions", "onActionsClicked"'
     )
+    Test.contains(
+        spawnParameters.data.LuaScript,
+        'previewImageUrl = "front.png"'
+    )
     Test.falsy(string.find(
         spawnParameters.data.LuaScript,
         'tooltip = "tap"',

@@ -69,6 +69,11 @@ function CardLogic.getButtonConfig()
     return scriptBuilder:getButtonConfig()
 end
 
+function CardLogic.getPreviewConfig()
+    local config = require("src/config/CardLogicConfig")
+    return config.preview
+end
+
 function CardLogic.build(featureNames, context)
     return scriptBuilder:build(featureNames, context)
 end

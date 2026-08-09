@@ -87,6 +87,72 @@ Test.case("game controller accepts a constructed card-fields port", function()
     Test.deepEqual({}, state.cardFields.deckSpawnedByPlayer)
 end)
 
+Test.case("card previews are player scoped and owned by the opening card", function()
+    local attributes = {}
+    local hiddenCards = {}
+    local card = {
+        call = function(functionName)
+            Test.equal("hideCardActions", functionName)
+            hiddenCards[#hiddenCards + 1] = "card"
+        end
+    }
+    local otherCard = {
+        call = function(functionName)
+            Test.equal("hideCardActions", functionName)
+            hiddenCards[#hiddenCards + 1] = "other"
+        end
+    }
+    local values = dependencies({
+        uiAdapter = {
+            setAttribute = function(id, attribute, value)
+                attributes[id .. "." .. attribute] = value
+            end
+        }
+    })
+    values.cardLogic.getPreviewConfig = function()
+        return {rootId = "preview", imageId = "previewImage"}
+    end
+    values.hexGrid.onPlayerAction = function()
+        return "player-action-result"
+    end
+    local controller = GameController.new(values)
+
+    Test.truthy(controller:showCardPreview(
+        card,
+        "Red",
+        "https://example.test/card.png"
+    ))
+    Test.equal(
+        "https://example.test/card.png",
+        attributes["previewImage.image"]
+    )
+    Test.equal("Red", attributes["preview.visibility"])
+    Test.equal("true", attributes["preview.active"])
+
+    Test.falsy(controller:hideCardPreview(otherCard, "Red"))
+    Test.equal("true", attributes["preview.active"])
+    Test.truthy(controller:hideCardPreview(card, "Red"))
+    Test.equal("false", attributes["preview.active"])
+    Test.equal("card", hiddenCards[1])
+
+    Test.truthy(controller:showCardPreview(card, "Red", "red.png"))
+    Test.truthy(controller:showCardPreview(otherCard, "Blue", "blue.png"))
+    Test.equal("card", hiddenCards[2])
+    Test.equal("Blue", attributes["preview.visibility"])
+
+    Test.equal(
+        "player-action-result",
+        controller:onPlayerAction({color = "Red"}, "Select", {})
+    )
+    Test.equal("true", attributes["preview.active"])
+    Test.equal(
+        "player-action-result",
+        controller:onPlayerAction({color = "Blue"}, "Select", {})
+    )
+    Test.equal("false", attributes["preview.active"])
+    Test.equal("other", hiddenCards[3])
+end)
+
 Test.case("game controller loads legacy saves through injected ports", function()
     local loaded = {}
     local values = dependencies()

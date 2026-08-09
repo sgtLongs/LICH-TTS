@@ -41,6 +41,24 @@
 />
 
 <Panel
+    id="cardPreviewRoot"
+    rectAlignment="MiddleLeft"
+    width="360"
+    height="520"
+    offsetXY="22 0"
+    color="#0B101AF2"
+    padding="10 10 10 10"
+    active="false"
+>
+    <Image
+        id="cardPreviewImage"
+        image=""
+        preserveAspect="true"
+        raycastTarget="false"
+    />
+</Panel>
+
+<Panel
     id="settingsMenuRoot"
     rectAlignment="MiddleCenter"
     width="700"

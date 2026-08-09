@@ -58,6 +58,11 @@ function CardScriptBuilder:getButtonConfig()
                     width = size.width,
                     height = size.height
                 }
+
+                if key == "actions" then
+                    runtimeConfig[key].liftHeight =
+                        tonumber(buttonConfig.liftHeight) or 0
+                end
             end
         end
     end
@@ -100,6 +105,7 @@ function CardScriptBuilder:makeContextSource(context)
         "deckPosition = " .. deckLiteral .. ",",
         "cardScale = "
             .. vectorLiteral(context.cardScale, {1, 1, 1}) .. ",",
+        "previewImageUrl = " .. quoted(context.previewImageUrl) .. ",",
         "drawButtons = "
             .. tostring(self.debugConfig.drawCardButtons == true) .. ",",
         "actionsButtonPosition = "
@@ -109,6 +115,8 @@ function CardScriptBuilder:makeContextSource(context)
             .. tostring(tonumber(buttons.actions.width) or 1200) .. ",",
         "actionsButtonHeight = "
             .. tostring(tonumber(buttons.actions.height) or 500) .. ",",
+        "actionsLiftHeight = "
+            .. tostring(tonumber(buttons.actions.liftHeight) or 0) .. ",",
         "destroyButtonPosition = "
             .. vectorLiteral(buttons.destroy.position, {1.8, 0.3, 0})
             .. ",",

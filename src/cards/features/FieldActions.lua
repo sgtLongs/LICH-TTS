@@ -39,6 +39,9 @@ return {
     },
     source = [=[
 local actionButtonsVisible = false
+local actionLiftBaseY = nil
+local actionOriginalUseGravity = nil
+local actionPreviewPlayerColor = nil
 local returnToHandInProgress = false
 local actionButtonFunctions = {
     onDestroyCardClicked = true,
@@ -58,6 +61,111 @@ local function findCardButton(clickFunction)
     return nil
 end
 
+local function setActionCardLifted(lifted)
+    local function restoreGravity()
+        if actionOriginalUseGravity ~= nil then
+            self.use_gravity = actionOriginalUseGravity
+            actionOriginalUseGravity = nil
+        end
+    end
+
+    if type(self.getPosition) ~= "function" then
+        actionLiftBaseY = nil
+
+        if not lifted then
+            restoreGravity()
+        end
+
+        return
+    end
+
+    local position = self.getPosition()
+
+    if position == nil
+        or tonumber(position.x) == nil
+        or tonumber(position.y) == nil
+        or tonumber(position.z) == nil
+    then
+        actionLiftBaseY = nil
+
+        if not lifted then
+            restoreGravity()
+        end
+
+        return
+    end
+
+    if lifted and actionLiftBaseY == nil then
+        actionLiftBaseY = tonumber(position.y)
+        actionOriginalUseGravity = self.use_gravity ~= false
+        self.use_gravity = false
+    end
+
+    local liftHeight = tonumber(cardContext.actionsLiftHeight) or 0
+    local targetY = lifted
+        and actionLiftBaseY + liftHeight
+        or actionLiftBaseY
+
+    if targetY == nil then
+        if not lifted then
+            restoreGravity()
+        end
+
+        return
+    end
+
+    local target = {
+        x = tonumber(position.x),
+        y = targetY,
+        z = tonumber(position.z)
+    }
+
+    if type(self.setPositionSmooth) == "function" then
+        self.setPositionSmooth(target, false, true)
+    elseif type(self.setPosition) == "function" then
+        self.setPosition(target)
+    end
+
+    if not lifted then
+        actionLiftBaseY = nil
+        restoreGravity()
+    end
+end
+
+local function showCardPreview(playerColor)
+    if type(playerColor) ~= "string"
+        or playerColor == ""
+        or type(cardContext.previewImageUrl) ~= "string"
+        or cardContext.previewImageUrl == ""
+        or Global == nil
+        or type(Global.call) ~= "function"
+    then
+        return
+    end
+
+    actionPreviewPlayerColor = playerColor
+    pcall(Global.call, "showCardPreview", {
+        card = self,
+        playerColor = playerColor,
+        imageUrl = cardContext.previewImageUrl
+    })
+end
+
+local function hideCardPreview()
+    if actionPreviewPlayerColor == nil then
+        return
+    end
+
+    if Global ~= nil and type(Global.call) == "function" then
+        pcall(Global.call, "hideCardPreview", {
+            card = self,
+            playerColor = actionPreviewPlayerColor
+        })
+    end
+
+    actionPreviewPlayerColor = nil
+end
+
 local function removeActionButtons()
     local buttons = self.getButtons() or {}
 
@@ -69,7 +177,13 @@ local function removeActionButtons()
         end
     end
 
+    setActionCardLifted(false)
+    hideCardPreview()
     actionButtonsVisible = false
+end
+
+function hideCardActions()
+    removeActionButtons()
 end
 
 local function isCardTapRotated()
@@ -147,7 +261,7 @@ local function makeActionButton(
     }
 end
 
-local function showActionButtons()
+local function showActionButtons(playerColor)
     if cardButtonsSuppressed
         or isCardInHand()
         or not actionZoneTapEnabled
@@ -201,6 +315,8 @@ local function showActionButtons()
         {0.02, 0.22, 0.38, 1},
         "Return to hand"
     ))
+    setActionCardLifted(true)
+    showCardPreview(playerColor)
     actionButtonsVisible = true
 end
 
@@ -228,12 +344,13 @@ function onActionsClicked(object, playerColor, altClick)
     if actionButtonsVisible then
         removeActionButtons()
     else
-        showActionButtons()
+        showActionButtons(playerColor)
     end
 end
 
 function hideActionButtonsDuringCardRotation()
     local shouldRestore = actionButtonsVisible
+    local restorePreviewPlayerColor = actionPreviewPlayerColor
     removeActionButtons()
 
     if not shouldRestore then
@@ -244,7 +361,7 @@ function hideActionButtonsDuringCardRotation()
         Wait.condition(
             function()
                 if not isCardInHand() then
-                    showActionButtons()
+                    showActionButtons(restorePreviewPlayerColor)
                 end
             end,
             function()
@@ -287,7 +404,7 @@ function refreshCardActionButtons()
         and findCardButton("onDestroyCardClicked") == nil
     then
         actionButtonsVisible = false
-        showActionButtons()
+        showActionButtons(actionPreviewPlayerColor)
     end
 
     if not actionButtonsVisible then
@@ -401,12 +518,13 @@ local function normalizeCardBeforeHand()
 end
 
 local function moveCardTo(destination, missingMessage)
+    removeActionButtons()
+
     if type(destination) ~= "table" then
         print(missingMessage)
         return
     end
 
-    removeActionButtons()
     notifyActionZoneCardLeaving()
     self.setPositionSmooth({
         x = destination.x,
@@ -478,6 +596,7 @@ function onUnequipCardClicked(object, playerColor, altClick)
         return
     end
 
+    removeActionButtons()
     local deck = findDeckAtDestination()
 
     if deck == nil then
@@ -511,6 +630,7 @@ function onReturnCardClicked(object, playerColor, altClick)
         return
     end
 
+    removeActionButtons()
     local player = Player[playerColor]
 
     if player == nil then

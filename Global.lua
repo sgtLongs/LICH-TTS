@@ -13,6 +13,26 @@ function getCardButtonConfig()
     return JSON.encode(Game.getCardButtonConfig())
 end
 
+function showCardPreview(parameters)
+    if type(parameters) ~= "table" then
+        return false
+    end
+
+    return Game.showCardPreview(
+        parameters.card,
+        parameters.playerColor,
+        parameters.imageUrl
+    )
+end
+
+function hideCardPreview(parameters)
+    if type(parameters) ~= "table" then
+        return false
+    end
+
+    return Game.hideCardPreview(parameters.card, parameters.playerColor)
+end
+
 function getCardFieldDestination(parameters)
     if type(parameters) ~= "table" then
         return nil

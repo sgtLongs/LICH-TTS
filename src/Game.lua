@@ -10,6 +10,7 @@ local SettingsMenu = require("src/SettingsMenu")
 local Runtime = require("src/tts/Runtime")
 local Scheduler = require("src/tts/Scheduler")
 local TurnSystem = require("src/turns/TurnSystem")
+local UiAdapter = require("src/tts/UiAdapter")
 
 if type(CardFields.configureDefaultDependencies) == "function" then
     CardFields.configureDefaultDependencies({
@@ -47,6 +48,7 @@ local controller = GameController.new({
     settingsMenu = SettingsMenu,
     turnSystem = TurnSystem,
     runtime = Runtime.default(),
+    uiAdapter = UiAdapter.default(),
     savedBoardCatalog = savedBoardCatalog,
     boardLoadCoordinator = boardLoadCoordinator
 })
@@ -62,6 +64,8 @@ local publicMethods = {
     "onObjectHover",
     "onEndTurnClicked",
     "getCardButtonConfig",
+    "showCardPreview",
+    "hideCardPreview",
     "getCardFieldDestination",
     "refreshCardButtons",
     "onAdvancePhaseClicked",

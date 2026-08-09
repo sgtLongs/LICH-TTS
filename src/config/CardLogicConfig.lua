@@ -22,7 +22,9 @@ local CardLogicConfig = {
         actions = {
             position = {x = 0, y = 0.3, z = -2.2},
             width = 1200,
-            height = 500
+            height = 500,
+            -- World-space distance the card rises while its actions are open.
+            liftHeight = 1.5
         },
         destroy = {
             position = actionButtonPosition(-1, 1)
@@ -36,6 +38,11 @@ local CardLogicConfig = {
         returnToHand = {
             position = actionButtonPosition(1, 0)
         }
+    },
+
+    preview = {
+        rootId = "cardPreviewRoot",
+        imageId = "cardPreviewImage"
     }
 }
 

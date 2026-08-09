@@ -484,6 +484,10 @@ Test.case("card button runtime config exposes current dimensions", function()
 
     Test.equal(Config.buttons.actions.width, config.actions.width)
     Test.equal(Config.buttons.actions.height, config.actions.height)
+    Test.equal(
+        Config.buttons.actions.liftHeight,
+        config.actions.liftHeight
+    )
     Test.equal(Config.buttons.actionList.width, config.destroy.width)
     Test.equal(Config.buttons.actionList.height, config.destroy.height)
     Test.equal(Config.buttons.damn.position, config.damn.position)

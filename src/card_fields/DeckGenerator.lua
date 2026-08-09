@@ -80,9 +80,16 @@ local function makeDeckData(definitions, deckSize, scriptContext)
     for deckId, definition in ipairs(definitions) do
         local cardId = deckId * 100
         local customDeckEntry = makeCustomDeckEntry(definition)
+        local cardScriptContext = {}
+
+        for key, value in pairs(scriptContext or {}) do
+            cardScriptContext[key] = value
+        end
+
+        cardScriptContext.previewImageUrl = definition.images.front
         local cardScript = CardLogic.build(
             definition.featureIds,
-            scriptContext
+            cardScriptContext
         )
 
         customDeck[deckId] = customDeckEntry

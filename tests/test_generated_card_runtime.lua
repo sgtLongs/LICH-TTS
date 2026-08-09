@@ -14,6 +14,7 @@ local runtimeGlobalNames = {
     "onHover",
     "onCardTapped",
     "onActionsClicked",
+    "hideCardActions",
     "onSave",
     "hideActionButtonsDuringCardRotation",
     "refreshCardActionButtons",
@@ -65,13 +66,17 @@ local function runGenerated(options, testFunction)
         objects = options.objects or {},
         moving = options.moving == true
     }
+    environment.position = copyVector(
+        options.position or {x = 0, y = 0, z = 0}
+    )
     local nextButtonIndex = 1
     local card = {
         tag = options.tag or "Card",
         held_by_color = options.heldByColor,
         loading_custom = options.loadingCustom == true,
         spawning = options.spawning == true,
-        use_hands = false
+        use_hands = false,
+        use_gravity = options.useGravity ~= false
     }
 
     environment.card = card
@@ -121,6 +126,9 @@ local function runGenerated(options, testFunction)
     card.getRotation = function()
         return copyVector(environment.rotation)
     end
+    card.getPosition = function()
+        return copyVector(environment.position)
+    end
     if not options.noSmoothRotation then
         card.setRotationSmooth = function(rotation, collide, fast)
             environment.rotation = copyVector(rotation)
@@ -141,6 +149,7 @@ local function runGenerated(options, testFunction)
         environment.rotation.y = environment.rotation.y + copied.y
     end
     card.setPositionSmooth = function(position, collide, fast)
+        environment.position = copyVector(position)
         environment.events[#environment.events + 1] = "move"
         environment.smoothPositions[#environment.smoothPositions + 1] = {
             position = copyVector(position),
@@ -512,7 +521,8 @@ Test.case("generated cards consume runtime button configuration", function()
             actions = {
                 position = {x = 4, y = 5, z = 6},
                 width = 777,
-                height = 888
+                height = 888,
+                liftHeight = 2.25
             }
         }
     }, function(environment)
@@ -524,11 +534,16 @@ Test.case("generated cards consume runtime button configuration", function()
         Test.equal(6, actions.position.z)
         Test.equal(777, actions.width)
         Test.equal(888, actions.height)
+        onActionsClicked(environment.card, "Red", false)
+        Test.equal(2.25, environment.position.y)
     end)
 end)
 
 Test.case("generated actions button toggles the side controls", function()
-    runGenerated({}, function(environment)
+    runGenerated({
+        context = {previewImageUrl = "https://example.test/card.png"},
+        position = {x = 2, y = 3, z = 4}
+    }, function(environment)
         onLoad("")
 
         Test.truthy(findButton(environment, "onActionsClicked"))
@@ -544,10 +559,48 @@ Test.case("generated actions button toggles the side controls", function()
         Test.truthy(findButton(environment, "onUnequipCardClicked"))
         Test.truthy(findButton(environment, "onReturnCardClicked"))
         Test.equal(5, #environment.buttons)
+        Test.equal(4.5, environment.position.y)
+        Test.falsy(environment.card.use_gravity)
+        Test.equal(
+            "showCardPreview",
+            environment.globalCalls[#environment.globalCalls].functionName
+        )
+        Test.equal(
+            "https://example.test/card.png",
+            environment.globalCalls[#environment.globalCalls]
+                .parameters.imageUrl
+        )
 
         onActionsClicked(environment.card, "Red", false)
         Test.equal(1, #environment.buttons)
+        Test.equal(3, environment.position.y)
+        Test.truthy(environment.card.use_gravity)
         Test.truthy(findButton(environment, "onActionsClicked"))
+        Test.equal(
+            "hideCardPreview",
+            environment.globalCalls[#environment.globalCalls].functionName
+        )
+
+        onActionsClicked(environment.card, "Red", false)
+        Test.equal(4.5, environment.position.y)
+        onDestroyCardClicked(environment.card, "Red", false)
+        Test.equal(3, environment.position.y)
+        Test.nilValue(findButton(environment, "onDestroyCardClicked"))
+        Test.equal(
+            "hideCardPreview",
+            environment.globalCalls[#environment.globalCalls].functionName
+        )
+    end)
+end)
+
+Test.case("generated action previews preserve disabled card gravity", function()
+    runGenerated({useGravity = false}, function(environment)
+        onLoad("")
+        onActionsClicked(environment.card, "Red", false)
+        Test.falsy(environment.card.use_gravity)
+
+        onActionsClicked(environment.card, "Red", false)
+        Test.falsy(environment.card.use_gravity)
     end)
 end)
 
