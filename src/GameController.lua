@@ -577,14 +577,12 @@ function GameController:navigateCardPreviewStack(preview, stackDirection)
     end
 
     self:restorePreviewStackLifts(preview)
-    local triggerLiftReleased = false
 
     if type(preview.triggerCard.call) == "function" then
-        local succeeded, released = pcall(
+        pcall(
             preview.triggerCard.call,
             "releaseCardActionLiftForStackPreview"
         )
-        triggerLiftReleased = succeeded and released == true
     end
 
     preview.card = selectedCard
@@ -623,13 +621,15 @@ function GameController:navigateCardPreviewStack(preview, stackDirection)
                 or preview.stackIndex
         end
 
+        -- As with ActionZoneController:arrangeState, move the selected card
+        -- last so overlapping cards render behind the card in the preview.
         for _, stackCard in ipairs(preview.stackCards) do
-            if triggerLiftReleased
-                or stackCard ~= preview.triggerCard
-            then
+            if stackCard ~= selectedCard then
                 self:liftPreviewStackCard(preview, stackCard)
             end
         end
+
+        self:liftPreviewStackCard(preview, selectedCard)
     end, 2)
 
     return true

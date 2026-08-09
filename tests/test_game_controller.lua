@@ -217,6 +217,7 @@ end)
 Test.case("preview arrows move the preview to the selected stack card", function()
     local scheduled = {}
     local calls = {}
+    local movedCards = {}
     local controller = nil
     local currentPosition = {x = 0, y = 2, z = 0}
     local currentCard = {
@@ -232,7 +233,8 @@ Test.case("preview arrows move the preview to the selected stack card", function
             end
 
             if functionName == "releaseCardActionLiftForStackPreview" then
-                return true
+                -- Older saved scripts may not acknowledge this callback.
+                return nil
             end
 
             calls[#calls + 1] = {card = "current", name = functionName}
@@ -242,6 +244,7 @@ Test.case("preview arrows move the preview to the selected stack card", function
         end,
         setPositionSmooth = function(position)
             currentPosition = position
+            movedCards[#movedCards + 1] = "current"
         end
     }
     local selectedCard = nil
@@ -269,6 +272,7 @@ Test.case("preview arrows move the preview to the selected stack card", function
         end,
         setPositionSmooth = function(position)
             selectedPosition = position
+            movedCards[#movedCards + 1] = "selected"
         end
     }
     local attributes = {}
@@ -354,9 +358,11 @@ Test.case("preview arrows move the preview to the selected stack card", function
     Test.truthy(navigationContexts[2].preserveCardPreview)
     Test.equal(2, scheduled[5].frameCount)
     Test.equal(2, scheduled[6].frameCount)
+    movedCards = {}
     scheduled[6].callback()
     Test.equal(3.5, currentPosition.y)
     Test.equal(3.5, selectedPosition.y)
+    Test.deepEqual({"selected", "current"}, movedCards)
 
     local scheduledBeforeStackSelection = #scheduled
     controller:onPlayerAction(
