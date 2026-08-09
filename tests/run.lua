@@ -34,6 +34,7 @@ local modules = {
     { "tests/test_settings_dungeon_views", { "unit" } },
     { "tests/test_dungeon_map", { "integration" } },
     { "tests/test_turn_state", { "unit" } },
+    { "tests/test_mock_player_feature", { "unit", "integration" } },
     { "tests/test_turn_system", { "integration" } },
     { "tests/test_settings_menu", { "integration" } },
     { "tests/test_composition_smoke", { "integration" } },

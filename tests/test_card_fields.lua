@@ -99,6 +99,14 @@ function DeckSelectionMenu.handleAction(playerColor, action)
     return records.menuActionResult
 end
 
+function DeckSelectionMenu.generateRandom(field, spawnPosition)
+    records.randomDeck = {
+        field = field,
+        spawnPosition = spawnPosition
+    }
+    return records.randomDeckResult, records.randomDeckChoice
+end
+
 local dependencyNames = {
     "src/card_fields/CardFieldGeometry",
     "src/card_fields/ActionZone",
@@ -285,6 +293,8 @@ local function withFixture(testFunction)
         menuInitializeCount = 0,
         menuOpenResult = true,
         menuActionResult = "menu-result",
+        randomDeckResult = true,
+        randomDeckChoice = {lootId = 9636, name = "Arysa Andrews"},
         stoppedWaits = {},
         vectorLineUpdates = 0,
         waits = {}
@@ -831,6 +841,24 @@ Test.case("renewing a deck slot reports a missing surface", function()
         CardFields.onLoad({deckSpawnedByPlayer = {Red = true}})
 
         Test.falsy(CardFields.renewDeckSlotButton("Red"))
+    end)
+end)
+
+Test.case("mock players generate a random deck at their field", function()
+    withFixture(function(environment)
+        environment.addSurface("red-surface")
+        environment.addSurface("blue-surface")
+        CardFields.onLoad(nil)
+
+        local accepted, deck = CardFields.spawnRandomDeck("Red")
+
+        Test.truthy(accepted)
+        Test.equal(records.randomDeckChoice, deck)
+        Test.equal(CardFields.getFields()[1], records.randomDeck.field)
+        Test.equal(14, records.randomDeck.spawnPosition.x)
+        Test.equal(22, records.randomDeck.spawnPosition.z)
+        Test.truthy(CardFields.getFields()[1].isMockPlayer)
+        Test.falsy(CardFields.spawnRandomDeck("White"))
     end)
 end)
 

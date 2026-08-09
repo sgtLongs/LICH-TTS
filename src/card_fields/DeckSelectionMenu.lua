@@ -21,4 +21,8 @@ function DeckSelectionMenu.handleAction(playerColor, action)
     return defaultController.handleAction(playerColor, action)
 end
 
+function DeckSelectionMenu.generateRandom(field, spawnPosition)
+    return defaultController.generateRandom(field, spawnPosition)
+end
+
 return DeckSelectionMenu

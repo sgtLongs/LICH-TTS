@@ -19,6 +19,7 @@ local function makeContext(parameters)
         onBoardLoadStarted = parameters.onBoardLoadStarted,
         onBoardLoadCompleted = parameters.onBoardLoadCompleted,
         setEditMode = parameters.setEditMode,
+        addMockPlayer = parameters.addMockPlayer,
         renewDeckSlotButton = parameters.renewDeckSlotButton,
         restartGame = parameters.restartGame
     }
@@ -249,6 +250,11 @@ function SettingsMenuController.new(dependencies)
             playerIsAdmin and "true" or "false"
         )
         uiAdapter.setAttribute(
+            config.ui.addMockPlayerButtonId,
+            "interactable",
+            playerIsAdmin and "true" or "false"
+        )
+        uiAdapter.setAttribute(
             config.ui.saveTabButtonId,
             "interactable",
             playerIsAdmin and "true" or "false"
@@ -410,6 +416,39 @@ function SettingsMenuController.new(dependencies)
         end
 
         if not requireAdmin(playerColor) then
+            return
+        end
+
+        if action == "addMockPlayer" then
+            local succeeded, mockColor, deckName, failureMessage =
+                false, nil, nil, nil
+
+            if context.addMockPlayer ~= nil then
+                succeeded, mockColor, deckName, failureMessage =
+                    context.addMockPlayer()
+            end
+
+            if not succeeded then
+                setStatus(
+                    failureMessage
+                        or "Mock player deck generation is unavailable.",
+                    "#FCA5A5"
+                )
+                return
+            end
+
+            local persistedImmediately = context.persistState ~= nil
+                and context.persistState() or false
+            setStatus(
+                "Added Mock " .. mockColor
+                    .. (deckName ~= nil
+                        and " with " .. deckName or " with a random deck")
+                    .. " to the turn rotation."
+                    .. (persistedImmediately
+                        and ""
+                        or " Save the TTS game to make it permanent."),
+                persistedImmediately and "#86EFAC" or "#FDE68A"
+            )
             return
         end
 

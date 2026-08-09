@@ -1,4 +1,7 @@
 local GameSaveCodec = require("src/persistence/GameSaveCodec")
+local MockPlayerFeature = require(
+    "src/mock_players/MockPlayerFeature"
+)
 
 local GameController = {}
 GameController.__index = GameController
@@ -70,6 +73,8 @@ function GameController.new(dependencies)
         json = dependencies.json,
         savedBoardCatalog = dependencies.savedBoardCatalog,
         boardLoadCoordinator = dependencies.boardLoadCoordinator,
+        mockPlayerFeature = dependencies.mockPlayerFeature
+            or MockPlayerFeature,
         uiAdapter = dependencies.uiAdapter,
         scheduleFrames = dependencies.scheduleFrames or function(callback)
             callback()
@@ -145,6 +150,12 @@ function GameController:onLoad(saveState)
         onBoardLoadCompleted = self.dungeonMap.onExternalBoardLoadCompleted,
         onSavedBoardsChanged = self.dungeonMap.onSavedBoardsChanged,
         setEditMode = self.hexGrid.setEditMode,
+        addMockPlayer = function()
+            return self.mockPlayerFeature.addWithRandomDeck(
+                self.turnSystem,
+                self.cardFields
+            )
+        end,
         renewDeckSlotButton = self.cardFields.renewDeckSlotButton,
         restartGame = function(playerColor)
             return self:restartGame(playerColor)

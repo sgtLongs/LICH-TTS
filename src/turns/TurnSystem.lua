@@ -32,8 +32,16 @@ function TurnSystem.endTurn(playerColor)
     return defaultController.endTurn(playerColor)
 end
 
-function TurnSystem.activatePlayer(playerColor)
-    return defaultController.activatePlayer(playerColor)
+function TurnSystem.activatePlayer(playerColor, preserveMock)
+    return defaultController.activatePlayer(playerColor, preserveMock)
+end
+
+function TurnSystem.addMockPlayer()
+    return defaultController.addMockPlayer()
+end
+
+function TurnSystem.removeMockPlayer(playerColor)
+    return defaultController.removeMockPlayer(playerColor)
 end
 
 function TurnSystem.isPlayerActive(playerColor)

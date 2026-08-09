@@ -1,5 +1,8 @@
 local ChatConfig = require("src/config/ChatConfig")
 local Config = require("src/config/TurnConfig")
+local MockPlayerFeature = require(
+    "src/mock_players/MockPlayerFeature"
+)
 local DrawPhase = require("src/turns/DrawPhase")
 local Runtime = require("src/tts/Runtime")
 local Scheduler = require("src/tts/Scheduler")
@@ -34,6 +37,14 @@ function TurnController.new(dependencies)
     local isDrawing = false
     local isPlacingDeathFog = false
     local controller = {}
+    local mockPlayers = dependencies.mockPlayers
+        or MockPlayerFeature.new({
+            turnConfig = config,
+            config = dependencies.mockPlayerConfig,
+            scheduler = scheduler,
+            runtime = runtime,
+            getPlayer = getPlayer
+        })
 
     local function scheduleTime(callback, delay)
         if type(scheduler.time) == "function" then
@@ -50,6 +61,12 @@ function TurnController.new(dependencies)
     local function getPlayerName(playerColor)
         if playerColor == nil then
             return nil
+        end
+
+        local mockName = mockPlayers:getName(playerColor)
+
+        if mockName ~= nil then
+            return mockName
         end
 
         local player = getPlayer(playerColor)
@@ -82,6 +99,18 @@ function TurnController.new(dependencies)
         isDrawing = false
     end
 
+    local function scheduleMockTurn()
+        mockPlayers:schedule({
+            getCurrentColor = getCurrentColor,
+            isBlocked = function()
+                return isDrawing or isPlacingDeathFog
+            end,
+            advance = function(playerColor)
+                controller.advancePhase(playerColor)
+            end
+        })
+    end
+
     local function cancelDeathFogPlacement()
         local playerColor = getCurrentColor()
         isPlacingDeathFog = false
@@ -95,26 +124,31 @@ function TurnController.new(dependencies)
 
     local function beginDeathFogPlacement()
         local playerColor = getCurrentColor()
+        local isMockPlayer = mockPlayers:isMock(playerColor)
+        local beginPlacement = mockPlayers:getDeathFogStarter(
+            endPhase,
+            playerColor
+        )
 
         if playerColor == nil
             or stateApi.getCurrentPhase(turnState) ~= "end"
-            or endPhase == nil
-            or type(endPhase.beginDeathFogPlacement) ~= "function"
+            or type(beginPlacement) ~= "function"
         then
             isPlacingDeathFog = false
             return
         end
 
         isPlacingDeathFog = true
-        local accepted = endPhase.beginDeathFogPlacement(
+        local accepted = beginPlacement(
             playerColor,
             function(succeeded)
-                if succeeded == true
+                if (succeeded == true or isMockPlayer)
                     and getCurrentColor() == playerColor
                     and stateApi.getCurrentPhase(turnState) == "end"
                 then
                     isPlacingDeathFog = false
                     updateUi()
+                    scheduleMockTurn()
                 end
             end
         )
@@ -171,6 +205,7 @@ function TurnController.new(dependencies)
             isDrawing = false
             stateApi.advancePhase(turnState, playerColor)
             updateUi()
+            scheduleMockTurn()
         end
 
         local function drawNext()
@@ -349,6 +384,8 @@ function TurnController.new(dependencies)
             announceTurn()
         end
 
+        scheduleMockTurn()
+
         return advanced
     end
 
@@ -356,6 +393,7 @@ function TurnController.new(dependencies)
         cancelDrawing()
         cancelDeathFogPlacement()
         restoreActivePlayers(savedTurnState)
+        mockPlayers:load(savedTurnState, activeByColor)
         turnState = stateApi.new(
             getActivePlayerColors(),
             savedTurnState
@@ -370,6 +408,7 @@ function TurnController.new(dependencies)
 
             updateUi()
             announceTurn()
+            scheduleMockTurn()
         end, 1)
     end
 
@@ -381,6 +420,7 @@ function TurnController.new(dependencies)
     function controller.getSaveState()
         local saveState = stateApi.getSaveState(turnState)
         saveState.activePlayerColors = getActivePlayerColors()
+        saveState.mockPlayerColors = mockPlayers:getPlayerColors()
         return saveState
     end
 
@@ -419,14 +459,30 @@ function TurnController.new(dependencies)
         stateApi.endTurn(turnState, playerColor)
         updateUi()
         announceTurn()
+        scheduleMockTurn()
         return true
     end
 
-    function controller.activatePlayer(playerColor)
-        if activeByColor[playerColor] == true
-            or config.playerHexColors[playerColor] == nil
-        then
+    function controller.activatePlayer(playerColor, preserveMock)
+        if config.playerHexColors[playerColor] == nil then
             return false
+        end
+
+        if activeByColor[playerColor] == true then
+            if not mockPlayers:isMock(playerColor) then
+                return false
+            end
+
+            if not mockPlayers:replaceWithReal(
+                playerColor,
+                preserveMock
+            ) then
+                return false
+            end
+
+            updateUi()
+            scheduleMockTurn()
+            return true
         end
 
         local hadCurrentPlayer = getCurrentColor() ~= nil
@@ -438,6 +494,40 @@ function TurnController.new(dependencies)
             announceTurn()
         end
 
+        scheduleMockTurn()
+
+        return true
+    end
+
+    function controller.addMockPlayer()
+        local added, playerColor = mockPlayers:add(activeByColor)
+
+        if not added then
+            return false, nil
+        end
+
+        local hadCurrentPlayer = getCurrentColor() ~= nil
+        activeByColor[playerColor] = true
+        stateApi.setPlayerColors(turnState, getActivePlayerColors())
+        updateUi()
+
+        if not hadCurrentPlayer then
+            announceTurn()
+        end
+
+        scheduleMockTurn()
+        return true, playerColor
+    end
+
+    function controller.removeMockPlayer(playerColor)
+        if not mockPlayers:remove(playerColor) then
+            return false
+        end
+
+        activeByColor[playerColor] = nil
+        stateApi.setPlayerColors(turnState, getActivePlayerColors())
+        updateUi()
+        scheduleMockTurn()
         return true
     end
 

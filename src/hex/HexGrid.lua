@@ -109,6 +109,13 @@ function HexGrid.beginDeathFogPlacement(playerColor, onCompleted)
     )
 end
 
+function HexGrid.beginRandomDeathFogPlacement(playerColor, onCompleted)
+    return defaultController.beginRandomDeathFogPlacement(
+        playerColor,
+        onCompleted
+    )
+end
+
 function HexGrid.cancelDeathFogPlacement(playerColor)
     return defaultController.cancelDeathFogPlacement(playerColor)
 end

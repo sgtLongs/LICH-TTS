@@ -59,6 +59,13 @@ local CardFields = {
     renewDeckSlotButton = function()
         return true
     end,
+    spawnRandomDeck = function(playerColor)
+        calls.randomDeckPlayerColor = playerColor
+        if calls.randomDeckShouldFail then
+            return false, nil
+        end
+        return true, {name = "Arysa Andrews"}
+    end,
     resetForRestart = function()
         calls.cardFieldsRestarted = true
     end
@@ -177,8 +184,17 @@ local TurnSystem = {
     resetForRestart = function()
         calls.turnsRestarted = true
     end,
-    activatePlayer = function(playerColor)
+    activatePlayer = function(playerColor, preserveMock)
         calls.activatedPlayerColor = playerColor
+        calls.preservedMockPlayer = preserveMock
+        return true
+    end,
+    addMockPlayer = function()
+        calls.mockPlayerAdded = true
+        return true, "White"
+    end,
+    removeMockPlayer = function(playerColor)
+        calls.removedMockPlayerColor = playerColor
         return true
     end
 }
@@ -216,6 +232,14 @@ Test.case("game composition injects deck activation into card fields", function(
     Test.truthy(calls.cardFieldDependencies)
     Test.truthy(calls.cardFieldDependencies.onDeckSpawned("Purple"))
     Test.equal("Purple", calls.activatedPlayerColor)
+    Test.falsy(calls.preservedMockPlayer)
+
+    calls.cardFieldDependencies.onDeckSpawned(
+        "White",
+        {isMockPlayer = true}
+    )
+    Test.equal("White", calls.activatedPlayerColor)
+    Test.truthy(calls.preservedMockPlayer)
 end)
 
 Test.case("game save gathers state from each subsystem", function()
@@ -259,6 +283,12 @@ Test.case("game load wires subsystems to saved state", function()
         calls.settingsContext.renewDeckSlotButton
     )
     Test.truthy(type(calls.settingsContext.restartGame) == "function")
+    Test.truthy(type(calls.settingsContext.addMockPlayer) == "function")
+    local added, color, deckName = calls.settingsContext.addMockPlayer()
+    Test.truthy(added)
+    Test.equal("White", color)
+    Test.equal("Arysa Andrews", deckName)
+    Test.equal("White", calls.randomDeckPlayerColor)
     Test.equal(
         SettingsMenu.loadSavedBoardById,
         calls.dungeonContext.loadSavedBoardById
@@ -270,6 +300,19 @@ Test.case("game routes edit mode UI changes", function()
 
     Test.equal("Red", calls.editModePlayerColor)
     Test.equal("True", calls.editModeValue)
+end)
+
+Test.case("game removes a mock when its random deck cannot start", function()
+    calls.randomDeckShouldFail = true
+    local added, color, deckName, failureMessage =
+        calls.settingsContext.addMockPlayer()
+    calls.randomDeckShouldFail = false
+
+    Test.falsy(added)
+    Test.nilValue(color)
+    Test.nilValue(deckName)
+    Test.equal("White", calls.removedMockPlayerColor)
+    Test.contains(failureMessage, "random deck")
 end)
 
 Test.case("game exposes card button runtime configuration", function()

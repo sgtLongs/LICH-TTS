@@ -24,6 +24,7 @@ function DeckSelectionMenuController.new(dependencies)
     local fetchDeck = dependencies.fetchDeck or defaultFetchDeck
     local cancelDeckGeneration = dependencies.cancelDeckGeneration
         or DeckGenerator.cancelAll
+    local randomIndex = dependencies.randomIndex or math.random
     local model = modelApi.new()
     local decksByLootId = {}
     local controller = {}
@@ -92,6 +93,23 @@ function DeckSelectionMenuController.new(dependencies)
             selection.spawnPosition,
             lootId
         )
+    end
+
+    function controller.generateRandom(field, spawnPosition)
+        local deckCount = #config.deckSlot.decks
+
+        if field == nil or deckCount == 0 then
+            return false, nil
+        end
+
+        local index = math.floor(tonumber(randomIndex(deckCount)) or 0)
+        local deck = config.deckSlot.decks[index]
+
+        if deck == nil then
+            return false, nil
+        end
+
+        return fetchDeck(field, spawnPosition, deck.lootId), deck
     end
 
     return controller

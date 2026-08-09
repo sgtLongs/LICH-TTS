@@ -14,6 +14,7 @@ local SettingsConfig = {
         savePageId = "settingsSavePage",
         jsonPageId = "settingsJsonPage",
         editModeToggleId = "settingsEditMode",
+        addMockPlayerButtonId = "settingsAddMockPlayer",
         restartGameButtonId = "settingsRestartGame",
         generalTabButtonId = "settingsGeneralTab",
         saveTabButtonId = "settingsSaveTab",

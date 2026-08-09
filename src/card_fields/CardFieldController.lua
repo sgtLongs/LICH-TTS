@@ -32,6 +32,7 @@ local publicMethodNames = {
     "onActionPointClicked",
     "onDeckSlotClicked",
     "onDeckMenuUiClicked",
+    "spawnRandomDeck",
     "onHeroIntelligenceIncreaseClicked",
     "onHeroIntelligenceDecreaseClicked",
     "onHeroHealthIncreaseClicked",
@@ -707,6 +708,7 @@ function CardFieldController:renewDeckSlotButton(playerColor)
         local ownerColor = CardFieldDefinitions.ownerColor(field)
 
         if ownerColor == playerColor then
+            field.isMockPlayer = nil
             CardFieldState.setDeckSpawned(self.state, field, false)
             CardFieldState.setHeroStats(self.state, field, nil)
             self:addHeroStatDisplays(field)
@@ -860,6 +862,30 @@ end
 
 function CardFieldController:onDeckMenuUiClicked(playerColor, action)
     return self.deckMenu.handleAction(playerColor, action)
+end
+
+function CardFieldController:spawnRandomDeck(playerColor)
+    local field = self:findFieldByOwner(playerColor)
+
+    if field == nil
+        or CardFieldState.isDeckSpawned(self.state, field)
+        or type(self.deckMenu.generateRandom) ~= "function"
+    then
+        return false, nil
+    end
+
+    field.isMockPlayer = true
+    local spawnPosition = self.layout.buttonAlignedDeckSpawnPosition(field)
+    local accepted, deck = self.deckMenu.generateRandom(
+        field,
+        spawnPosition
+    )
+
+    if not accepted then
+        field.isMockPlayer = nil
+    end
+
+    return accepted, deck
 end
 
 function CardFieldController:onObjectPickUp(object)

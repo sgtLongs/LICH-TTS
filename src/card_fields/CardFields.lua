@@ -86,6 +86,10 @@ function CardFields.onDeckMenuUiClicked(playerColor, action)
     return defaultController:onDeckMenuUiClicked(playerColor, action)
 end
 
+function CardFields.spawnRandomDeck(playerColor)
+    return defaultController:spawnRandomDeck(playerColor)
+end
+
 function CardFields.onHeroIntelligenceIncreaseClicked(surface, playerColor)
     return defaultController:onHeroIntelligenceIncreaseClicked(
         surface, playerColor

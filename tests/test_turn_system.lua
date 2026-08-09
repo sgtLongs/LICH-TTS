@@ -1,5 +1,8 @@
 local Test = require("tests/support/Test")
 local Config = require("src/config/TurnConfig")
+local MockPlayerConfig = require(
+    "src/mock_players/MockPlayerConfig"
+)
 local TurnView = require("src/turns/TurnView")
 
 local uiUpdates = {}
@@ -68,8 +71,100 @@ Test.case("restart clears all active players and turn progress", function()
     Test.truthy(TurnSystem.resetForRestart())
     local state = TurnSystem.getSaveState()
     Test.equal(0, #state.activePlayerColors)
+    Test.equal(0, #state.mockPlayerColors)
     Test.nilValue(state.currentTurnColor)
     Test.equal("start", state.currentPhase)
+end)
+
+Test.case("mock players automatically click through their turns", function()
+    local FakeWait = require("tests/support/FakeWait")
+    local Scheduler = require("src/tts/Scheduler")
+    local wait = FakeWait.new()
+    local announced = {}
+    local randomFogPlacements = {}
+    local controller = TurnSystem.new({
+        runtime = {
+            getPlayer = function(color)
+                return {steam_name = color, seated = color == "Red"}
+            end,
+            getAllObjects = function()
+                return {}
+            end
+        },
+        scheduler = Scheduler.new(wait),
+        endPhase = {
+            beginRandomDeathFogPlacement = function(color, onCompleted)
+                randomFogPlacements[#randomFogPlacements + 1] = color
+                onCompleted(true)
+                return true
+            end,
+            cancelDeathFogPlacement = function()
+                return true
+            end
+        },
+        uiAdapter = {apply = function()
+        end},
+        announce = function(message)
+            announced[#announced + 1] = message
+        end,
+        broadcastToColor = function()
+        end
+    })
+
+    controller.onLoad({
+        currentTurnColor = "Red",
+        activePlayerColors = {"Red"}
+    })
+    wait.advanceFrames(1)
+
+    local added, mockColor = controller.addMockPlayer()
+    Test.truthy(added)
+    Test.equal("White", mockColor)
+    Test.deepEqual({"White"}, controller.getSaveState().mockPlayerColors)
+
+    Test.truthy(controller.endTurn("Red"))
+    Test.equal("White", controller.getSaveState().currentTurnColor)
+    Test.contains(announced[#announced], "Mock White")
+
+    wait.advanceTime(MockPlayerConfig.phaseDelaySeconds)
+    Test.equal("main", controller.getSaveState().currentPhase)
+
+    wait.advanceTime(MockPlayerConfig.phaseDelaySeconds)
+    Test.equal("status", controller.getSaveState().currentPhase)
+
+    wait.advanceTime(MockPlayerConfig.phaseDelaySeconds)
+    Test.equal("end", controller.getSaveState().currentPhase)
+    Test.deepEqual({"White"}, randomFogPlacements)
+
+    wait.advanceTime(MockPlayerConfig.phaseDelaySeconds)
+    Test.equal("Red", controller.getSaveState().currentTurnColor)
+    Test.equal("start", controller.getSaveState().currentPhase)
+end)
+
+Test.case("a real deck activation replaces a mock player", function()
+    local controller = TurnSystem.new({
+        getPlayer = function()
+            return {seated = false}
+        end,
+        scheduler = {frames = function(callback)
+            callback()
+        end},
+        uiAdapter = {apply = function()
+        end},
+        announce = function()
+        end,
+        broadcastToColor = function()
+        end
+    })
+
+    controller.onLoad({})
+    local added, mockColor = controller.addMockPlayer()
+    Test.truthy(added)
+    Test.falsy(controller.activatePlayer(mockColor, true))
+    Test.equal(1, #controller.getSaveState().mockPlayerColors)
+    Test.truthy(controller.activatePlayer(mockColor))
+    Test.equal(0, #controller.getSaveState().mockPlayerColors)
+    Test.truthy(controller.isPlayerActive(mockColor))
 end)
 
 Test.case("turn system advances phases and ends after end phase", function()

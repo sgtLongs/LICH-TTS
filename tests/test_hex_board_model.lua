@@ -317,7 +317,7 @@ local function makeGridHarness(name, surfaceY, options)
             return position
         end
     }
-    local cells = {
+    local cells = options.cells or {
         {row = 0, column = 0, x = 0, z = 0},
         {row = 0, column = 1, x = 1, z = 0}
     }
@@ -379,6 +379,9 @@ local function makeGridHarness(name, surfaceY, options)
             destroyed[#destroyed + 1] = object
         end,
         broadcastToColor = function()
+            if options.broadcastToColor ~= nil then
+                options.broadcastToColor()
+            end
         end,
         getGlobalOwner = function()
             return {}
@@ -421,6 +424,7 @@ local function makeGridHarness(name, surfaceY, options)
         schemaVersion = 1,
         runtime = runtime,
         scheduler = scheduler,
+        randomIndex = options.randomIndex,
         builder = builder,
         menu = menu,
         objectSpawner = {
@@ -579,6 +583,47 @@ Test.case("hex grid places death fog only on its outer candidates", function()
     Test.equal(2, sourcePosition.y)
     Test.equal(0.19, sourcePosition.z)
     Test.equal(2, #harness.controller.getModel().placements)
+    Test.nilValue(
+        harness.controller.getSessionSnapshot().deathFogRequest
+    )
+end)
+
+Test.case("hex grid places mock death fog on a random candidate", function()
+    local chosenMaximum = nil
+    local broadcastCount = 0
+    local harness = makeGridHarness("random-fog", 1.25, {
+        cells = {
+            {row = 0, column = 0, x = 0, z = 0},
+            {row = 0, column = 1, x = 1, z = 0},
+            {row = 0, column = -1, x = -1, z = 0}
+        },
+        randomIndex = function(maximum)
+            chosenMaximum = maximum
+            return maximum
+        end,
+        broadcastToColor = function()
+            broadcastCount = broadcastCount + 1
+        end
+    })
+    local completed = nil
+
+    harness.controller.onLoad(nil)
+    harness.callbacks[1].callback()
+
+    Test.truthy(harness.controller.beginRandomDeathFogPlacement(
+        "White",
+        function(succeeded)
+            completed = succeeded
+        end
+    ))
+
+    Test.equal(2, chosenMaximum)
+    Test.equal(0, broadcastCount)
+    Test.truthy(completed)
+    local placement = harness.controller.getModel().placements[1]
+    Test.equal("deathFog", placement.templateKey)
+    Test.equal(0, placement.cell.row)
+    Test.equal(-1, placement.cell.column)
     Test.nilValue(
         harness.controller.getSessionSnapshot().deathFogRequest
     )

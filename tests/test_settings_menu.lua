@@ -12,6 +12,8 @@ local renewedPlayerColor = nil
 local renewSucceeded = true
 local restartedPlayerColor = nil
 local restartSucceeded = true
+local addedMockPlayerCalls = 0
+local addMockPlayerSucceeded = true
 local savedBoardsChangedCalls = 0
 local currentBoardState = nil
 local currentBoardJson = nil
@@ -46,6 +48,8 @@ local function initialize(savedState, options)
     renewSucceeded = options.renewSucceeded ~= false
     restartedPlayerColor = nil
     restartSucceeded = options.restartSucceeded ~= false
+    addedMockPlayerCalls = 0
+    addMockPlayerSucceeded = options.addMockPlayerSucceeded ~= false
     savedBoardsChangedCalls = 0
     currentBoardState = options.currentBoardState or {marker = "current"}
     currentBoardJson = options.currentBoardJson or "current-json"
@@ -152,6 +156,14 @@ local function initialize(savedState, options)
         restartGame = function(playerColor)
             restartedPlayerColor = playerColor
             return restartSucceeded
+        end,
+        addMockPlayer = function()
+            addedMockPlayerCalls = addedMockPlayerCalls + 1
+            return addMockPlayerSucceeded,
+                addMockPlayerSucceeded and "White" or nil,
+                addMockPlayerSucceeded and "Arysa Andrews" or nil,
+                addMockPlayerSucceeded and nil
+                    or "A random deck could not be generated."
         end
     }, savedState)
 end
@@ -184,6 +196,40 @@ Test.case("players can renew only their own deck spawn button", function()
     Test.equal("false", attributes["settingsEditMode.interactable"])
     Test.equal("false", attributes["settingsSaveTab.interactable"])
     Test.equal("false", attributes["settingsRestartGame.interactable"])
+    Test.equal("false", attributes["settingsAddMockPlayer.interactable"])
+end)
+
+Test.case("only admins can add mock players from settings", function()
+    initialize(nil)
+    SettingsMenu.handleAction("Blue", "toggle")
+    SettingsMenu.handleAction("Blue", "addMockPlayer")
+
+    Test.equal(0, addedMockPlayerCalls)
+    Test.contains(messages[#messages].message, "Only an admin")
+
+    SettingsMenu.handleAction("Red", "toggle")
+    SettingsMenu.handleAction("Red", "addMockPlayer")
+
+    Test.equal(1, addedMockPlayerCalls)
+    Test.equal(1, persistCalls)
+    Test.equal("true", attributes["settingsAddMockPlayer.interactable"])
+    Test.equal(
+        "Added Mock White with Arysa Andrews to the turn rotation.",
+        attributes["settingsMenuStatus.text"]
+    )
+end)
+
+Test.case("settings reports when no mock player color is available", function()
+    initialize(nil, {addMockPlayerSucceeded = false})
+    SettingsMenu.handleAction("Red", "toggle")
+    SettingsMenu.handleAction("Red", "addMockPlayer")
+
+    Test.equal(1, addedMockPlayerCalls)
+    Test.equal(0, persistCalls)
+    Test.contains(
+        attributes["settingsMenuStatus.text"],
+        "random deck could not be generated"
+    )
 end)
 
 Test.case("only admins can restart the game from settings", function()

@@ -14,8 +14,11 @@ local UiAdapter = require("src/tts/UiAdapter")
 
 if type(CardFields.configureDefaultDependencies) == "function" then
     CardFields.configureDefaultDependencies({
-        onDeckSpawned = function(ownerColor)
-            return TurnSystem.activatePlayer(ownerColor)
+        onDeckSpawned = function(ownerColor, field)
+            return TurnSystem.activatePlayer(
+                ownerColor,
+                field ~= nil and field.isMockPlayer == true
+            )
         end
     })
 end

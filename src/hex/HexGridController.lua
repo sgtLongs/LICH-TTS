@@ -44,6 +44,7 @@ local publicMethodNames = {
     "setEditMode",
     "clearSurfacesForRestart",
     "beginDeathFogPlacement",
+    "beginRandomDeathFogPlacement",
     "cancelDeathFogPlacement"
 }
 
@@ -166,6 +167,7 @@ function HexGridController.new(options)
         debugConfig = options.debugConfig or DebugConfig,
         runtime = runtime,
         scheduler = scheduler,
+        randomIndex = options.randomIndex or math.random,
         json = options.json or defaultJson(),
         geometry = options.geometry or HexGeometry,
         builder = builder,
@@ -1276,11 +1278,13 @@ local function refreshDeathFogCandidates(self)
     )
 
     if next(self.deathFogCandidateCells) == nil then
-        self.runtime.broadcastToColor(
-            "No hex remains available for death fog.",
-            self.deathFogRequest.playerColor,
-            self.config.selectedColor
-        )
+        if self.deathFogRequest.silent ~= true then
+            self.runtime.broadcastToColor(
+                "No hex remains available for death fog.",
+                self.deathFogRequest.playerColor,
+                self.config.selectedColor
+            )
+        end
         finishDeathFogPlacement(self, true)
     else
         drawGrid(self)
@@ -1405,7 +1409,8 @@ local function placeSurface(
     surfaceDefinition,
     targetCell,
     playerColor,
-    onCompleted
+    onCompleted,
+    silent
 )
     local facingCell = getDeathFogFacingCell(self, targetCell)
 
@@ -1443,7 +1448,7 @@ local function placeSurface(
         self,
         placement,
         playerColor,
-        false,
+        silent == true,
         function(succeeded)
             if succeeded then
                 removeReplacedSurfaces(self, replacedPlacements)
@@ -1475,7 +1480,8 @@ local function placeDeathFog(self, targetCell)
             if succeeded then
                 finishDeathFogPlacement(self, true)
             end
-        end
+        end,
+        request.silent
     )
 end
 
@@ -2080,7 +2086,11 @@ function Controller:setEditMode(enabled, playerColor)
     end
 end
 
-function Controller:beginDeathFogPlacement(playerColor, onCompleted)
+function Controller:beginDeathFogPlacement(
+    playerColor,
+    onCompleted,
+    silent
+)
     if type(playerColor) ~= "string"
         or self.deathFogSurface == nil
         or self.deathFogTemplate == nil
@@ -2094,18 +2104,62 @@ function Controller:beginDeathFogPlacement(playerColor, onCompleted)
     self.surfaces.close()
     self.deathFogRequest = {
         playerColor = playerColor,
-        onCompleted = onCompleted
+        onCompleted = onCompleted,
+        silent = silent == true
     }
     self.deathFogCandidateCells = {}
     refreshDeathFogCandidates(self)
 
-    if self.deathFogRequest ~= nil then
+    if self.deathFogRequest ~= nil
+        and self.deathFogRequest.silent ~= true
+    then
         self.runtime.broadcastToColor(
             "Place death fog on a highlighted hex in the outermost "
                 .. "available ring.",
             playerColor,
             self.config.deathFogCandidateColor
         )
+    end
+
+    return true
+end
+
+function Controller:beginRandomDeathFogPlacement(playerColor, onCompleted)
+    if not self:beginDeathFogPlacement(
+        playerColor,
+        onCompleted,
+        true
+    ) then
+        return false
+    end
+
+    if self.deathFogRequest == nil then
+        return true
+    end
+
+    local candidates = {}
+
+    for _, cell in ipairs(self.cells) do
+        local key = self.cellKey(cell.row, cell.column)
+
+        if self.deathFogCandidateCells[key] ~= nil then
+            candidates[#candidates + 1] = cell
+        end
+    end
+
+    if #candidates == 0 then
+        finishDeathFogPlacement(self, true)
+        return true
+    end
+
+    local index = math.floor(
+        tonumber(self.randomIndex(#candidates)) or 0
+    )
+    local targetCell = candidates[index]
+
+    if targetCell == nil or not placeDeathFog(self, targetCell) then
+        finishDeathFogPlacement(self, false)
+        return false
     end
 
     return true

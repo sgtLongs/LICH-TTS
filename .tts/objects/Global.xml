@@ -232,8 +232,16 @@
                             fontStyle="Bold"
                             color="#F8FAFC"
                             alignment="MiddleLeft"
-                            preferredWidth="490"
+                            preferredWidth="230"
                             preferredHeight="40"
+                        />
+                        <Button
+                            id="settingsAddMockPlayer"
+                            text="ADD MOCK PLAYER"
+                            onClick="onSettingsUiClicked(addMockPlayer)"
+                            preferredWidth="248"
+                            preferredHeight="42"
+                            tooltip="Add an unused player color to the turn rotation and automatically click through its turns."
                         />
                     </HorizontalLayout>
                     <Text

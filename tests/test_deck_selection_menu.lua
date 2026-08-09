@@ -211,6 +211,28 @@ Test.case("deck menu accepts a custom numeric loot ID", function()
     Test.deepEqual({field, position, 24680}, fetched)
 end)
 
+Test.case("deck menu generates a random configured deck", function()
+    local fetched = nil
+    local controller = DeckSelectionMenu.new({
+        randomIndex = function(maximum)
+            Test.equal(#Config.deckSlot.decks, maximum)
+            return maximum
+        end,
+        fetchDeck = function(field, position, lootId)
+            fetched = {field, position, lootId}
+            return true
+        end
+    })
+    local field = {ownerColor = "White"}
+    local position = {x = 4, y = 5, z = 6}
+
+    local accepted, deck = controller.generateRandom(field, position)
+
+    Test.truthy(accepted)
+    Test.equal(Config.deckSlot.decks[#Config.deckSlot.decks], deck)
+    Test.deepEqual({field, position, deck.lootId}, fetched)
+end)
+
 Test.case("deck menu rejects malformed custom loot IDs", function()
     local fetchCount = 0
     local controller = DeckSelectionMenu.new({
