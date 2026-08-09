@@ -130,11 +130,20 @@ function CardFields.onCardLeavesActionZone(object)
     return defaultController:onCardLeavesActionZone(object)
 end
 
-function CardFields.onActionStackNavigationClicked(object, direction)
-    return defaultController:onActionStackNavigationClicked(
+function CardFields.navigateActionStack(object, direction, context)
+    return defaultController:navigateActionStack(
         object,
-        direction
+        direction,
+        context
     )
+end
+
+function CardFields.onActionStackNavigationClicked(object, direction, context)
+    return CardFields.navigateActionStack(object, direction, context)
+end
+
+function CardFields.getActionStackCards(object)
+    return defaultController:getActionStackCards(object)
 end
 
 function CardFields.onActionZoneCardRotationChanged(object, rotated)

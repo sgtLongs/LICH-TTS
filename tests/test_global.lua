@@ -7,6 +7,7 @@ local callbackNames = {
     "showCardPreview",
     "hideCardPreview",
     "onCardPreviewActionClicked",
+    "onCardPreviewStackClicked",
     "getCardFieldDestination",
     "onObjectHover",
     "onObjectPickUp",
@@ -50,6 +51,7 @@ local gameMethods = {
     "showCardPreview",
     "hideCardPreview",
     "onCardPreviewActionClicked",
+    "onCardPreviewStackClicked",
     "getCardFieldDestination",
     "refreshCardButtons",
     "onObjectHover",
@@ -246,6 +248,18 @@ Test.case("global card routes validate parameter tables", function()
             "destroy",
             context.callsByName.onCardPreviewActionClicked.arguments[2]
         )
+        Test.equal(
+            "result-onCardPreviewStackClicked",
+            onCardPreviewStackClicked({color = "Red"}, "down")
+        )
+        Test.equal(
+            "Red",
+            context.callsByName.onCardPreviewStackClicked.arguments[1]
+        )
+        Test.equal(
+            "down",
+            context.callsByName.onCardPreviewStackClicked.arguments[2]
+        )
         local destination = getCardFieldDestination({
             fieldId = "field-a",
             destination = "abyss"
@@ -310,6 +324,14 @@ Test.case("global turn and action buttons unwrap player data", function()
         )
         Test.equal(card, context.callsByName.onActionStackUpClicked.arguments[1])
         Test.equal(card, context.callsByName.onActionStackDownClicked.arguments[1])
+        Test.equal(
+            "Red",
+            context.callsByName.onActionStackUpClicked.arguments[2]
+        )
+        Test.equal(
+            "Red",
+            context.callsByName.onActionStackDownClicked.arguments[2]
+        )
         Test.equal(card, context.callsByName.onActionPoint3Clicked.arguments[1])
         Test.equal("Red", context.callsByName.onActionPoint3Clicked.arguments[2])
     end)

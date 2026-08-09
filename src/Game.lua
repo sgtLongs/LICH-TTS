@@ -49,6 +49,9 @@ local controller = GameController.new({
     turnSystem = TurnSystem,
     runtime = Runtime.default(),
     uiAdapter = UiAdapter.default(),
+    scheduleFrames = function(callback, frameCount)
+        return Scheduler.default().frames(callback, frameCount)
+    end,
     savedBoardCatalog = savedBoardCatalog,
     boardLoadCoordinator = boardLoadCoordinator
 })
@@ -67,6 +70,7 @@ local publicMethods = {
     "showCardPreview",
     "hideCardPreview",
     "onCardPreviewActionClicked",
+    "onCardPreviewStackClicked",
     "getCardFieldDestination",
     "refreshCardButtons",
     "onAdvancePhaseClicked",

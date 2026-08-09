@@ -230,6 +230,15 @@ Test.case("cards dropped on action cards join an ordered stack", function()
     Test.equal("stack-bottom", stack.cards[2])
     Test.equal("stack-middle", stack.cards[3])
     Test.equal(1, stack.selectedIndex)
+    local stackCards, selectedIndex = ActionZone.getStackCards(
+        built.fields,
+        top,
+        cards
+    )
+    Test.equal(top, stackCards[1])
+    Test.equal(bottom, stackCards[2])
+    Test.equal(middle, stackCards[3])
+    Test.equal(1, selectedIndex)
     Test.truthy(top.getPosition().y > bottom.getPosition().y)
     Test.truthy(bottom.getPosition().y > middle.getPosition().y)
     local zOffset = Config.actionZone.stackCardZOffset
@@ -283,7 +292,7 @@ Test.case("stack arrows change the raised card without reordering", function()
     local fixedMiddleZ = middle.getPosition().z
     local fixedBottomZ = bottom.getPosition().z
 
-    Test.truthy(ActionZone.onStackNavigationClicked(
+    Test.equal(bottom, ActionZone.onStackNavigationClicked(
         built.fields,
         middle,
         1,
@@ -299,11 +308,11 @@ Test.case("stack arrows change the raised card without reordering", function()
     Test.falsy(bottom.isLocked())
     Test.truthy(findButton(bottom, "onActionStackUpClicked"))
     Test.nilValue(findButton(bottom, "onActionStackDownClicked"))
-    Test.truthy(findButton(top, "onCardTapped"))
+    Test.nilValue(findButton(top, "onCardTapped"))
     Test.nilValue(findButton(middle, "onCardTapped"))
-    Test.nilValue(findButton(bottom, "onCardTapped"))
+    Test.truthy(findButton(bottom, "onCardTapped"))
 
-    Test.truthy(ActionZone.onStackNavigationClicked(
+    Test.equal(middle, ActionZone.onStackNavigationClicked(
         built.fields,
         bottom,
         -1,
@@ -328,8 +337,8 @@ Test.case("stack arrows change the raised card without reordering", function()
     Test.equal(downConfig.height, configuredDown.height)
     Test.equal(upConfig.position.z, configuredUp.position.z)
     Test.equal(downConfig.position.z, configuredDown.position.z)
-    Test.truthy(findButton(top, "onCardTapped"))
-    Test.nilValue(findButton(middle, "onCardTapped"))
+    Test.nilValue(findButton(top, "onCardTapped"))
+    Test.truthy(findButton(middle, "onCardTapped"))
     Test.nilValue(findButton(bottom, "onCardTapped"))
 
     Test.truthy(ActionZone.onCardRotationChanged(

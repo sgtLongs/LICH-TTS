@@ -41,7 +41,9 @@ local publicMethodNames = {
     "onObjectPickUp",
     "onObjectDrop",
     "onCardLeavesActionZone",
+    "navigateActionStack",
     "onActionStackNavigationClicked",
+    "getActionStackCards",
     "onActionZoneCardRotationChanged",
     "registerZoneBehavior"
 }
@@ -68,18 +70,24 @@ local function makeStaticActionBehavior(actionZone)
         onCardLeaves = function(fields, object, objects)
             return actionZone.onCardLeaves(fields, object, objects)
         end,
-        onStackNavigationClicked = function(
+        navigateStack = function(
             fields,
             object,
             direction,
-            objects
+            context
         )
-            return actionZone.onStackNavigationClicked(
+            local navigate = actionZone.navigateStack
+                or actionZone.onStackNavigationClicked
+            return navigate(
                 fields,
                 object,
                 direction,
-                objects
+                nil,
+                context
             )
+        end,
+        getStackCards = function(fields, object, objects)
+            return actionZone.getStackCards(fields, object, objects)
         end,
         onCardRotationChanged = function(
             fields,
@@ -878,16 +886,49 @@ function CardFieldController:onCardLeavesActionZone(object)
     )
 end
 
-function CardFieldController:onActionStackNavigationClicked(
+function CardFieldController:navigateActionStack(
     object,
-    direction
+    direction,
+    context
 )
+    local result = self.zoneBehaviors:dispatch(
+        "navigateStack",
+        self.fields,
+        object,
+        direction,
+        context
+    )
+
+    if result then
+        return result
+    end
+
+    -- Custom zone behaviors written before navigateStack was introduced can
+    -- continue handling the legacy event name.
     return self.zoneBehaviors:dispatch(
         "onStackNavigationClicked",
         self.fields,
         object,
         direction
     )
+end
+
+function CardFieldController:onActionStackNavigationClicked(
+    object,
+    direction,
+    context
+)
+    return self:navigateActionStack(object, direction, context)
+end
+
+function CardFieldController:getActionStackCards(object)
+    local action = self.zoneBehaviors:get("action")
+
+    if action == nil or type(action.getStackCards) ~= "function" then
+        return nil, nil
+    end
+
+    return action.getStackCards(self.fields, object)
 end
 
 function CardFieldController:onActionZoneCardRotationChanged(

@@ -59,6 +59,16 @@ function ActionZone.onStackNavigationClicked(fields, object, direction)
     return records.actionReturns.navigation
 end
 
+function ActionZone.navigateStack(fields, object, direction, _, context)
+    records.navigation = {
+        fields = fields,
+        object = object,
+        direction = direction,
+        context = context
+    }
+    return records.actionReturns.navigation
+end
+
 function ActionZone.onCardRotationChanged(fields, object, rotated)
     records.rotation = {
         fields = fields,
@@ -877,7 +887,11 @@ Test.case("card field events delegate to their focused collaborators", function(
         )
         Test.equal(
             records.actionReturns.navigation,
-            CardFields.onActionStackNavigationClicked(card, -1)
+            CardFields.navigateActionStack(
+                card,
+                -1,
+                {preserveCardPreview = true}
+            )
         )
         Test.equal(
             records.actionReturns.rotation,
@@ -887,6 +901,7 @@ Test.case("card field events delegate to their focused collaborators", function(
         Test.equal(card, records.drop.object)
         Test.equal(card, records.cardLeaves.object)
         Test.equal(-1, records.navigation.direction)
+        Test.truthy(records.navigation.context.preserveCardPreview)
         Test.truthy(records.rotation.rotated)
     end)
 end)

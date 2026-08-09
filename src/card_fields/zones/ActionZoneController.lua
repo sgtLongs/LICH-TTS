@@ -227,14 +227,18 @@ function ActionZoneController:removeTapButton(card)
     end
 end
 
-function ActionZoneController:setTapEnabled(card, enabled)
+function ActionZoneController:setTapEnabled(card, enabled, context)
     if card == nil then
         return
     end
 
     if type(card.call) == "function" then
         pcall(function()
-            card.call("setActionZoneTapEnabled", {enabled = enabled})
+            card.call("setActionZoneTapEnabled", {
+                enabled = enabled,
+                preserveCardPreview = type(context) == "table"
+                    and context.preserveCardPreview == true
+            })
         end)
     end
 
@@ -323,7 +327,12 @@ function ActionZoneController:moveCard(card, position)
     self.objectAdapter.moveSmooth(card, position, false, true)
 end
 
-function ActionZoneController:arrangeState(field, fieldState, cardsById)
+function ActionZoneController:arrangeState(
+    field,
+    fieldState,
+    cardsById,
+    context
+)
     local stackLayouts = ActionZoneLayout.getStackLayout(
         field,
         fieldState
@@ -337,9 +346,9 @@ function ActionZoneController:arrangeState(field, fieldState, cardsById)
             local card = cardsById[cardLayout.cardId]
 
             if card ~= nil then
-                -- A stack's first card owns the tap target even when a lower
-                -- card is selected and lifted for reading.
-                self:setTapEnabled(card, cardLayout.tapEnabled)
+                -- The selected card owns the action trigger before a preview
+                -- treats the full stack as one lifted UI target.
+                self:setTapEnabled(card, cardLayout.tapEnabled, context)
 
                 if cardLayout.lockManaged then
                     self:setManagedLock(
@@ -578,11 +587,12 @@ function ActionZoneController:onObjectDrop(fields, object, objects)
     return targetField ~= nil
 end
 
-function ActionZoneController:onStackNavigationClicked(
+function ActionZoneController:navigateStack(
     fields,
     object,
     direction,
-    objects
+    objects,
+    context
 )
     if not isCard(object) then
         return false
@@ -600,7 +610,7 @@ function ActionZoneController:onStackNavigationClicked(
         return false
     end
 
-    local fieldState = self:reconcile(field, objects)
+    local fieldState, cardsById = self:reconcile(field, objects)
     local _, _, handled = ActionZoneRules.navigate(
         fieldState,
         ActionZoneState.cardId(object),
@@ -613,7 +623,7 @@ function ActionZoneController:onStackNavigationClicked(
 
     local function finishNavigation()
         local currentState, currentCards = self:reconcile(field, objects)
-        self:arrangeState(field, currentState, currentCards)
+        self:arrangeState(field, currentState, currentCards, context)
     end
 
     -- Removing a button during its own callback can invalidate TTS's
@@ -622,7 +632,62 @@ function ActionZoneController:onStackNavigationClicked(
         finishNavigation()
     end
 
-    return true
+    local selectedStack = ActionZoneState.findStack(
+        fieldState,
+        ActionZoneState.cardId(object)
+    )
+    return selectedStack ~= nil
+        and cardsById[selectedStack.selectedKey] or true
+end
+
+-- Compatibility entry point for physical buttons and older callers. New
+-- preview-aware code should call navigateStack with an explicit context.
+function ActionZoneController:onStackNavigationClicked(
+    fields,
+    object,
+    direction,
+    objects,
+    context
+)
+    return self:navigateStack(
+        fields,
+        object,
+        direction,
+        objects,
+        context
+    )
+end
+
+function ActionZoneController:getStackCards(fields, object, objects)
+    if not isCard(object) then
+        return nil, nil
+    end
+
+    local field = self:findField(fields, object.getPosition())
+
+    if field == nil then
+        return nil, nil
+    end
+
+    local fieldState, cardsById = self:reconcile(field, objects)
+    local stack = ActionZoneState.findStack(
+        fieldState,
+        ActionZoneState.cardId(object)
+    )
+
+    if stack == nil then
+        return nil, nil
+    end
+
+    local cards = {}
+
+    for _, cardId in ipairs(stack.cards or {}) do
+        if cardsById[cardId] ~= nil then
+            cards[#cards + 1] = cardsById[cardId]
+        end
+    end
+
+    return cards, ActionZoneState.selectedIndex(stack)
 end
 
 function ActionZoneController:onCardRotationChanged(
@@ -685,18 +750,22 @@ function ActionZoneController:asBehavior()
         onCardLeaves = function(fields, object, objects)
             return controller:onCardLeaves(fields, object, objects)
         end,
-        onStackNavigationClicked = function(
+        navigateStack = function(
             fields,
             object,
             direction,
-            objects
+            context
         )
-            return controller:onStackNavigationClicked(
+            return controller:navigateStack(
                 fields,
                 object,
                 direction,
-                objects
+                nil,
+                context
             )
+        end,
+        getStackCards = function(fields, object, objects)
+            return controller:getStackCards(fields, object, objects)
         end,
         onCardRotationChanged = function(
             fields,

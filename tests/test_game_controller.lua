@@ -214,6 +214,244 @@ Test.case("preview action buttons invoke only the owning player's card", functio
     Test.equal("Red", calls[2].parameters.playerColor)
 end)
 
+Test.case("preview arrows move the preview to the selected stack card", function()
+    local scheduled = {}
+    local calls = {}
+    local controller = nil
+    local currentPosition = {x = 0, y = 2, z = 0}
+    local currentCard = {
+        tag = "Card",
+        use_gravity = true,
+        highlightOn = function()
+        end,
+        highlightOff = function()
+        end,
+        call = function(functionName)
+            if functionName == "getCardPreviewImageUrl" then
+                return "current.png"
+            end
+
+            if functionName == "releaseCardActionLiftForStackPreview" then
+                return true
+            end
+
+            calls[#calls + 1] = {card = "current", name = functionName}
+        end,
+        getPosition = function()
+            return currentPosition
+        end,
+        setPositionSmooth = function(position)
+            currentPosition = position
+        end
+    }
+    local selectedCard = nil
+    local selectedPosition = {x = 0, y = 2, z = 0}
+    selectedCard = {
+        tag = "Card",
+        use_gravity = true,
+        highlightOn = function()
+        end,
+        highlightOff = function()
+        end,
+        call = function(functionName, parameters)
+            if functionName == "getCardPreviewImageUrl" then
+                return "selected.png"
+            end
+
+            calls[#calls + 1] = {
+                card = "selected",
+                name = functionName,
+                parameters = parameters
+            }
+        end,
+        getPosition = function()
+            return selectedPosition
+        end,
+        setPositionSmooth = function(position)
+            selectedPosition = position
+        end
+    }
+    local attributes = {}
+    local values = dependencies({
+        uiAdapter = {
+            setAttribute = function(id, attribute, value)
+                attributes[id .. "." .. attribute] = value
+            end
+        },
+        scheduleFrames = function(callback, frameCount)
+            scheduled[#scheduled + 1] = {
+                callback = callback,
+                frameCount = frameCount
+            }
+        end
+    })
+    values.cardLogic.getPreviewConfig = function()
+        return {rootId = "preview", imageId = "previewImage"}
+    end
+    values.cardLogic.getButtonConfig = function()
+        return {actions = {liftHeight = 1.5}}
+    end
+    values.hexGrid.onPlayerAction = function()
+    end
+    local selectedIndex = 1
+    local navigationContexts = {}
+    values.cardFields.getActionStackCards = function(card)
+        Test.truthy(card == currentCard or card == selectedCard)
+        return {currentCard, selectedCard}, selectedIndex
+    end
+    values.cardFields.navigateActionStack = function(
+        card,
+        direction,
+        context
+    )
+        Test.equal(
+            selectedIndex == 1 and currentCard or selectedCard,
+            card
+        )
+        navigationContexts[#navigationContexts + 1] = context
+        selectedIndex = selectedIndex + direction
+        return selectedIndex == 1 and currentCard or selectedCard
+    end
+    controller = GameController.new(values)
+
+    Test.truthy(controller:showCardPreview(
+        currentCard,
+        "Red",
+        "current.png"
+    ))
+    Test.falsy(controller:onCardPreviewStackClicked("Blue", "down"))
+    Test.falsy(controller:onCardPreviewStackClicked("Red", "sideways"))
+    Test.equal(1, scheduled[1].frameCount)
+    scheduled[1].callback()
+    Test.equal(3.5, selectedPosition.y)
+    Test.falsy(selectedCard.use_gravity)
+
+    controller:onPlayerAction({color = "Red"}, "Select", {})
+    Test.truthy(controller:onCardPreviewStackClicked("Red", "down"))
+    Test.equal("true", attributes["preview.active"])
+    Test.equal(0, #calls)
+    Test.truthy(navigationContexts[1].preserveCardPreview)
+    Test.falsy(controller:hideCardPreview(currentCard, "Red"))
+    Test.equal("true", attributes["preview.active"])
+    Test.equal(1, scheduled[2].frameCount)
+    Test.equal(2, scheduled[3].frameCount)
+    Test.equal(2, scheduled[4].frameCount)
+    controller:onPlayerAction({color = "Red"}, "Select", {})
+    Test.equal(4, #scheduled)
+    scheduled[2].callback()
+    Test.equal(0, #calls)
+    scheduled[3].callback()
+    scheduled[4].callback()
+    Test.equal(3.5, currentPosition.y)
+    Test.equal(3.5, selectedPosition.y)
+    Test.equal("selected.png", attributes["previewImage.image"])
+    Test.equal("true", attributes["preview.active"])
+
+    Test.truthy(controller:onActionStackUpClicked(selectedCard, "Red"))
+    Test.equal("current.png", attributes["previewImage.image"])
+    Test.equal("true", attributes["preview.active"])
+    Test.equal(1, selectedIndex)
+    Test.truthy(navigationContexts[2].preserveCardPreview)
+    Test.equal(2, scheduled[5].frameCount)
+    Test.equal(2, scheduled[6].frameCount)
+    scheduled[6].callback()
+    Test.equal(3.5, currentPosition.y)
+    Test.equal(3.5, selectedPosition.y)
+
+    local scheduledBeforeStackSelection = #scheduled
+    controller:onPlayerAction(
+        {color = "Red"},
+        "Select",
+        {selectedCard}
+    )
+    controller:onPlayerAction({color = "Red"}, "Select", {})
+    controller:onPlayerAction({color = "Red"}, "Select", {})
+    Test.equal(scheduledBeforeStackSelection, #scheduled)
+end)
+
+Test.case("preview arrows support cards from older generated saves", function()
+    local scheduled = nil
+    local position = {x = 1, y = 2, z = 3}
+    local highlighted = false
+    local currentCard = {
+        call = function()
+        end
+    }
+    local legacyCard = {
+        tag = "Card",
+        use_gravity = true,
+        call = function()
+            return nil
+        end,
+        getData = function()
+            return {
+                CardID = 400,
+                CustomDeck = {
+                    [4] = {FaceURL = "legacy.png"}
+                }
+            }
+        end,
+        getPosition = function()
+            return position
+        end,
+        setPositionSmooth = function(target)
+            position = target
+        end,
+        highlightOn = function()
+            highlighted = true
+        end,
+        highlightOff = function()
+            highlighted = false
+        end
+    }
+    local attributes = {}
+    local values = dependencies({
+        uiAdapter = {
+            setAttribute = function(id, attribute, value)
+                attributes[id .. "." .. attribute] = value
+            end
+        },
+        scheduleFrames = function(callback)
+            scheduled = callback
+        end
+    })
+    values.cardLogic.getPreviewConfig = function()
+        return {rootId = "preview", imageId = "previewImage"}
+    end
+    values.cardLogic.getButtonConfig = function()
+        return {actions = {liftHeight = 2}}
+    end
+    values.cardFields.getActionStackCards = function()
+        return {currentCard, legacyCard}, 1
+    end
+    values.cardFields.onActionStackNavigationClicked = function()
+        return legacyCard
+    end
+    local controller = GameController.new(values)
+
+    Test.truthy(controller:showCardPreview(
+        currentCard,
+        "Red",
+        "current.png"
+    ))
+    scheduled()
+    Test.equal(4, position.y)
+    Test.falsy(legacyCard.use_gravity)
+
+    Test.truthy(controller:onCardPreviewStackClicked("Red", "down"))
+    scheduled()
+
+    Test.equal("legacy.png", attributes["previewImage.image"])
+    Test.equal(4, position.y)
+    Test.falsy(legacyCard.use_gravity)
+    Test.truthy(highlighted)
+
+    Test.truthy(controller:hideCardPreview(legacyCard, "Red"))
+    Test.equal(2, position.y)
+    Test.truthy(legacyCard.use_gravity)
+    Test.falsy(highlighted)
+end)
+
 Test.case("game controller loads legacy saves through injected ports", function()
     local loaded = {}
     local values = dependencies()

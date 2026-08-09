@@ -168,7 +168,9 @@ local function hideCardPreview()
     actionPreviewPlayerColor = nil
 end
 
-local function removeActionButtons()
+local function removeActionButtons(parameters)
+    local preserveCardPreview = type(parameters) == "table"
+        and parameters.preserveCardPreview == true
     local buttons = self.getButtons() or {}
 
     for index = #buttons, 1, -1 do
@@ -180,7 +182,15 @@ local function removeActionButtons()
     end
 
     setActionCardLifted(false)
-    hideCardPreview()
+
+    if preserveCardPreview then
+        -- The action-zone controller is transferring selection within the
+        -- same preview stack. Global retains the shared preview session.
+        actionPreviewPlayerColor = nil
+    else
+        hideCardPreview()
+    end
+
     actionButtonsVisible = false
 end
 
@@ -309,6 +319,38 @@ function onActionsClicked(object, playerColor, altClick)
     end
 end
 
+function showCardActionsForPlayer(parameters)
+    if type(parameters) ~= "table"
+        or type(parameters.playerColor) ~= "string"
+        or parameters.playerColor == ""
+    then
+        return false
+    end
+
+    showActionButtons(parameters.playerColor)
+    return actionButtonsVisible
+end
+
+function getCardPreviewImageUrl()
+    return cardContext.previewImageUrl
+end
+
+function releaseCardActionLiftForStackPreview()
+    -- Global owns the preview for the rest of this stack-navigation session.
+    -- Detach the original card so disabling its Actions trigger while another
+    -- stack card becomes selected cannot close the shared preview.
+    actionPreviewPlayerColor = nil
+    actionButtonsVisible = false
+    actionLiftBaseY = nil
+
+    if actionOriginalUseGravity ~= nil then
+        self.use_gravity = actionOriginalUseGravity
+        actionOriginalUseGravity = nil
+    end
+
+    return true
+end
+
 function onPreviewCardActionClicked(parameters)
     if type(parameters) ~= "table" then
         return false
@@ -357,14 +399,14 @@ function hideActionButtonsDuringCardRotation()
     Wait.frames(restoreAfterRotation, 1)
 end
 
-function refreshCardActionButtons()
+function refreshCardActionButtons(parameters)
     local actionsButton = findCardButton("onActionsClicked")
 
     if cardButtonsSuppressed
         or isCardInHand()
         or not actionZoneTapEnabled
     then
-        removeActionButtons()
+        removeActionButtons(parameters)
 
         if actionsButton ~= nil then
             self.removeButton(actionsButton.index)

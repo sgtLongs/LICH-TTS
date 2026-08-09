@@ -30,6 +30,7 @@ local function makeCard(guid, position, options)
     local card = {
         tag = options.tag or "Card",
         lockHistory = {},
+        tapEnableCalls = {},
         rotationQueryCount = 0,
         tapRotated = options.tapRotated == true,
         returnTapRotation = options.returnTapRotation ~= false
@@ -106,6 +107,8 @@ local function makeCard(guid, position, options)
         end
 
         if functionName == "setActionZoneTapEnabled" then
+            card.tapEnableCalls[#card.tapEnableCalls + 1] = parameters
+
             if parameters.enabled == false and tapButton ~= nil then
                 card.removeButton(tapButton.index)
             elseif parameters.enabled ~= false and tapButton == nil then
@@ -859,11 +862,12 @@ Test.case(
         Test.truthy(findButton(top, "onActionStackDownClicked"))
         Test.nilValue(findButton(bottom, "onActionStackUpClicked"))
 
-        Test.truthy(controller:onStackNavigationClicked(
+        Test.truthy(controller:navigateStack(
             fields,
             top,
             1,
-            cards
+            cards,
+            {preserveCardPreview = true}
         ))
 
         -- Selection state changes during the click, but all object and button
@@ -882,5 +886,12 @@ Test.case(
         Test.truthy(findButton(bottom, "onActionStackUpClicked"))
         Test.truthy(top.isLocked())
         Test.falsy(bottom.isLocked())
+        Test.truthy(
+            top.tapEnableCalls[#top.tapEnableCalls].preserveCardPreview
+        )
+        Test.truthy(
+            bottom.tapEnableCalls[#bottom.tapEnableCalls]
+                .preserveCardPreview
+        )
     end
 )

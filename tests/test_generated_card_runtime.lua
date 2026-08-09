@@ -14,6 +14,9 @@ local runtimeGlobalNames = {
     "onHover",
     "onCardTapped",
     "onActionsClicked",
+    "showCardActionsForPlayer",
+    "getCardPreviewImageUrl",
+    "releaseCardActionLiftForStackPreview",
     "onPreviewCardActionClicked",
     "hideCardActions",
     "onSave",
@@ -611,6 +614,41 @@ Test.case("generated action previews preserve disabled card gravity", function()
 
         onActionsClicked(environment.card, "Red", false)
         Test.falsy(environment.card.use_gravity)
+    end)
+end)
+
+Test.case("generated cards can open actions from preview navigation", function()
+    runGenerated({
+        context = {previewImageUrl = "https://example.test/selected.png"},
+        position = {x = 1, y = 2, z = 3}
+    }, function(environment)
+        onLoad("")
+
+        Test.truthy(showCardActionsForPlayer({playerColor = "Blue"}))
+        Test.equal(
+            "https://example.test/selected.png",
+            getCardPreviewImageUrl()
+        )
+        local showCall = environment.globalCalls[#environment.globalCalls]
+        Test.equal(
+            "showCardPreview",
+            showCall.functionName
+        )
+        Test.equal(
+            "https://example.test/selected.png",
+            showCall.parameters.imageUrl
+        )
+
+        setActionZoneTapEnabled({
+            enabled = false,
+            preserveCardPreview = true
+        })
+        Test.truthy(environment.card.use_gravity)
+        Test.equal(2, environment.position.y)
+        for _, call in ipairs(environment.globalCalls) do
+            Test.falsy(call.functionName == "hideCardPreview")
+        end
+        Test.truthy(releaseCardActionLiftForStackPreview())
     end)
 end)
 

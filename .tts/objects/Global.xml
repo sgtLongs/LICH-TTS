@@ -43,58 +43,86 @@
 <Panel
     id="cardPreviewRoot"
     rectAlignment="MiddleLeft"
-    width="360"
+    width="430"
     height="650"
     offsetXY="22 0"
     color="#0B101AF2"
     padding="10 10 10 10"
     active="false"
 >
-    <VerticalLayout spacing="10" childAlignment="UpperCenter">
-        <Image
-            id="cardPreviewImage"
-            image=""
-            preserveAspect="true"
-            raycastTarget="false"
-            preferredHeight="500"
-        />
-        <HorizontalLayout
-            spacing="8"
+    <HorizontalLayout spacing="10" childAlignment="UpperCenter">
+        <VerticalLayout
+            spacing="10"
+            childAlignment="UpperCenter"
+            preferredWidth="350"
+        >
+            <Image
+                id="cardPreviewImage"
+                image=""
+                preserveAspect="true"
+                raycastTarget="false"
+                preferredHeight="500"
+            />
+            <HorizontalLayout
+                spacing="8"
+                childAlignment="MiddleCenter"
+                preferredHeight="56"
+            >
+                <Button
+                    text="DESTROY"
+                    onClick="onCardPreviewActionClicked(destroy)"
+                    colors="#A61414|#D62424|#720C0C|#720C0C"
+                    preferredWidth="160"
+                />
+                <Button
+                    text="DAMN"
+                    onClick="onCardPreviewActionClicked(damn)"
+                    colors="#54116F|#7B2699|#390A4A|#390A4A"
+                    preferredWidth="160"
+                />
+            </HorizontalLayout>
+            <HorizontalLayout
+                spacing="8"
+                childAlignment="MiddleCenter"
+                preferredHeight="56"
+            >
+                <Button
+                    text="UNEQUIP"
+                    onClick="onCardPreviewActionClicked(unequip)"
+                    colors="#80500D|#AE741D|#563407|#563407"
+                    preferredWidth="160"
+                />
+                <Button
+                    text="RETURN"
+                    onClick="onCardPreviewActionClicked(returnToHand)"
+                    colors="#0D598F|#167BB9|#083C61|#083C61"
+                    preferredWidth="160"
+                />
+            </HorizontalLayout>
+        </VerticalLayout>
+        <VerticalLayout
+            spacing="12"
             childAlignment="MiddleCenter"
-            preferredHeight="56"
+            preferredWidth="50"
         >
             <Button
-                text="DESTROY"
-                onClick="onCardPreviewActionClicked(destroy)"
-                colors="#A61414|#D62424|#720C0C|#720C0C"
-                preferredWidth="160"
+                text="▲"
+                onClick="onCardPreviewStackClicked(up)"
+                colors="#26364D|#3D587C|#192638|#192638"
+                preferredWidth="48"
+                preferredHeight="58"
+                tooltip="Previous card in this stack"
             />
             <Button
-                text="DAMN"
-                onClick="onCardPreviewActionClicked(damn)"
-                colors="#54116F|#7B2699|#390A4A|#390A4A"
-                preferredWidth="160"
+                text="▼"
+                onClick="onCardPreviewStackClicked(down)"
+                colors="#26364D|#3D587C|#192638|#192638"
+                preferredWidth="48"
+                preferredHeight="58"
+                tooltip="Next card in this stack"
             />
-        </HorizontalLayout>
-        <HorizontalLayout
-            spacing="8"
-            childAlignment="MiddleCenter"
-            preferredHeight="56"
-        >
-            <Button
-                text="UNEQUIP"
-                onClick="onCardPreviewActionClicked(unequip)"
-                colors="#80500D|#AE741D|#563407|#563407"
-                preferredWidth="160"
-            />
-            <Button
-                text="RETURN"
-                onClick="onCardPreviewActionClicked(returnToHand)"
-                colors="#0D598F|#167BB9|#083C61|#083C61"
-                preferredWidth="160"
-            />
-        </HorizontalLayout>
-    </VerticalLayout>
+        </VerticalLayout>
+    </HorizontalLayout>
 </Panel>
 
 <Panel

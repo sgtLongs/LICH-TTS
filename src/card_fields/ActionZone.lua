@@ -76,14 +76,30 @@ function ActionZone.onStackNavigationClicked(
     fields,
     object,
     direction,
-    objects
+    objects,
+    context
 )
-    return defaultController:onStackNavigationClicked(
+    return defaultController:navigateStack(
         fields,
         object,
         direction,
-        objects
+        objects,
+        context
     )
+end
+
+function ActionZone.navigateStack(fields, object, direction, objects, context)
+    return defaultController:navigateStack(
+        fields,
+        object,
+        direction,
+        objects,
+        context
+    )
+end
+
+function ActionZone.getStackCards(fields, object, objects)
+    return defaultController:getStackCards(fields, object, objects)
 end
 
 function ActionZone.onCardRotationChanged(fields, object, rotated, objects)

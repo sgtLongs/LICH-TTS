@@ -37,6 +37,10 @@ function onCardPreviewActionClicked(player, action, id)
     return Game.onCardPreviewActionClicked(player.color, action)
 end
 
+function onCardPreviewStackClicked(player, direction, id)
+    return Game.onCardPreviewStackClicked(player.color, direction)
+end
+
 function getCardFieldDestination(parameters)
     if type(parameters) ~= "table" then
         return nil
@@ -89,11 +93,11 @@ function onCardLeavesActionZone(parameters)
 end
 
 function onActionStackUpClicked(object, playerColor, altClick)
-    return Game.onActionStackUpClicked(object)
+    return Game.onActionStackUpClicked(object, playerColor)
 end
 
 function onActionStackDownClicked(object, playerColor, altClick)
-    return Game.onActionStackDownClicked(object)
+    return Game.onActionStackDownClicked(object, playerColor)
 end
 
 function onActionZoneCardRotationChanged(parameters)

@@ -201,7 +201,7 @@ function ActionZoneLayout.getStackLayout(field, fieldState)
                 cardIndex = cardIndex,
                 position = position,
                 selected = selected,
-                tapEnabled = cardIndex == 1,
+                tapEnabled = selected,
                 lockManaged = #stack.cards > 1,
                 shouldLock = #stack.cards > 1 and not selected
             }

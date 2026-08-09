@@ -248,7 +248,7 @@ end
 end
 
 local lifecycle = [=[
-function refreshCardButtons()
+function refreshCardButtons(parameters)
     if not isSingleCard() then
         return
     end
@@ -267,14 +267,17 @@ function refreshCardButtons()
     end
 
     if type(refreshCardActionButtons) == "function" then
-        refreshCardActionButtons()
+        refreshCardActionButtons(parameters)
     end
 end
 
 function setActionZoneTapEnabled(parameters)
     actionZoneTapEnabled = type(parameters) ~= "table"
         or parameters.enabled ~= false
-    refreshCardButtons()
+    refreshCardButtons({
+        preserveCardPreview = type(parameters) == "table"
+            and parameters.preserveCardPreview == true
+    })
 end
 
 local function cardIsReadyForButtons()

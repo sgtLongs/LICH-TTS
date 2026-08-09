@@ -208,8 +208,12 @@ TTS after changing those boundaries and before publishing a save:
    card. Click elsewhere and each preview action button; confirm the glow is
    removed, the prior gravity setting is restored,
    the preview closes, and the card lowers before destroy, damn, unequip, or
-   return continues. Save/reload an older tapped card and a card with
-   unversioned feature state.
+   return continues. Build a multi-card action stack and open actions from its
+   currently raised card; confirm every card in the stack lifts and the
+   preview's right-side arrows and the card's arrows cycle the same image and
+   action target without closing the preview. Confirm each newly selected card
+   moves in front of the other lifted stack cards. Save/reload an older tapped
+   card and a card with unversioned feature state.
 5. Drop cards into every rotated action field, create/navigate/dissolve a stack,
    move it across fields, and verify original locks are restored.
 6. Enter board edit mode; place one-cell and two-cell objects, rotate, replace,

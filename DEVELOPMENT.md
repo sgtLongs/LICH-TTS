@@ -31,8 +31,11 @@ To add a zone behavior:
 1. Add its geometry/configuration to the field definition data.
 2. Implement a behavior table with only the handlers it needs. Supported
    handlers include `onLoad`, `getSaveState`, `refresh`, `onObjectPickUp`,
-   `onObjectDrop`, `onCardLeaves`, `onStackNavigationClicked`, and
-   `onCardRotationChanged`.
+   `onObjectDrop`, `onCardLeaves`, `navigateStack`, and
+   `onCardRotationChanged`. Stack navigation receives an optional context;
+   use `preserveCardPreview = true` when selection is moving inside an open
+   shared preview. `onStackNavigationClicked` remains a compatibility event
+   for older custom zone behaviors.
 3. Register it with `controller:registerZoneBehavior(zoneType, behavior)` or
    provide a prebuilt registry to `CardFields.new(dependencies)`.
 4. Test pure state/layout transitions separately from controller effects.
