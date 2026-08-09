@@ -1617,7 +1617,7 @@
 
         <Button
             id="advancePhaseWhite"
-            text="UNTAP ALL"
+            text="UNTAPPING..."
             visibility="White"
             onClick="onAdvancePhaseClicked"
             preferredWidth="280"

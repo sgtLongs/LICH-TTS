@@ -117,6 +117,7 @@ function TurnView.buildPatch(config, model)
             buttonId,
             "interactable",
             isCurrentPlayer and model.isDrawing ~= true
+                and model.isUntapping ~= true
                 and model.isPlacingDeathFog ~= true
                 and "true" or "false"
         )

@@ -33,6 +33,8 @@ function TurnController.new(dependencies)
     end
     local turnState = stateApi.new({})
     local activeByColor = {}
+    local untapGeneration = 0
+    local isUntapping = false
     local drawGeneration = 0
     local isDrawing = false
     local isPlacingDeathFog = false
@@ -89,6 +91,7 @@ function TurnController.new(dependencies)
             getPlayerName(currentColor)
         )
         model.phases = stateApi.getPhases()
+        model.isUntapping = isUntapping
         model.isDrawing = isDrawing
         model.isPlacingDeathFog = isPlacingDeathFog
         uiAdapter.apply(view.buildPatch(config, model))
@@ -103,7 +106,7 @@ function TurnController.new(dependencies)
         mockPlayers:schedule({
             getCurrentColor = getCurrentColor,
             isBlocked = function()
-                return isDrawing or isPlacingDeathFog
+                return isUntapping or isDrawing or isPlacingDeathFog
             end,
             advance = function(playerColor)
                 controller.advancePhase(playerColor)
@@ -147,8 +150,7 @@ function TurnController.new(dependencies)
                     and stateApi.getCurrentPhase(turnState) == "end"
                 then
                     isPlacingDeathFog = false
-                    updateUi()
-                    scheduleMockTurn()
+                    controller.endTurn(playerColor)
                 end
             end
         )
@@ -316,6 +318,49 @@ function TurnController.new(dependencies)
         end
     end
 
+    local function cancelUntapping()
+        untapGeneration = untapGeneration + 1
+        isUntapping = false
+    end
+
+    local function beginUntapping()
+        local playerColor = getCurrentColor()
+
+        if playerColor == nil
+            or stateApi.getCurrentPhase(turnState) ~= "start"
+        then
+            isUntapping = false
+            return
+        end
+
+        cancelUntapping()
+        local generation = untapGeneration
+        isUntapping = true
+        updateUi()
+
+        scheduler.frames(function()
+            if generation ~= untapGeneration
+                or getCurrentColor() ~= playerColor
+                or stateApi.getCurrentPhase(turnState) ~= "start"
+            then
+                return
+            end
+
+            untapAllCards()
+
+            if cardFields ~= nil
+                and type(cardFields.renewActionPoints) == "function"
+            then
+                cardFields.renewActionPoints(playerColor)
+            end
+
+            stateApi.advancePhase(turnState, playerColor)
+            isUntapping = false
+            updateUi()
+            scheduleMockTurn()
+        end, 1)
+    end
+
     function controller.advancePhase(playerColor)
         local currentColor = getCurrentColor()
 
@@ -331,6 +376,15 @@ function TurnController.new(dependencies)
         if playerColor ~= currentColor then
             sendPrivate(
                 "It is " .. getPlayerName(currentColor) .. "'s turn.",
+                playerColor,
+                config.invalidTurnColor
+            )
+            return false
+        end
+
+        if isUntapping then
+            sendPrivate(
+                "Cards are currently untapping.",
                 playerColor,
                 config.invalidTurnColor
             )
@@ -357,16 +411,6 @@ function TurnController.new(dependencies)
 
         local previousColor = currentColor
 
-        if stateApi.getCurrentPhase(turnState) == "start" then
-            untapAllCards()
-
-            if cardFields ~= nil
-                and type(cardFields.renewActionPoints) == "function"
-            then
-                cardFields.renewActionPoints(currentColor)
-            end
-        end
-
         local advanced = stateApi.advancePhase(turnState, playerColor)
 
         if advanced and stateApi.getCurrentPhase(turnState) == "end" then
@@ -382,6 +426,7 @@ function TurnController.new(dependencies)
         if advanced and getCurrentColor() ~= previousColor then
             cancelDeathFogPlacement()
             announceTurn()
+            beginUntapping()
         end
 
         scheduleMockTurn()
@@ -390,6 +435,7 @@ function TurnController.new(dependencies)
     end
 
     function controller.onLoad(savedTurnState)
+        cancelUntapping()
         cancelDrawing()
         cancelDeathFogPlacement()
         restoreActivePlayers(savedTurnState)
@@ -400,7 +446,9 @@ function TurnController.new(dependencies)
         )
 
         scheduler.frames(function()
-            if stateApi.getCurrentPhase(turnState) == "draw" then
+            if stateApi.getCurrentPhase(turnState) == "start" then
+                beginUntapping()
+            elseif stateApi.getCurrentPhase(turnState) == "draw" then
                 beginDrawing()
             elseif stateApi.getCurrentPhase(turnState) == "end" then
                 beginDeathFogPlacement()
@@ -445,6 +493,15 @@ function TurnController.new(dependencies)
             return false
         end
 
+        if isUntapping then
+            sendPrivate(
+                "Cards are currently untapping.",
+                playerColor,
+                config.invalidTurnColor
+            )
+            return false
+        end
+
         if isPlacingDeathFog then
             sendPrivate(
                 "Place a death fog tile before ending the turn.",
@@ -459,6 +516,7 @@ function TurnController.new(dependencies)
         stateApi.endTurn(turnState, playerColor)
         updateUi()
         announceTurn()
+        beginUntapping()
         scheduleMockTurn()
         return true
     end
@@ -492,6 +550,7 @@ function TurnController.new(dependencies)
 
         if not hadCurrentPlayer then
             announceTurn()
+            beginUntapping()
         end
 
         scheduleMockTurn()
@@ -513,6 +572,7 @@ function TurnController.new(dependencies)
 
         if not hadCurrentPlayer then
             announceTurn()
+            beginUntapping()
         end
 
         scheduleMockTurn()

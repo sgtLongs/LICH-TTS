@@ -56,8 +56,8 @@ Test.case("turn system restores state and updates the TTS boundary", function()
     Test.equal(6, TurnSystem.getSaveState().currentTurnIndex)
     Test.equal("Ben's Turn", uiUpdates["turnPlayerName:text"])
     Test.equal("true", uiUpdates["advancePhaseBlue:interactable"])
-    Test.equal("UNTAP ALL", uiUpdates["advancePhaseBlue:text"])
-    Test.equal("> START PHASE", uiUpdates["turnPhasestart:text"])
+    Test.equal("NEXT PHASE", uiUpdates["advancePhaseBlue:text"])
+    Test.equal("> MAIN PHASE", uiUpdates["turnPhasemain:text"])
     Test.equal("Ben (Blue), it is your turn!", announcements[1].message)
 end)
 
@@ -115,7 +115,7 @@ Test.case("mock players automatically click through their turns", function()
         currentTurnColor = "Red",
         activePlayerColors = {"Red"}
     })
-    wait.advanceFrames(1)
+    wait.advanceFrames(2)
 
     local added, mockColor = controller.addMockPlayer()
     Test.truthy(added)
@@ -125,18 +125,16 @@ Test.case("mock players automatically click through their turns", function()
     Test.truthy(controller.endTurn("Red"))
     Test.equal("White", controller.getSaveState().currentTurnColor)
     Test.contains(announced[#announced], "Mock White")
+    Test.equal("start", controller.getSaveState().currentPhase)
 
-    wait.advanceTime(MockPlayerConfig.phaseDelaySeconds)
+    wait.advanceFrames(1)
     Test.equal("main", controller.getSaveState().currentPhase)
 
     wait.advanceTime(MockPlayerConfig.phaseDelaySeconds)
     Test.equal("status", controller.getSaveState().currentPhase)
 
     wait.advanceTime(MockPlayerConfig.phaseDelaySeconds)
-    Test.equal("end", controller.getSaveState().currentPhase)
     Test.deepEqual({"White"}, randomFogPlacements)
-
-    wait.advanceTime(MockPlayerConfig.phaseDelaySeconds)
     Test.equal("Red", controller.getSaveState().currentTurnColor)
     Test.equal("start", controller.getSaveState().currentPhase)
 end)
@@ -170,22 +168,22 @@ end)
 Test.case("turn system advances phases and ends after end phase", function()
     TurnSystem.onLoad({
         currentTurnColor = "White",
+        currentPhase = "main",
         activePlayerColors = {"White", "Blue"}
     })
 
     Test.truthy(TurnSystem.advancePhase("White"))
-    Test.equal("main", TurnSystem.getSaveState().currentPhase)
-    Test.equal("> MAIN PHASE", uiUpdates["turnPhasemain:text"])
+    Test.equal("status", TurnSystem.getSaveState().currentPhase)
+    Test.equal("> STATUS PHASE", uiUpdates["turnPhasestatus:text"])
     Test.equal("NEXT PHASE", uiUpdates["advancePhaseWhite:text"])
 
-    Test.truthy(TurnSystem.advancePhase("White"))
     Test.truthy(TurnSystem.advancePhase("White"))
     Test.equal("end", TurnSystem.getSaveState().currentPhase)
     Test.equal("END TURN", uiUpdates["advancePhaseWhite:text"])
 
     Test.truthy(TurnSystem.advancePhase("White"))
     Test.equal("Blue", TurnSystem.getSaveState().currentTurnColor)
-    Test.equal("start", TurnSystem.getSaveState().currentPhase)
+    Test.equal("main", TurnSystem.getSaveState().currentPhase)
 end)
 
 Test.case("end phase requires a completed death fog placement", function()
@@ -232,7 +230,10 @@ Test.case("end phase requires a completed death fog placement", function()
     Test.contains(privateMessage, "death fog")
 
     completion(true)
-    Test.truthy(controller.advancePhase("White"))
+    Test.equal("Blue", controller.getSaveState().currentTurnColor)
+    Test.equal("main", controller.getSaveState().currentPhase)
+
+    completion(true)
     Test.equal("Blue", controller.getSaveState().currentTurnColor)
 end)
 
@@ -308,8 +309,7 @@ Test.case("draw phase fills the hand one card at a configured interval", functio
     })
 
     controller.onLoad({activePlayerColors = {"White"}})
-    wait.advanceFrames(1)
-    Test.truthy(controller.advancePhase("White"))
+    wait.advanceFrames(2)
     Test.truthy(controller.advancePhase("White"))
     Test.equal("draw", controller.getSaveState().currentPhase)
     Test.equal("> DRAWING", uiUpdates["turnPhasedraw:text"])
@@ -363,8 +363,7 @@ Test.case("draw phase draws no cards when the hand meets intelligence", function
     })
 
     controller.onLoad({activePlayerColors = {"White"}})
-    wait.advanceFrames(1)
-    controller.advancePhase("White")
+    wait.advanceFrames(2)
     controller.advancePhase("White")
     Test.equal("draw", controller.getSaveState().currentPhase)
     wait.advanceTime(Config.drawPhase.delaySeconds)
@@ -395,8 +394,7 @@ Test.case("draw phase skips to status when its deck is unavailable", function()
     })
 
     controller.onLoad({activePlayerColors = {"White"}})
-    wait.advanceFrames(1)
-    controller.advancePhase("White")
+    wait.advanceFrames(2)
     controller.advancePhase("White")
     wait.advanceTime(Config.drawPhase.delaySeconds)
 
@@ -434,8 +432,7 @@ Test.case("ending a turn cancels a stale draw callback", function()
     })
 
     controller.onLoad({activePlayerColors = {"White", "Blue"}})
-    wait.advanceFrames(1)
-    controller.advancePhase("White")
+    wait.advanceFrames(2)
     controller.advancePhase("White")
     Test.truthy(controller.endTurn("White"))
     wait.advanceTime(Config.drawPhase.delaySeconds)
@@ -452,13 +449,17 @@ Test.case("turn system rejects a phase change from another player", function()
     })
 
     Test.falsy(TurnSystem.advancePhase("Blue"))
-    Test.equal("start", TurnSystem.getSaveState().currentPhase)
+    Test.equal("main", TurnSystem.getSaveState().currentPhase)
     Test.equal("Blue", privateMessages[#privateMessages].playerColor)
 end)
 
-Test.case("start phase untaps every tapped card before advancing", function()
+Test.case("start phase automatically untaps before advancing", function()
+    local FakeWait = require("tests/support/FakeWait")
+    local wait = FakeWait.new()
     local events = {}
     local renewedColor = nil
+    local privateMessage = nil
+    local applied = {}
     local tappedCard = {tag = "Card"}
     local untappedCard = {tag = "Card"}
     local deck = {tag = "Deck"}
@@ -494,15 +495,31 @@ Test.case("start phase untaps every tapped card before advancing", function()
                 return {steam_name = color}
             end
         },
-        scheduler = {frames = function(callback) callback() end},
-        uiAdapter = {apply = function() end},
+        scheduler = wait,
+        uiAdapter = {apply = function(patches)
+            for _, patch in ipairs(patches) do
+                applied[patch.id .. ":" .. patch.attribute] = patch.value
+            end
+        end},
         announce = function() end,
-        broadcastToColor = function() end
+        broadcastToColor = function(message)
+            privateMessage = message
+        end
     })
 
     controller.onLoad({activePlayerColors = {"White"}})
-    Test.truthy(controller.advancePhase("White"))
+    wait.advanceFrames(1)
+    Test.equal("start", controller.getSaveState().currentPhase)
+    Test.equal("UNTAPPING...", applied["advancePhaseWhite:text"])
+    Test.equal("false", applied["advancePhaseWhite:interactable"])
+    Test.falsy(controller.advancePhase("White"))
+    Test.contains(privateMessage, "untapping")
+    Test.deepEqual({}, events)
+
+    wait.advanceFrames(1)
     Test.equal("main", controller.getSaveState().currentPhase)
+    Test.equal("NEXT PHASE", applied["advancePhaseWhite:text"])
+    Test.equal("true", applied["advancePhaseWhite:interactable"])
     Test.equal("White", renewedColor)
     Test.deepEqual({
         "tapped:getActionZoneTapRotation",
