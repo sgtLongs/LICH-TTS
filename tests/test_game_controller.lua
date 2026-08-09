@@ -301,7 +301,14 @@ Test.case("preview arrows move the preview to the selected stack card", function
     local navigationContexts = {}
     values.cardFields.getActionStackCards = function(card)
         Test.truthy(card == currentCard or card == selectedCard)
-        return {currentCard, selectedCard}, selectedIndex
+        local positions = selectedIndex == 1 and {
+            {x = 0, y = 2.4, z = 0},
+            {x = 0, y = 2, z = 0}
+        } or {
+            {x = 0, y = 2, z = 0},
+            {x = 0, y = 2.4, z = 0}
+        }
+        return {currentCard, selectedCard}, selectedIndex, positions
     end
     values.cardFields.navigateActionStack = function(
         card,
@@ -347,7 +354,7 @@ Test.case("preview arrows move the preview to the selected stack card", function
     scheduled[3].callback()
     scheduled[4].callback()
     Test.equal(3.5, currentPosition.y)
-    Test.equal(3.5, selectedPosition.y)
+    Test.equal(3.9, selectedPosition.y)
     Test.equal("selected.png", attributes["previewImage.image"])
     Test.equal("true", attributes["preview.active"])
 
@@ -360,9 +367,14 @@ Test.case("preview arrows move the preview to the selected stack card", function
     Test.equal(2, scheduled[6].frameCount)
     movedCards = {}
     scheduled[6].callback()
-    Test.equal(3.5, currentPosition.y)
+    Test.equal(3.9, currentPosition.y)
     Test.equal(3.5, selectedPosition.y)
     Test.deepEqual({"selected", "current"}, movedCards)
+
+    Test.truthy(controller:onCardPreviewStackClicked("Red", "down"))
+    scheduled[8].callback()
+    Test.equal(3.5, currentPosition.y)
+    Test.equal(3.9, selectedPosition.y)
 
     local scheduledBeforeStackSelection = #scheduled
     controller:onPlayerAction(

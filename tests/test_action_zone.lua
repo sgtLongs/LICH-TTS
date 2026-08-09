@@ -230,7 +230,7 @@ Test.case("cards dropped on action cards join an ordered stack", function()
     Test.equal("stack-bottom", stack.cards[2])
     Test.equal("stack-middle", stack.cards[3])
     Test.equal(1, stack.selectedIndex)
-    local stackCards, selectedIndex = ActionZone.getStackCards(
+    local stackCards, selectedIndex, positions = ActionZone.getStackCards(
         built.fields,
         top,
         cards
@@ -239,6 +239,9 @@ Test.case("cards dropped on action cards join an ordered stack", function()
     Test.equal(bottom, stackCards[2])
     Test.equal(middle, stackCards[3])
     Test.equal(1, selectedIndex)
+    Test.equal(top.getPosition().y, positions[1].y)
+    Test.equal(bottom.getPosition().y, positions[2].y)
+    Test.equal(middle.getPosition().y, positions[3].y)
     Test.truthy(top.getPosition().y > bottom.getPosition().y)
     Test.truthy(bottom.getPosition().y > middle.getPosition().y)
     local zOffset = Config.actionZone.stackCardZOffset

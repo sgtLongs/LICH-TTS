@@ -680,14 +680,30 @@ function ActionZoneController:getStackCards(fields, object, objects)
     end
 
     local cards = {}
+    local positions = {}
+    local positionsByCardId = {}
+
+    for _, stackLayout in ipairs(ActionZoneLayout.getStackLayout(
+        field,
+        fieldState
+    )) do
+        if stackLayout.stack == stack then
+            for _, cardLayout in ipairs(stackLayout.cards or {}) do
+                positionsByCardId[cardLayout.cardId] = cardLayout.position
+            end
+
+            break
+        end
+    end
 
     for _, cardId in ipairs(stack.cards or {}) do
         if cardsById[cardId] ~= nil then
             cards[#cards + 1] = cardsById[cardId]
+            positions[#positions + 1] = positionsByCardId[cardId]
         end
     end
 
-    return cards, ActionZoneState.selectedIndex(stack)
+    return cards, ActionZoneState.selectedIndex(stack), positions
 end
 
 function ActionZoneController:onCardRotationChanged(

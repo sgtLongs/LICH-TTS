@@ -259,13 +259,17 @@ function GameController:showCardPreview(card, playerColor, imageUrl)
 
     local stackCards = {card}
     local stackIndex = 1
+    local stackPositions = {}
 
     if type(self.cardFields.getActionStackCards) == "function" then
-        local cards, selectedIndex = self.cardFields.getActionStackCards(card)
+        local cards, selectedIndex, positions =
+            self.cardFields.getActionStackCards(card)
 
         if type(cards) == "table" and #cards > 0 then
             stackCards = cards
             stackIndex = tonumber(selectedIndex) or 1
+            stackPositions = type(positions) == "table"
+                and positions or {}
 
             for index, stackCard in ipairs(stackCards) do
                 if stackCard == card then
@@ -283,6 +287,7 @@ function GameController:showCardPreview(card, playerColor, imageUrl)
         playerColor = playerColor,
         stackCards = stackCards,
         stackIndex = stackIndex,
+        stackPositions = stackPositions,
         globalLifts = {},
         navigationActive = false
     }
@@ -314,9 +319,13 @@ function GameController:showCardPreview(card, playerColor, imageUrl)
                 return
             end
 
-            for _, stackCard in ipairs(stackCards) do
+            for index, stackCard in ipairs(stackCards) do
                 if stackCard ~= preview.triggerCard then
-                    self:liftPreviewStackCard(preview, stackCard)
+                    self:liftPreviewStackCard(
+                        preview,
+                        stackCard,
+                        preview.stackPositions[index]
+                    )
                 end
             end
         end, 1)
@@ -382,14 +391,15 @@ function GameController:getCardPreviewImageUrl(card)
         and deck.FaceURL ~= "" and deck.FaceURL or nil
 end
 
-function GameController:liftPreviewStackCard(preview, card)
+function GameController:liftPreviewStackCard(preview, card, basePosition)
     if self.cardPreview ~= preview
         or type(card.getPosition) ~= "function"
     then
         return false
     end
 
-    local position = card.getPosition()
+    local position = type(basePosition) == "table"
+        and basePosition or card.getPosition()
 
     if type(position) ~= "table" or tonumber(position.y) == nil then
         return false
@@ -612,24 +622,38 @@ function GameController:navigateCardPreviewStack(preview, stackDirection)
             return
         end
 
-        local cards, selectedIndex =
+        local cards, selectedIndex, positions =
             self.cardFields.getActionStackCards(selectedCard)
 
         if type(cards) == "table" and #cards > 0 then
             preview.stackCards = cards
             preview.stackIndex = tonumber(selectedIndex)
                 or preview.stackIndex
+            preview.stackPositions = type(positions) == "table"
+                and positions or {}
         end
 
         -- As with ActionZoneController:arrangeState, move the selected card
         -- last so overlapping cards render behind the card in the preview.
-        for _, stackCard in ipairs(preview.stackCards) do
+        local selectedPosition = nil
+
+        for index, stackCard in ipairs(preview.stackCards) do
             if stackCard ~= selectedCard then
-                self:liftPreviewStackCard(preview, stackCard)
+                self:liftPreviewStackCard(
+                    preview,
+                    stackCard,
+                    preview.stackPositions[index]
+                )
+            else
+                selectedPosition = preview.stackPositions[index]
             end
         end
 
-        self:liftPreviewStackCard(preview, selectedCard)
+        self:liftPreviewStackCard(
+            preview,
+            selectedCard,
+            selectedPosition
+        )
     end, 2)
 
     return true
