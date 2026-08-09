@@ -344,7 +344,8 @@ local function spawnDeck(
         purgatoryPosition = purgatoryPosition,
         abyssPosition = abyssPosition,
         deckPosition = position,
-        cardScale = Config.deckSlot.cardScale
+        cardScale = Config.deckSlot.cardScale,
+        untappedRotationY = heroRotation[2]
     }
     local built, deckData = pcall(
         makeDeckData,

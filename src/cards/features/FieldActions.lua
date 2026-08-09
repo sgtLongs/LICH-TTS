@@ -198,20 +198,13 @@ function hideCardActions()
     removeActionButtons()
 end
 
-local function isCardTapRotated()
-    local rotateState = cardState.features.rotate90
-    return type(rotateState) == "table"
-        and rotateState.rotated == true
-end
-
 local function resetCardTapRotation()
-    local rotateState = cardState.features.rotate90
-
-    if type(rotateState) ~= "table" or rotateState.rotated ~= true then
+    if not readCardTapRotation() then
         return
     end
 
-    rotateState.rotated = false
+    writeCardTapRotation(false)
+    local targetSpin = cardTapRotationTarget(false)
 
     if type(self.getRotation) == "function"
         and type(self.setRotation) == "function"
@@ -219,21 +212,33 @@ local function resetCardTapRotation()
         local rotation = self.getRotation()
         self.setRotation({
             x = rotation.x,
-            y = rotation.y - 90,
+            y = targetSpin,
             z = rotation.z
         })
     elseif type(self.rotate) == "function" then
-        self.rotate({x = 0, y = -90, z = 0})
+        self.rotate({
+            x = 0,
+            y = normalizeSignedRotation(targetSpin - currentCardSpin()),
+            z = 0
+        })
     end
 end
 
 local function actionButtonPosition(position)
-    if not isCardTapRotated() then
+    if not readCardTapRotation() then
         return position
     end
 
-    -- Counter-rotate the local offset so the card's 90-degree rotation
+    -- Counter-rotate the local offset so either 90-degree card rotation
     -- leaves the button in the same world-facing layout.
+    if cardTapRotationDegrees(currentCardSpin()) < 0 then
+        return {
+            x = -position.z,
+            y = position.y,
+            z = position.x
+        }
+    end
+
     return {
         x = position.z,
         y = position.y,
@@ -242,7 +247,11 @@ local function actionButtonPosition(position)
 end
 
 local function actionButtonRotation()
-    return isCardTapRotated() and {0, -90, 0} or {0, 0, 0}
+    if not readCardTapRotation() then
+        return {0, 0, 0}
+    end
+
+    return {0, -cardTapRotationDegrees(currentCardSpin()), 0}
 end
 
 local function makeActionButton(

@@ -12,6 +12,7 @@ local runtimeGlobalNames = {
     "onPickUp",
     "onDrop",
     "onHover",
+    "onRotate",
     "onCardTapped",
     "onActionsClicked",
     "showCardActionsForPlayer",
@@ -84,7 +85,6 @@ local function runGenerated(options, testFunction)
     }
 
     environment.card = card
-
     card.getButtons = function()
         return environment.buttons
     end
@@ -348,6 +348,7 @@ end
 
 Test.case("generated cards restore and persist feature state", function()
     runGenerated({
+        rotation = {x = 0, y = 90, z = 0},
         savedState = {
             features = {
                 rotate90 = {rotated = true},
@@ -379,6 +380,56 @@ Test.case("generated cards restore and persist feature state", function()
             environment.globalCalls[2].functionName
         )
         Test.truthy(environment.globalCalls[2].parameters.rotated)
+    end)
+end)
+
+Test.case("generated cards derive taps from native TTS rotation", function()
+    runGenerated({
+        rotation = {x = 0, y = 180, z = 0},
+        context = {untappedRotationY = 180}
+    }, function(environment)
+        onLoad("")
+        Test.falsy(getActionZoneTapRotation())
+
+        onRotate(255, 0, "Red", 180, 0)
+        environment.rotation.y = 255
+        Test.falsy(getActionZoneTapRotation())
+
+        onRotate(270, 0, "Red", 255, 0)
+        Test.truthy(
+            environment.globalCalls[#environment.globalCalls]
+                .parameters.rotated
+        )
+        environment.rotation.y = 270
+        Test.truthy(getActionZoneTapRotation())
+
+        onRotate(180, 0, "Red", 270, 0)
+        Test.falsy(
+            environment.globalCalls[#environment.globalCalls]
+                .parameters.rotated
+        )
+        environment.rotation.y = 180
+        Test.falsy(getActionZoneTapRotation())
+
+        onRotate(90, 0, "Red", 180, 0)
+        environment.rotation.y = 90
+        Test.truthy(getActionZoneTapRotation())
+
+        onRotate(90, 180, "Red", 90, 0)
+        Test.truthy(getActionZoneTapRotation())
+    end)
+end)
+
+Test.case("generated cards prefer physical rotation over saved tap state", function()
+    runGenerated({
+        rotation = {x = 0, y = 0, z = 0},
+        savedState = {features = {rotate90 = {rotated = true}}}
+    }, function(environment)
+        onLoad("saved-card-state")
+        Test.falsy(getActionZoneTapRotation())
+
+        onSave()
+        Test.falsy(environment.encodedState.features.rotate90.rotated)
     end)
 end)
 
@@ -546,6 +597,26 @@ Test.case("generated cards consume runtime button configuration", function()
         Test.equal(888, actions.height)
         onActionsClicked(environment.card, "Red", false)
         Test.equal(2.25, environment.position.y)
+    end)
+end)
+
+Test.case("generated action controls follow either tapped side", function()
+    runGenerated({rotation = {x = 0, y = -90, z = 0}}, function(environment)
+        onLoad("")
+        local actions = findButton(environment, "onActionsClicked")
+
+        Test.near(2.2, actions.position.x, 0.0001)
+        Test.near(0, actions.position.z, 0.0001)
+        Test.equal(90, actions.rotation[2])
+    end)
+
+    runGenerated({rotation = {x = 0, y = 90, z = 0}}, function(environment)
+        onLoad("")
+        local actions = findButton(environment, "onActionsClicked")
+
+        Test.near(-2.2, actions.position.x, 0.0001)
+        Test.near(0, actions.position.z, 0.0001)
+        Test.equal(-90, actions.rotation[2])
     end)
 end)
 

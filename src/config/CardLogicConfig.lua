@@ -1,4 +1,9 @@
 local CardLogicConfig = {
+    tap = {
+        sideRotationDegrees = 90,
+        rotationToleranceDegrees = 5
+    },
+
     buttons = {
         -- Positions are local to each card, so they continue to follow the
         -- card when it moves or rotates.

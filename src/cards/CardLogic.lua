@@ -29,6 +29,7 @@ CardLogic.returnToHandThroughDeck =
     CardHostService.returnToHandThroughDeck
 CardLogic.reloadAndReturnToHand =
     CardHostService.reloadAndReturnToHand
+CardLogic.isTappedRotation = CardHostService.isTappedRotation
 
 function CardLogic.refreshExistingButtons()
     return CardHostService.refreshExistingButtons(

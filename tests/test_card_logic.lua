@@ -28,15 +28,17 @@ Test.case("standalone cards expose actions without a tap button", function()
     Test.contains(script, "local actionZoneTapEnabled = true")
     Test.contains(script, "function setActionZoneTapEnabled(parameters)")
     Test.contains(script, "or not actionZoneTapEnabled")
-    Test.contains(script, 'state.rotated = not state.rotated')
-    Test.contains(script, "local amount = state.rotated and 90 or -90")
+    Test.contains(script, "local function cardTapRotationDegrees(spin)")
+    Test.contains(script, "local rotated = not readCardTapRotation()")
+    Test.contains(script, "local targetSpin = cardTapRotationTarget(rotated)")
     Test.contains(script, "local rotation = self.getRotation()")
     Test.contains(script, "self.setRotationSmooth({")
-    Test.contains(script, "y = rotation.y + amount")
+    Test.contains(script, "y = targetSpin")
     Test.contains(script, "}, false, true)")
-    Test.contains(script, "notifyActionZoneRotationChanged(state.rotated)")
+    Test.contains(script, "notifyActionZoneRotationChanged(rotated)")
     Test.contains(script, '"onActionZoneCardRotationChanged"')
     Test.contains(script, "function getActionZoneTapRotation()")
+    Test.contains(script, "function onRotate(")
 end)
 
 Test.case("cards in player hands have no scripted buttons", function()
@@ -475,6 +477,12 @@ Test.case("existing standalone cards receive button config refreshes", function(
     getAllObjects = originalGetAllObjects
 end)
 
+Test.case("host tap rotation supports both side orientations", function()
+    Test.truthy(CardLogic.isTappedRotation(90))
+    Test.truthy(CardLogic.isTappedRotation(270))
+    Test.falsy(CardLogic.isTappedRotation(75))
+end)
+
 Test.case("card button runtime config exposes current dimensions", function()
     local config = CardLogic.getButtonConfig()
 
@@ -545,7 +553,7 @@ Test.case("preview card actions offer movement to their purgatory", function()
     Test.contains(script, "damn = onDamnCardClicked")
     Test.contains(script, "unequip = onUnequipCardClicked")
     Test.contains(script, "returnToHand = onReturnCardClicked")
-    Test.contains(script, "local function isCardTapRotated()")
+    Test.contains(script, "local function readCardTapRotation(spin)")
     Test.contains(script, "position = actionButtonPosition(position)")
     Test.contains(script, "rotation = actionButtonRotation()")
     Test.contains(script, "x = position.z")
@@ -574,8 +582,8 @@ Test.case("preview card actions offer movement to their purgatory", function()
     Test.contains(script, "playerColor = playerColor")
     Test.contains(script, "Wait.frames(returnAfterBoundsRefresh, 2)")
     Test.contains(script, "local function resetCardTapRotation()")
-    Test.contains(script, "rotateState.rotated = false")
-    Test.contains(script, "y = rotation.y - 90")
+    Test.contains(script, "writeCardTapRotation(false)")
+    Test.contains(script, "local targetSpin = cardTapRotationTarget(false)")
     local returnStart = string.find(
         script,
         "function onReturnCardClicked",
@@ -685,6 +693,7 @@ Test.case("card logic preserves its host-side compatibility facade", function()
         CardHostService.reloadAndReturnToHand,
         CardLogic.reloadAndReturnToHand
     )
+    Test.equal(CardHostService.isTappedRotation, CardLogic.isTappedRotation)
 end)
 
 Test.case("card feature registry owns stable feature descriptors", function()

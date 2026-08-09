@@ -130,6 +130,83 @@ local cardFeatures = {}
 local cardState = {features = {}}
 local actionZoneTapEnabled = true
 local cardButtonsSuppressed = true
+local tapSideRotationDegrees = tonumber(
+    cardContext.tapSideRotationDegrees
+) or 90
+local tapSideToleranceDegrees = tonumber(
+    cardContext.tapRotationToleranceDegrees
+) or 5
+
+local function normalizeSignedRotation(degrees)
+    return ((degrees + 180) % 360) - 180
+end
+
+local function rotationDistance(first, second)
+    return math.abs(normalizeSignedRotation(first - second))
+end
+
+local function currentCardSpin()
+    if type(self.getRotation) ~= "function" then
+        return tonumber(cardContext.untappedRotationY) or 0
+    end
+
+    local rotation = self.getRotation()
+    return tonumber(rotation and (rotation.y or rotation[2]))
+        or tonumber(cardContext.untappedRotationY)
+        or 0
+end
+
+local function cardTapRotationDegrees(spin)
+    local forward = tonumber(cardContext.untappedRotationY) or 0
+    local positiveSide = forward + tapSideRotationDegrees
+    local negativeSide = forward - tapSideRotationDegrees
+    local positiveDistance = rotationDistance(spin, positiveSide)
+    local negativeDistance = rotationDistance(spin, negativeSide)
+    local nearestDistance = math.min(positiveDistance, negativeDistance)
+
+    if nearestDistance > tapSideToleranceDegrees then
+        return 0
+    end
+
+    if positiveDistance <= negativeDistance then
+        return tapSideRotationDegrees
+    end
+
+    return -tapSideRotationDegrees
+end
+
+local function readCardTapRotation(spin)
+    local rotateState = cardState.features.rotate90
+
+    if type(rotateState) ~= "table" then
+        return false
+    end
+
+    rotateState.rotated = cardTapRotationDegrees(
+        tonumber(spin) or currentCardSpin()
+    ) ~= 0
+    return rotateState.rotated
+end
+
+local function writeCardTapRotation(rotated)
+    local rotateState = cardState.features.rotate90
+
+    if type(rotateState) == "table" then
+        rotateState.rotated = rotated == true
+    end
+end
+
+local function cardTapRotationTarget(rotated)
+    local spin = currentCardSpin()
+    local forward = tonumber(cardContext.untappedRotationY) or 0
+    local nearestForward = spin - normalizeSignedRotation(spin - forward)
+
+    if rotated then
+        return nearestForward + tapSideRotationDegrees
+    end
+
+    return nearestForward
+end
 
 local function registerCardFeature(feature)
     cardFeatures[#cardFeatures + 1] = feature
@@ -343,9 +420,7 @@ local function migrateFeatureState(feature, featureState)
 end
 
 function getActionZoneTapRotation()
-    local rotateState = cardState.features.rotate90
-    return type(rotateState) == "table"
-        and rotateState.rotated == true
+    return readCardTapRotation()
 end
 
 function onLoad(savedState)
@@ -411,6 +486,25 @@ function onHover(playerColor)
     end
 end
 
+function onRotate(spin, flip, playerColor, oldSpin, oldFlip)
+    if not isSingleCard() then
+        return
+    end
+
+    for _, feature in ipairs(cardFeatures) do
+        if type(feature.onRotate) == "function" then
+            feature.onRotate(
+                cardState.features[feature.id],
+                spin,
+                flip,
+                playerColor,
+                oldSpin,
+                oldFlip
+            )
+        end
+    end
+end
+
 function onCardTapped(object, playerColor, altClick)
     if object ~= self
         or not isSingleCard()
@@ -431,6 +525,7 @@ function onCardTapped(object, playerColor, altClick)
 end
 
 function onSave()
+    readCardTapRotation()
     return JSON.encode(cardState)
 end
 ]=]

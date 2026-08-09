@@ -398,11 +398,14 @@ Test.case("game routes action stack navigation arrows", function()
 end)
 
 Test.case("game routes action stack card rotation changes", function()
-    local card = {}
+    local card = {tag = "Card"}
 
     Test.truthy(Game.onActionZoneCardRotationChanged(card, true))
     Test.equal(card, calls.actionStackRotatedCard)
     Test.truthy(calls.actionStackRotated)
+
+    Test.truthy(Game.onObjectRotate(card, 0))
+    Test.falsy(calls.actionStackRotated)
 end)
 
 Test.case("game routes edit mode object number keys", function()

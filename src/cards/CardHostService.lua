@@ -5,6 +5,31 @@ local Scheduler = require("src/tts/Scheduler")
 
 local CardHostService = {}
 
+local function normalizeSignedRotation(degrees)
+    return ((degrees + 180) % 360) - 180
+end
+
+local function rotationDistance(first, second)
+    return math.abs(normalizeSignedRotation(first - second))
+end
+
+function CardHostService.isTappedRotation(spin)
+    spin = tonumber(spin)
+
+    if spin == nil then
+        return false
+    end
+
+    local tapConfig = Config.tap or {}
+    local side = tonumber(tapConfig.sideRotationDegrees) or 90
+    local tolerance = tonumber(tapConfig.rotationToleranceDegrees) or 5
+
+    return math.min(
+        rotationDistance(spin, side),
+        rotationDistance(spin, -side)
+    ) <= tolerance
+end
+
 function CardHostService.isObjectInHand(object)
     if object == nil then
         return false

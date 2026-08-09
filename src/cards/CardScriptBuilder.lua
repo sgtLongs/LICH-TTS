@@ -69,6 +69,7 @@ end
 function CardScriptBuilder:makeContextSource(context)
     context = context or {}
     local buttons = self.config.buttons
+    local tap = self.config.tap or {}
     local purgatoryPosition = context.purgatoryPosition
     local abyssPosition = context.abyssPosition
     local deckPosition = context.deckPosition
@@ -101,6 +102,12 @@ function CardScriptBuilder:makeContextSource(context)
         "deckPosition = " .. deckLiteral .. ",",
         "cardScale = "
             .. vectorLiteral(context.cardScale, {1, 1, 1}) .. ",",
+        "untappedRotationY = "
+            .. tostring(tonumber(context.untappedRotationY) or 0) .. ",",
+        "tapSideRotationDegrees = "
+            .. tostring(tonumber(tap.sideRotationDegrees) or 90) .. ",",
+        "tapRotationToleranceDegrees = "
+            .. tostring(tonumber(tap.rotationToleranceDegrees) or 5) .. ",",
         "previewImageUrl = " .. quoted(context.previewImageUrl) .. ",",
         "drawButtons = "
             .. tostring(self.debugConfig.drawCardButtons == true) .. ",",

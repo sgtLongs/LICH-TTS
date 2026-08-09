@@ -64,6 +64,17 @@ function onObjectDrop(playerColor, object)
     return Game.onObjectDrop(playerColor, object)
 end
 
+function onObjectRotate(object, spin, flip, playerColor, oldSpin, oldFlip)
+    return Game.onObjectRotate(
+        object,
+        spin,
+        flip,
+        playerColor,
+        oldSpin,
+        oldFlip
+    )
+end
+
 function onObjectLeaveContainer(container, object)
     Game.onObjectLeaveContainer(container, object)
 end

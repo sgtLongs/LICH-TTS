@@ -88,6 +88,7 @@ local publicMethods = {
     "onHeroHealthDecreaseFiveClicked",
     "onObjectPickUp",
     "onObjectDrop",
+    "onObjectRotate",
     "onObjectLeaveContainer",
     "onObjectEnterZone",
     "returnCardToHandThroughDeck",

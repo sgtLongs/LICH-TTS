@@ -34,19 +34,20 @@ registerCardFeature({
     end,
 
     onLoad = function(state)
-        state.rotated = state.rotated == true
-        notifyActionZoneRotationChanged(state.rotated)
+        local rotated = readCardTapRotation()
+        notifyActionZoneRotationChanged(rotated)
     end,
 
     onTap = function(state)
-        state.rotated = not state.rotated
-        notifyActionZoneRotationChanged(state.rotated)
+        local rotated = not readCardTapRotation()
+        writeCardTapRotation(rotated)
+        notifyActionZoneRotationChanged(rotated)
 
         if type(hideActionButtonsDuringCardRotation) == "function" then
             hideActionButtonsDuringCardRotation()
         end
 
-        local amount = state.rotated and 90 or -90
+        local targetSpin = cardTapRotationTarget(rotated)
 
         if type(self.getRotation) == "function"
             and type(self.setRotationSmooth) == "function"
@@ -58,11 +59,24 @@ registerCardFeature({
             -- locked cards directly beneath an action-stack card.
             self.setRotationSmooth({
                 x = rotation.x,
-                y = rotation.y + amount,
+                y = targetSpin,
                 z = rotation.z
             }, false, true)
         else
-            self.rotate({x = 0, y = amount, z = 0})
+            self.rotate({
+                x = 0,
+                y = normalizeSignedRotation(targetSpin - currentCardSpin()),
+                z = 0
+            })
+        end
+    end,
+
+    onRotate = function(state, spin)
+        local rotated = readCardTapRotation(spin)
+        notifyActionZoneRotationChanged(rotated)
+
+        if type(hideActionButtonsDuringCardRotation) == "function" then
+            hideActionButtonsDuringCardRotation()
         end
     end
 })

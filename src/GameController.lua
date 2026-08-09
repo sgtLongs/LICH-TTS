@@ -767,6 +767,18 @@ function GameController:onObjectDrop(_, object)
     return handled
 end
 
+function GameController:onObjectRotate(object, spin)
+    if type(self.cardLogic.isTappedRotation) ~= "function" then
+        return false
+    end
+
+    local rotated = self.cardLogic.isTappedRotation(spin)
+    return self.cardFields.onActionZoneCardRotationChanged(
+        object,
+        rotated
+    )
+end
+
 function GameController:onObjectLeaveContainer(_, object)
     self.cardLogic.suppressButtonsUntilPlaced(object)
 end

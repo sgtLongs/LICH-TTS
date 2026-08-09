@@ -12,6 +12,7 @@ local callbackNames = {
     "onObjectHover",
     "onObjectPickUp",
     "onObjectDrop",
+    "onObjectRotate",
     "onObjectLeaveContainer",
     "onObjectEnterZone",
     "returnCardToHandThroughDeck",
@@ -57,6 +58,7 @@ local gameMethods = {
     "onObjectHover",
     "onObjectPickUp",
     "onObjectDrop",
+    "onObjectRotate",
     "onObjectLeaveContainer",
     "onObjectEnterZone",
     "returnCardToHandThroughDeck",
@@ -189,6 +191,12 @@ Test.case("global object events preserve TTS argument order", function()
         Test.equal("Blue", context.callsByName.onObjectPickUp.arguments[1])
         Test.equal(object, context.callsByName.onObjectPickUp.arguments[2])
         Test.equal("result-onObjectDrop", onObjectDrop("Red", object))
+        Test.equal(
+            "result-onObjectRotate",
+            onObjectRotate(object, 90, 0, "Red", 0, 0)
+        )
+        Test.equal(object, context.callsByName.onObjectRotate.arguments[1])
+        Test.equal(90, context.callsByName.onObjectRotate.arguments[2])
 
         onObjectHover("Teal", object)
         Test.equal("Teal", context.callsByName.onObjectHover.arguments[1])
