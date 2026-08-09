@@ -299,7 +299,16 @@ Test.case("deck slot fetches its API and spawns the returned cards", function()
     Test.equal(2, spawnCallCount)
     Test.equal(2, deckSpawnedCallbackCount)
     Test.equal("CardCustom", spawnParameters.data.Name)
-    Test.contains(spawnParameters.data.LuaScript, 'tooltip = "tap"')
+    Test.contains(
+        spawnParameters.data.LuaScript,
+        '"actions", "onActionsClicked"'
+    )
+    Test.falsy(string.find(
+        spawnParameters.data.LuaScript,
+        'tooltip = "tap"',
+        1,
+        true
+    ))
     Test.equal(1, spawnParameters.data.Transform.scaleX)
 
     WebRequest = originalWebRequest

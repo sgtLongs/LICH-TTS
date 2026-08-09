@@ -8,22 +8,22 @@ local FieldActions = require("src/cards/features/FieldActions")
 local Config = require("src/config/CardLogicConfig")
 local DebugConfig = require("src/config/GlobalDebugConfig")
 
-Test.case("standalone cards include the tap rotation feature", function()
+Test.case("standalone cards expose actions without a tap button", function()
     local script = CardLogic.build()
 
     Test.contains(script, 'self.tag == "Card"')
-    Test.contains(script, 'tooltip = "tap"')
+    Test.contains(script, '"actions", "onActionsClicked"')
+    Test.contains(script, '"Show or hide card actions"')
     Test.contains(script, '"getCardButtonConfig"')
     Test.contains(script, "JSON.decode, encodedConfig")
     Test.contains(script, "refreshButtonConfig()")
     Test.contains(script, "removeExistingFeatureButtons()")
     Test.contains(script, 'button.click_function == "onCardTapped"')
     Test.contains(script, "function refreshCardButtons()")
-    Test.contains(script, "self.editButton(parameters)")
-    Test.contains(script, "position = cardContext.tapButtonPosition")
-    Test.contains(script, "width = cardContext.tapButtonWidth")
-    Test.contains(script, "height = cardContext.tapButtonHeight")
-    Test.contains(script, 'click_function = "onCardTapped"')
+    Test.contains(script, "position = actionButtonPosition(position)")
+    Test.contains(script, "cardContext.actionsButtonPosition")
+    Test.contains(script, "cardContext.actionsButtonWidth")
+    Test.contains(script, "cardContext.actionsButtonHeight")
     Test.contains(script, "local actionZoneTapEnabled = true")
     Test.contains(script, "function setActionZoneTapEnabled(parameters)")
     Test.contains(script, "or not actionZoneTapEnabled")
@@ -419,6 +419,7 @@ Test.case("existing standalone cards receive button config refreshes", function(
                 getButtons = function()
                     return {
                         {index = 3, click_function = "onCardTapped"},
+                        {index = 9, click_function = "onActionsClicked"},
                         {
                             index = 4,
                             click_function = "onDestroyCardClicked"
@@ -458,13 +459,14 @@ Test.case("existing standalone cards receive button config refreshes", function(
     end
 
     CardLogic.refreshExistingButtons()
-    Test.equal(1, #removedButtons)
-    Test.equal(8, removedButtons[1])
+    Test.equal(2, #removedButtons)
+    Test.equal(3, removedButtons[1])
+    Test.equal(8, removedButtons[2])
     Test.equal(5, #editedButtons)
-    Test.equal(3, editedButtons[1].index)
-    Test.equal(Config.buttons.tap.width, editedButtons[1].width)
-    Test.equal(Config.buttons.tap.height, editedButtons[1].height)
-    Test.equal(Config.buttons.tap.position, editedButtons[1].position)
+    Test.equal(9, editedButtons[1].index)
+    Test.equal(Config.buttons.actions.width, editedButtons[1].width)
+    Test.equal(Config.buttons.actions.height, editedButtons[1].height)
+    Test.equal(Config.buttons.actions.position, editedButtons[1].position)
     Test.equal(4, editedButtons[2].index)
     Test.equal(Config.buttons.actionList.width, editedButtons[2].width)
     Test.equal(Config.buttons.actionList.height, editedButtons[2].height)
@@ -480,8 +482,8 @@ end)
 Test.case("card button runtime config exposes current dimensions", function()
     local config = CardLogic.getButtonConfig()
 
-    Test.equal(Config.buttons.tap.width, config.tap.width)
-    Test.equal(Config.buttons.tap.height, config.tap.height)
+    Test.equal(Config.buttons.actions.width, config.actions.width)
+    Test.equal(Config.buttons.actions.height, config.actions.height)
     Test.equal(Config.buttons.actionList.width, config.destroy.width)
     Test.equal(Config.buttons.actionList.height, config.destroy.height)
     Test.equal(Config.buttons.damn.position, config.damn.position)
@@ -542,14 +544,14 @@ Test.case("card logic accepts first-class feature descriptors", function()
     Test.truthy(found)
 end)
 
-Test.case("hovered cards offer movement to their purgatory", function()
+Test.case("card action buttons offer movement to their purgatory", function()
     local script = CardLogic.build(nil, {
         purgatoryPosition = {x = 11, y = -1, z = 29},
         abyssPosition = {x = 14, y = -1, z = 29},
         deckPosition = {x = 8, y = 1, z = 29}
     })
 
-    Test.contains(script, "function onHover(playerColor)")
+    Test.contains(script, "function onActionsClicked")
     Test.contains(script, '"destroy", "onDestroyCardClicked"')
     Test.contains(script, "cardContext.destroyButtonPosition")
     Test.contains(script, "cardContext.destroyButtonWidth")
@@ -628,7 +630,7 @@ Test.case("hovered cards offer movement to their purgatory", function()
     )
     -- One declaration plus the shared destroy/damn move, unequip, and return.
     Test.equal(4, actionZoneNotificationCount)
-    Test.contains(script, "player.getHoverObject() ~= self")
+    Test.contains(script, "if actionButtonsVisible then")
     Test.contains(script, "x = destination.x")
     Test.contains(script, "y = destination.y")
     Test.contains(script, "z = destination.z")
@@ -649,28 +651,28 @@ Test.case("hovered cards offer movement to their purgatory", function()
     )
 end)
 
-Test.case("card button positions and debug drawing come from config", function()
+Test.case("card button positions come from config", function()
     local previousDebug = DebugConfig.drawCardButtons
-    local previousTapX = Config.buttons.tap.position.x
+    local previousActionsX = Config.buttons.actions.position.x
     local previousDestroyX = Config.buttons.destroy.position.x
     local previousDestroyZ = Config.buttons.destroy.position.z
-    local previousTapWidth = Config.buttons.tap.width
+    local previousActionsWidth = Config.buttons.actions.width
     local previousActionHeight = Config.buttons.actionList.height
 
     Test.cleanup(function()
         DebugConfig.drawCardButtons = previousDebug
-        Config.buttons.tap.position.x = previousTapX
+        Config.buttons.actions.position.x = previousActionsX
         Config.buttons.destroy.position.x = previousDestroyX
         Config.buttons.destroy.position.z = previousDestroyZ
-        Config.buttons.tap.width = previousTapWidth
+        Config.buttons.actions.width = previousActionsWidth
         Config.buttons.actionList.height = previousActionHeight
     end)
 
     DebugConfig.drawCardButtons = true
-    Config.buttons.tap.position.x = 2.25
+    Config.buttons.actions.position.x = 2.25
     Config.buttons.destroy.position.x = 1.8
     Config.buttons.destroy.position.z = -1.5
-    Config.buttons.tap.width = 2100
+    Config.buttons.actions.width = 2100
     Config.buttons.actionList.height = 650
 
     local script = CardLogic.build()
@@ -678,23 +680,21 @@ Test.case("card button positions and debug drawing come from config", function()
     Test.contains(script, "drawButtons = true")
     Test.contains(
         script,
-        "tapButtonPosition = {x = 2.250000, y = 0.300000, "
-            .. "z = 0.000000}"
+        "actionsButtonPosition = {x = 2.250000, y = 0.300000, "
+            .. "z = -2.200000}"
     )
     Test.contains(
         script,
         "destroyButtonPosition = {x = 1.800000, y = 0.300000, "
             .. "z = -1.500000}"
     )
-    Test.contains(script, "tapButtonWidth = 2100")
+    Test.contains(script, "actionsButtonWidth = 2100")
     Test.contains(
         script,
-        "tapButtonHeight = " .. tostring(Config.buttons.tap.height)
+        "actionsButtonHeight = " .. tostring(Config.buttons.actions.height)
     )
     Test.contains(script, "destroyButtonWidth = 900")
     Test.contains(script, "destroyButtonHeight = 650")
-    Test.contains(script, "label = showDebug and cardContext.tapDebugLabel")
-
 end)
 
 Test.case("card logic preserves its host-side compatibility facade", function()
@@ -775,21 +775,21 @@ Test.case("built-in card features remain isolated and unknown IDs fail", functio
         1,
         true
     ))
+    Test.falsy(string.find(
+        rotateScript,
+        "type(config.actions)",
+        1,
+        true
+    ))
 
     Test.contains(actionsScript, "function onDestroyCardClicked")
+    Test.contains(actionsScript, "type(config.actions)")
     Test.falsy(string.find(
         actionsScript,
         "notifyActionZoneRotationChanged",
         1,
         true
     ))
-    Test.falsy(string.find(
-        actionsScript,
-        "type(config.tap)",
-        1,
-        true
-    ))
-
     Test.raises(function()
         CardLogic.build({"notRegistered"})
     end, "Unknown card feature: notRegistered")

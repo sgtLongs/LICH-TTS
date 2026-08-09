@@ -275,7 +275,8 @@ end)
 Test.case("game exposes card button runtime configuration", function()
     local config = Game.getCardButtonConfig()
 
-    Test.truthy(config.tap)
+    Test.truthy(config.actions)
+    Test.nilValue(config.tap)
     Test.truthy(config.destroy)
 end)
 

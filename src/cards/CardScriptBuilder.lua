@@ -16,16 +16,6 @@ local function vectorLiteral(value, fallback)
     )
 end
 
-local function colorLiteral(value)
-    return string.format(
-        "{%.6f, %.6f, %.6f, %.6f}",
-        tonumber(value[1]) or 0,
-        tonumber(value[2]) or 0,
-        tonumber(value[3]) or 0,
-        tonumber(value[4]) or 1
-    )
-end
-
 local function quoted(value)
     return string.format("%q", tostring(value or ""))
 end
@@ -78,7 +68,6 @@ end
 function CardScriptBuilder:makeContextSource(context)
     context = context or {}
     local buttons = self.config.buttons
-    local debug = self.config.debug
     local purgatoryPosition = context.purgatoryPosition
     local abyssPosition = context.abyssPosition
     local deckPosition = context.deckPosition
@@ -113,13 +102,13 @@ function CardScriptBuilder:makeContextSource(context)
             .. vectorLiteral(context.cardScale, {1, 1, 1}) .. ",",
         "drawButtons = "
             .. tostring(self.debugConfig.drawCardButtons == true) .. ",",
-        "tapButtonPosition = "
-            .. vectorLiteral(buttons.tap.position, {0, 0.3, 0})
+        "actionsButtonPosition = "
+            .. vectorLiteral(buttons.actions.position, {0, 0.3, -2.2})
             .. ",",
-        "tapButtonWidth = "
-            .. tostring(tonumber(buttons.tap.width) or 2400) .. ",",
-        "tapButtonHeight = "
-            .. tostring(tonumber(buttons.tap.height) or 3400) .. ",",
+        "actionsButtonWidth = "
+            .. tostring(tonumber(buttons.actions.width) or 1200) .. ",",
+        "actionsButtonHeight = "
+            .. tostring(tonumber(buttons.actions.height) or 500) .. ",",
         "destroyButtonPosition = "
             .. vectorLiteral(buttons.destroy.position, {1.8, 0.3, 0})
             .. ",",
@@ -152,14 +141,6 @@ function CardScriptBuilder:makeContextSource(context)
         "returnToHandButtonHeight = "
             .. tostring(tonumber(buttons.actionList.height) or 500)
             .. ",",
-        "tapDebugLabel = " .. quoted(debug.tapLabel) .. ",",
-        "tapDebugColor = " .. colorLiteral(debug.tapColor) .. ",",
-        "tapDebugHoverColor = "
-            .. colorLiteral(debug.tapHoverColor) .. ",",
-        "tapDebugPressColor = "
-            .. colorLiteral(debug.tapPressColor) .. ",",
-        "tapDebugFontColor = "
-            .. colorLiteral(debug.tapFontColor),
         "}"
     }, "\n")
 end

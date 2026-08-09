@@ -7,9 +7,7 @@ return {
     hostButtons = {
         {
             callback = "onCardTapped",
-            configKey = "tap",
-            sizeSource = "button",
-            debugStyle = "tap"
+            removeOnRefresh = true
         }
     },
     source = [=[

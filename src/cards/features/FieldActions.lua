@@ -8,6 +8,11 @@ return {
     usesButtons = true,
     hostButtons = {
         {
+            callback = "onActionsClicked",
+            configKey = "actions",
+            sizeSource = "button"
+        },
+        {
             callback = "onDestroyCardClicked",
             configKey = "destroy",
             sizeSource = "actionList"
@@ -34,7 +39,6 @@ return {
     },
     source = [=[
 local actionButtonsVisible = false
-local actionHoverPlayers = {}
 local returnToHandInProgress = false
 local actionButtonFunctions = {
     onDestroyCardClicked = true,
@@ -43,6 +47,16 @@ local actionButtonFunctions = {
     onReturnCardClicked = true,
     onActionButtonAreaClicked = true
 }
+
+local function findCardButton(clickFunction)
+    for _, button in ipairs(self.getButtons() or {}) do
+        if button.click_function == clickFunction then
+            return button
+        end
+    end
+
+    return nil
+end
 
 local function removeActionButtons()
     local buttons = self.getButtons() or {}
@@ -134,9 +148,15 @@ local function makeActionButton(
 end
 
 local function showActionButtons()
-    if actionButtonsVisible
-        or cardButtonsSuppressed
+    if cardButtonsSuppressed
         or isCardInHand()
+        or not actionZoneTapEnabled
+    then
+        return
+    end
+
+    if actionButtonsVisible
+        and findCardButton("onDestroyCardClicked") ~= nil
     then
         return
     end
@@ -184,6 +204,34 @@ local function showActionButtons()
     actionButtonsVisible = true
 end
 
+local function makeActionsButton()
+    return makeActionButton(
+        "actions", "onActionsClicked",
+        cardContext.actionsButtonPosition,
+        cardContext.actionsButtonWidth,
+        cardContext.actionsButtonHeight,
+        {0.08, 0.32, 0.5, 0.95},
+        {0.12, 0.5, 0.72, 1},
+        {0.04, 0.2, 0.34, 1},
+        "Show or hide card actions"
+    )
+end
+
+function onActionsClicked(object, playerColor, altClick)
+    if object ~= self
+        or not isSingleCard()
+        or not actionZoneTapEnabled
+    then
+        return
+    end
+
+    if actionButtonsVisible then
+        removeActionButtons()
+    else
+        showActionButtons()
+    end
+end
+
 function hideActionButtonsDuringCardRotation()
     local shouldRestore = actionButtonsVisible
     removeActionButtons()
@@ -195,9 +243,7 @@ function hideActionButtonsDuringCardRotation()
     local function restoreAfterRotation()
         Wait.condition(
             function()
-                if next(actionHoverPlayers) ~= nil
-                    and not isCardInHand()
-                then
+                if not isCardInHand() then
                     showActionButtons()
                 end
             end,
@@ -213,6 +259,37 @@ function hideActionButtonsDuringCardRotation()
 end
 
 function refreshCardActionButtons()
+    local actionsButton = findCardButton("onActionsClicked")
+
+    if cardButtonsSuppressed
+        or isCardInHand()
+        or not actionZoneTapEnabled
+    then
+        removeActionButtons()
+
+        if actionsButton ~= nil then
+            self.removeButton(actionsButton.index)
+        end
+
+        return
+    end
+
+    local actionsParameters = makeActionsButton()
+
+    if actionsButton == nil then
+        self.createButton(actionsParameters)
+    else
+        actionsParameters.index = actionsButton.index
+        self.editButton(actionsParameters)
+    end
+
+    if actionButtonsVisible
+        and findCardButton("onDestroyCardClicked") == nil
+    then
+        actionButtonsVisible = false
+        showActionButtons()
+    end
+
     if not actionButtonsVisible then
         return
     end
@@ -499,26 +576,6 @@ registerCardFeature({
         -- The legacy state has no required fields. Return the original table
         -- so unknown per-card values survive save/load unchanged.
         return state
-    end,
-
-    onHover = function(state, playerColor)
-        actionHoverPlayers[playerColor] = true
-        showActionButtons()
-
-        Wait.condition(
-            function()
-                actionHoverPlayers[playerColor] = nil
-
-                if next(actionHoverPlayers) == nil then
-                    removeActionButtons()
-                end
-            end,
-            function()
-                local player = Player[playerColor]
-                return player == nil
-                    or player.getHoverObject() ~= self
-            end
-        )
     end
 })
 ]=]

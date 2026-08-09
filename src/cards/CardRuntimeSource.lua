@@ -105,15 +105,15 @@ local function makeRuntimeConfigRefresh(descriptors)
 
     local chunks = {}
 
-    if selected.tap then
+    if selected.actions then
         chunks[#chunks + 1] = [=[
-    if type(config.tap) == "table" then
-        cardContext.tapButtonPosition = config.tap.position
-            or cardContext.tapButtonPosition
-        cardContext.tapButtonWidth = tonumber(config.tap.width)
-            or cardContext.tapButtonWidth
-        cardContext.tapButtonHeight = tonumber(config.tap.height)
-            or cardContext.tapButtonHeight
+    if type(config.actions) == "table" then
+        cardContext.actionsButtonPosition = config.actions.position
+            or cardContext.actionsButtonPosition
+        cardContext.actionsButtonWidth = tonumber(config.actions.width)
+            or cardContext.actionsButtonWidth
+        cardContext.actionsButtonHeight = tonumber(config.actions.height)
+            or cardContext.actionsButtonHeight
     end
 ]=]
     end
@@ -286,30 +286,6 @@ end
 end
 
 local lifecycle = [=[
-local function makeTapButtonParameters()
-    local showDebug = cardContext.drawButtons == true
-
-    return {
-        label = showDebug and cardContext.tapDebugLabel or "",
-        click_function = "onCardTapped",
-        function_owner = self,
-        position = cardContext.tapButtonPosition,
-        rotation = {0, 0, 0},
-        width = cardContext.tapButtonWidth,
-        height = cardContext.tapButtonHeight,
-        font_size = showDebug and 180 or 1,
-        color = showDebug
-            and cardContext.tapDebugColor or {0, 0, 0, 0},
-        font_color = showDebug
-            and cardContext.tapDebugFontColor or {0, 0, 0, 0},
-        hover_color = showDebug
-            and cardContext.tapDebugHoverColor or {0, 0, 0, 0},
-        press_color = showDebug
-            and cardContext.tapDebugPressColor or {0, 0, 0, 0},
-        tooltip = "tap"
-    }
-end
-
 function refreshCardButtons()
     if not isSingleCard() then
         return
@@ -322,28 +298,9 @@ function refreshCardButtons()
         return
     end
 
-    local hasTapButton = false
-
     for _, button in ipairs(self.getButtons() or {}) do
         if button.click_function == "onCardTapped" then
-            if actionZoneTapEnabled then
-                hasTapButton = true
-                local parameters = makeTapButtonParameters()
-                parameters.index = button.index
-                self.editButton(parameters)
-            else
-                self.removeButton(button.index)
-            end
-            break
-        end
-    end
-
-    if actionZoneTapEnabled and not hasTapButton then
-        for _, feature in ipairs(cardFeatures) do
-            if type(feature.onTap) == "function" then
-                self.createButton(makeTapButtonParameters())
-                break
-            end
+            self.removeButton(button.index)
         end
     end
 

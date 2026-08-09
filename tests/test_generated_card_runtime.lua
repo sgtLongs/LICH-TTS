@@ -13,6 +13,7 @@ local runtimeGlobalNames = {
     "onDrop",
     "onHover",
     "onCardTapped",
+    "onActionsClicked",
     "onSave",
     "hideActionButtonsDuringCardRotation",
     "refreshCardActionButtons",
@@ -339,7 +340,8 @@ Test.case("generated cards restore and persist feature state", function()
         onLoad("saved-card-state")
 
         Test.truthy(getActionZoneTapRotation())
-        Test.truthy(findButton(environment, "onCardTapped"))
+        Test.truthy(findButton(environment, "onActionsClicked"))
+        Test.nilValue(findButton(environment, "onCardTapped"))
         Test.equal("encoded-card-state", onSave())
         Test.truthy(environment.encodedState.features.rotate90.rotated)
         Test.equal(
@@ -399,7 +401,8 @@ end)
 Test.case("generated pickup and drop restore buttons after movement", function()
     runGenerated({}, function(environment)
         onLoad("")
-        Test.truthy(findButton(environment, "onCardTapped"))
+        Test.truthy(findButton(environment, "onActionsClicked"))
+        Test.nilValue(findButton(environment, "onCardTapped"))
 
         environment.card.held_by_color = "Red"
         environment.moving = true
@@ -421,7 +424,8 @@ Test.case("generated pickup and drop restore buttons after movement", function()
 
         Test.equal(0, #environment.pendingConditions)
         Test.equal(1, #environment.buttons)
-        Test.truthy(findButton(environment, "onCardTapped"))
+        Test.truthy(findButton(environment, "onActionsClicked"))
+        Test.nilValue(findButton(environment, "onCardTapped"))
     end)
 end)
 
@@ -487,25 +491,25 @@ Test.case("generated tap toggles exact rotation and saved state", function()
     end)
 end)
 
-Test.case("covered generated cards disable and restore their tap target", function()
+Test.case("covered generated cards disable and restore their actions", function()
     runGenerated({}, function(environment)
         onLoad("")
-        Test.truthy(findButton(environment, "onCardTapped"))
+        Test.truthy(findButton(environment, "onActionsClicked"))
 
         setActionZoneTapEnabled({enabled = false})
-        Test.nilValue(findButton(environment, "onCardTapped"))
+        Test.nilValue(findButton(environment, "onActionsClicked"))
         onCardTapped(environment.card, "Red", false)
         Test.equal(0, #environment.rotationTargets)
 
         setActionZoneTapEnabled({enabled = true})
-        Test.truthy(findButton(environment, "onCardTapped"))
+        Test.truthy(findButton(environment, "onActionsClicked"))
     end)
 end)
 
 Test.case("generated cards consume runtime button configuration", function()
     runGenerated({
         buttonConfig = {
-            tap = {
+            actions = {
                 position = {x = 4, y = 5, z = 6},
                 width = 777,
                 height = 888
@@ -513,30 +517,27 @@ Test.case("generated cards consume runtime button configuration", function()
         }
     }, function(environment)
         onLoad("")
-        local tap = findButton(environment, "onCardTapped")
+        local actions = findButton(environment, "onActionsClicked")
 
-        Test.equal(4, tap.position.x)
-        Test.equal(5, tap.position.y)
-        Test.equal(6, tap.position.z)
-        Test.equal(777, tap.width)
-        Test.equal(888, tap.height)
+        Test.equal(4, actions.position.x)
+        Test.equal(5, actions.position.y)
+        Test.equal(6, actions.position.z)
+        Test.equal(777, actions.width)
+        Test.equal(888, actions.height)
     end)
 end)
 
-Test.case("generated hover actions remain until the last player leaves", function()
-    local redHover = nil
-    local blueHover = nil
-    local players = {
-        Red = {getHoverObject = function() return redHover end},
-        Blue = {getHoverObject = function() return blueHover end}
-    }
-
-    runGenerated({players = players}, function(environment)
-        redHover = environment.card
-        blueHover = environment.card
+Test.case("generated actions button toggles the side controls", function()
+    runGenerated({}, function(environment)
         onLoad("")
-        onHover("Red")
-        onHover("Blue")
+
+        Test.truthy(findButton(environment, "onActionsClicked"))
+        Test.nilValue(findButton(environment, "onDestroyCardClicked"))
+
+        onActionsClicked({}, "Red", false)
+        Test.equal(1, #environment.buttons)
+
+        onActionsClicked(environment.card, "Red", false)
 
         Test.truthy(findButton(environment, "onDestroyCardClicked"))
         Test.truthy(findButton(environment, "onDamnCardClicked"))
@@ -544,14 +545,9 @@ Test.case("generated hover actions remain until the last player leaves", functio
         Test.truthy(findButton(environment, "onReturnCardClicked"))
         Test.equal(5, #environment.buttons)
 
-        redHover = nil
-        environment.runConditions()
-        Test.equal(5, #environment.buttons)
-
-        blueHover = nil
-        environment.runConditions()
+        onActionsClicked(environment.card, "Red", false)
         Test.equal(1, #environment.buttons)
-        Test.truthy(findButton(environment, "onCardTapped"))
+        Test.truthy(findButton(environment, "onActionsClicked"))
     end)
 end)
 
@@ -706,7 +702,8 @@ Test.case("failed generated returns recover their buttons and can retry", functi
         onReturnCardClicked(environment.card, "Blue", false)
         environment.runFrames(2)
 
-        Test.truthy(findButton(environment, "onCardTapped"))
+        Test.truthy(findButton(environment, "onActionsClicked"))
+        Test.nilValue(findButton(environment, "onCardTapped"))
         onReturnCardClicked(environment.card, "Blue", false)
         Test.equal(1, #environment.pendingFrames)
     end)
@@ -756,34 +753,26 @@ Test.case("generated rotate feature is isolated from field actions", function()
         onLoad("")
         onHover("Red")
 
-        Test.truthy(findButton(environment, "onCardTapped"))
+        Test.nilValue(findButton(environment, "onCardTapped"))
+        Test.nilValue(findButton(environment, "onActionsClicked"))
         Test.nilValue(findButton(environment, "onDestroyCardClicked"))
         Test.nilValue(_G.onDestroyCardClicked)
     end)
 end)
 
 Test.case("generated field actions work without the rotate feature", function()
-    local hoveredCard = nil
-    local players = {
-        Red = {
-            getHoverObject = function()
-                return hoveredCard
-            end
-        }
-    }
-
     runGenerated({
-        featureNames = {"destroyToPurgatory"},
-        players = players
+        featureNames = {"destroyToPurgatory"}
     }, function(environment)
-        hoveredCard = environment.card
         onLoad("")
-        onHover("Red")
 
         Test.nilValue(findButton(environment, "onCardTapped"))
+        Test.truthy(findButton(environment, "onActionsClicked"))
+        Test.nilValue(findButton(environment, "onDestroyCardClicked"))
+        onActionsClicked(environment.card, "Red", false)
         Test.truthy(findButton(environment, "onDestroyCardClicked"))
         Test.truthy(findButton(environment, "onDamnCardClicked"))
-        Test.equal(4, #environment.buttons)
+        Test.equal(5, #environment.buttons)
         onCardTapped(environment.card, "Red", false)
         Test.equal(0, #environment.rotationTargets)
     end)
