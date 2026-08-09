@@ -218,6 +218,16 @@ function GameController:showCardPreview(card, playerColor, imageUrl)
         playerColor
     )
     self.uiAdapter.setAttribute(previewConfig.rootId, "active", "true")
+
+    if type(card.highlightOn) == "function" then
+        local configured = previewConfig.glowColor or {}
+        card.highlightOn({
+            r = tonumber(configured.r or configured[1]) or 0.15,
+            g = tonumber(configured.g or configured[2]) or 0.7,
+            b = tonumber(configured.b or configured[3]) or 1
+        })
+    end
+
     return true
 end
 
@@ -239,6 +249,10 @@ function GameController:hideCardPreview(card, playerColor)
     end
 
     self.uiAdapter.setAttribute(previewConfig.rootId, "active", "false")
+
+    if type(card.highlightOff) == "function" then
+        card.highlightOff()
+    end
 
     if type(card.call) == "function" then
         pcall(card.call, "hideCardActions")

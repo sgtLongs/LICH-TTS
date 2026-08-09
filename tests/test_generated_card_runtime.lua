@@ -173,7 +173,6 @@ local function runGenerated(options, testFunction)
     card.setAngularVelocity = function(value)
         environment.angularVelocity = value
     end
-
     local players = options.players or {}
     Player = {
         getPlayers = function()
@@ -274,6 +273,12 @@ local function runGenerated(options, testFunction)
             if functionName == "getCardFieldDestination" then
                 local destinations = options.fieldDestinations or {}
                 return destinations[parameters.destination]
+            end
+
+            if functionName == "showCardPreview"
+                or functionName == "hideCardPreview"
+            then
+                return true
             end
 
             environment.events[#environment.events + 1] = functionName
@@ -518,6 +523,7 @@ end)
 
 Test.case("generated cards consume runtime button configuration", function()
     runGenerated({
+        context = {previewImageUrl = "https://example.test/card.png"},
         buttonConfig = {
             actions = {
                 position = {x = 4, y = 5, z = 6},

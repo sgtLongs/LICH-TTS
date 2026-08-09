@@ -13,7 +13,9 @@ local CardLogicConfig = {
 
     preview = {
         rootId = "cardPreviewRoot",
-        imageId = "cardPreviewImage"
+        imageId = "cardPreviewImage",
+        -- Persistent TTS highlight shown around the previewed physical card.
+        glowColor = {r = 0.15, g = 0.7, b = 1}
     }
 }
 

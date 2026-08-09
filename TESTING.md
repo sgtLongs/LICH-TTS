@@ -203,9 +203,10 @@ TTS after changing those boundaries and before publishing a save:
 3. Draw and return cards through a multi-card deck, a one-card deck, and after
    the original deck is gone. Confirm hand cards expose no scripted buttons.
 4. Open the actions menu and confirm gravity is disabled so the card stays
-   raised while its player-only preview and four action buttons are visible on
-   the left, with no side buttons on the card. Click elsewhere and each preview
-   action button; confirm the prior gravity setting is restored,
+   raised with its configured glow outline while its player-only preview and
+   four action buttons are visible on the left, with no side buttons on the
+   card. Click elsewhere and each preview action button; confirm the glow is
+   removed, the prior gravity setting is restored,
    the preview closes, and the card lowers before destroy, damn, unequip, or
    return continues. Save/reload an older tapped card and a card with
    unversioned feature state.

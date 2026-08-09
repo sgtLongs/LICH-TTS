@@ -90,13 +90,26 @@ end)
 Test.case("card previews are player scoped and owned by the opening card", function()
     local attributes = {}
     local hiddenCards = {}
+    local highlights = {}
     local card = {
+        highlightOn = function(color, duration)
+            highlights.card = {color = color, duration = duration}
+        end,
+        highlightOff = function()
+            highlights.card = nil
+        end,
         call = function(functionName)
             Test.equal("hideCardActions", functionName)
             hiddenCards[#hiddenCards + 1] = "card"
         end
     }
     local otherCard = {
+        highlightOn = function(color, duration)
+            highlights.other = {color = color, duration = duration}
+        end,
+        highlightOff = function()
+            highlights.other = nil
+        end,
         call = function(functionName)
             Test.equal("hideCardActions", functionName)
             hiddenCards[#hiddenCards + 1] = "other"
@@ -110,7 +123,11 @@ Test.case("card previews are player scoped and owned by the opening card", funct
         }
     })
     values.cardLogic.getPreviewConfig = function()
-        return {rootId = "preview", imageId = "previewImage"}
+        return {
+            rootId = "preview",
+            imageId = "previewImage",
+            glowColor = {r = 0.8, g = 0.3, b = 0.1}
+        }
     end
     values.hexGrid.onPlayerAction = function()
         return "player-action-result"
@@ -128,16 +145,24 @@ Test.case("card previews are player scoped and owned by the opening card", funct
     )
     Test.equal("Red", attributes["preview.visibility"])
     Test.equal("true", attributes["preview.active"])
+    Test.equal(0.8, highlights.card.color.r)
+    Test.equal(0.3, highlights.card.color.g)
+    Test.equal(0.1, highlights.card.color.b)
+    Test.nilValue(highlights.card.duration)
 
     Test.falsy(controller:hideCardPreview(otherCard, "Red"))
     Test.equal("true", attributes["preview.active"])
+    Test.truthy(highlights.card)
     Test.truthy(controller:hideCardPreview(card, "Red"))
     Test.equal("false", attributes["preview.active"])
+    Test.nilValue(highlights.card)
     Test.equal("card", hiddenCards[1])
 
     Test.truthy(controller:showCardPreview(card, "Red", "red.png"))
     Test.truthy(controller:showCardPreview(otherCard, "Blue", "blue.png"))
     Test.equal("card", hiddenCards[2])
+    Test.nilValue(highlights.card)
+    Test.truthy(highlights.other)
     Test.equal("Blue", attributes["preview.visibility"])
 
     Test.equal(
@@ -151,6 +176,7 @@ Test.case("card previews are player scoped and owned by the opening card", funct
     )
     Test.equal("false", attributes["preview.active"])
     Test.equal("other", hiddenCards[3])
+    Test.nilValue(highlights.other)
 end)
 
 Test.case("preview action buttons invoke only the owning player's card", function()

@@ -136,15 +136,21 @@ local function showCardPreview(playerColor)
         or Global == nil
         or type(Global.call) ~= "function"
     then
-        return
+        return false
     end
 
-    actionPreviewPlayerColor = playerColor
-    pcall(Global.call, "showCardPreview", {
+    local succeeded, shown = pcall(Global.call, "showCardPreview", {
         card = self,
         playerColor = playerColor,
         imageUrl = cardContext.previewImageUrl
     })
+
+    if succeeded and shown == true then
+        actionPreviewPlayerColor = playerColor
+        return true
+    end
+
+    return false
 end
 
 local function hideCardPreview()
@@ -269,9 +275,10 @@ local function showActionButtons(playerColor)
         return
     end
 
-    setActionCardLifted(true)
-    showCardPreview(playerColor)
-    actionButtonsVisible = true
+    if showCardPreview(playerColor) then
+        setActionCardLifted(true)
+        actionButtonsVisible = true
+    end
 end
 
 local function makeActionsButton()
