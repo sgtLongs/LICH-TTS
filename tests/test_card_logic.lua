@@ -459,23 +459,18 @@ Test.case("existing standalone cards receive button config refreshes", function(
     end
 
     CardLogic.refreshExistingButtons()
-    Test.equal(2, #removedButtons)
+    Test.equal(6, #removedButtons)
     Test.equal(3, removedButtons[1])
-    Test.equal(8, removedButtons[2])
-    Test.equal(5, #editedButtons)
+    Test.equal(4, removedButtons[2])
+    Test.equal(5, removedButtons[3])
+    Test.equal(6, removedButtons[4])
+    Test.equal(7, removedButtons[5])
+    Test.equal(8, removedButtons[6])
+    Test.equal(1, #editedButtons)
     Test.equal(9, editedButtons[1].index)
     Test.equal(Config.buttons.actions.width, editedButtons[1].width)
     Test.equal(Config.buttons.actions.height, editedButtons[1].height)
     Test.equal(Config.buttons.actions.position, editedButtons[1].position)
-    Test.equal(4, editedButtons[2].index)
-    Test.equal(Config.buttons.actionList.width, editedButtons[2].width)
-    Test.equal(Config.buttons.actionList.height, editedButtons[2].height)
-    Test.equal(Config.buttons.damn.position, editedButtons[3].position)
-    Test.equal(Config.buttons.actionList.width, editedButtons[4].width)
-    Test.equal(
-        Config.buttons.actionList.height,
-        editedButtons[5].height
-    )
     getAllObjects = originalGetAllObjects
 end)
 
@@ -488,30 +483,18 @@ Test.case("card button runtime config exposes current dimensions", function()
         Config.buttons.actions.liftHeight,
         config.actions.liftHeight
     )
-    Test.equal(Config.buttons.actionList.width, config.destroy.width)
-    Test.equal(Config.buttons.actionList.height, config.destroy.height)
-    Test.equal(Config.buttons.damn.position, config.damn.position)
-    Test.equal(Config.buttons.actionList.width, config.unequip.width)
-    Test.equal(
-        Config.buttons.actionList.height,
-        config.returnToHand.height
-    )
+    Test.nilValue(config.destroy)
+    Test.nilValue(config.damn)
+    Test.nilValue(config.unequip)
+    Test.nilValue(config.returnToHand)
 end)
 
-Test.case("card actions use a two by two layout around the card", function()
-    local offset = Config.buttons.actionList.zOffset
-    local destroy = Config.buttons.destroy.position
-    local damn = Config.buttons.damn.position
-    local unequip = Config.buttons.unequip.position
-    local returnToHand = Config.buttons.returnToHand.position
-
-    Test.equal(damn.x, destroy.x)
-    Test.equal(returnToHand.x, unequip.x)
-    Test.equal(damn.z, returnToHand.z)
-    Test.equal(destroy.z, unequip.z)
-    Test.near(offset, destroy.z - damn.z, 0.000001)
-    Test.truthy(damn.x < 0)
-    Test.truthy(returnToHand.x > 0)
+Test.case("only the actions trigger has physical button config", function()
+    Test.truthy(Config.buttons.actions)
+    Test.nilValue(Config.buttons.destroy)
+    Test.nilValue(Config.buttons.damn)
+    Test.nilValue(Config.buttons.unequip)
+    Test.nilValue(Config.buttons.returnToHand)
 end)
 
 Test.case("card logic can be extended with opt-in features", function()
@@ -548,7 +531,7 @@ Test.case("card logic accepts first-class feature descriptors", function()
     Test.truthy(found)
 end)
 
-Test.case("card action buttons offer movement to their purgatory", function()
+Test.case("preview card actions offer movement to their purgatory", function()
     local script = CardLogic.build(nil, {
         purgatoryPosition = {x = 11, y = -1, z = 29},
         abyssPosition = {x = 14, y = -1, z = 29},
@@ -556,17 +539,11 @@ Test.case("card action buttons offer movement to their purgatory", function()
     })
 
     Test.contains(script, "function onActionsClicked")
-    Test.contains(script, '"destroy", "onDestroyCardClicked"')
-    Test.contains(script, "cardContext.destroyButtonPosition")
-    Test.contains(script, "cardContext.destroyButtonWidth")
-    Test.contains(script, "cardContext.destroyButtonHeight")
-    Test.contains(script, '"Move to purgatory"')
-    Test.contains(script, '"damn", "onDamnCardClicked"')
-    Test.contains(script, '"Move to abyss"')
-    Test.contains(script, '"unequip", "onUnequipCardClicked"')
-    Test.contains(script, '"Return to bottom of deck"')
-    Test.contains(script, '"return", "onReturnCardClicked"')
-    Test.contains(script, '"Return to hand"')
+    Test.contains(script, "function onPreviewCardActionClicked")
+    Test.contains(script, "destroy = onDestroyCardClicked")
+    Test.contains(script, "damn = onDamnCardClicked")
+    Test.contains(script, "unequip = onUnequipCardClicked")
+    Test.contains(script, "returnToHand = onReturnCardClicked")
     Test.contains(script, "local function isCardTapRotated()")
     Test.contains(script, "position = actionButtonPosition(position)")
     Test.contains(script, "rotation = actionButtonRotation()")
@@ -658,26 +635,17 @@ end)
 Test.case("card button positions come from config", function()
     local previousDebug = DebugConfig.drawCardButtons
     local previousActionsX = Config.buttons.actions.position.x
-    local previousDestroyX = Config.buttons.destroy.position.x
-    local previousDestroyZ = Config.buttons.destroy.position.z
     local previousActionsWidth = Config.buttons.actions.width
-    local previousActionHeight = Config.buttons.actionList.height
 
     Test.cleanup(function()
         DebugConfig.drawCardButtons = previousDebug
         Config.buttons.actions.position.x = previousActionsX
-        Config.buttons.destroy.position.x = previousDestroyX
-        Config.buttons.destroy.position.z = previousDestroyZ
         Config.buttons.actions.width = previousActionsWidth
-        Config.buttons.actionList.height = previousActionHeight
     end)
 
     DebugConfig.drawCardButtons = true
     Config.buttons.actions.position.x = 2.25
-    Config.buttons.destroy.position.x = 1.8
-    Config.buttons.destroy.position.z = -1.5
     Config.buttons.actions.width = 2100
-    Config.buttons.actionList.height = 650
 
     local script = CardLogic.build()
 
@@ -687,18 +655,12 @@ Test.case("card button positions come from config", function()
         "actionsButtonPosition = {x = 2.250000, y = 0.300000, "
             .. "z = -2.200000}"
     )
-    Test.contains(
-        script,
-        "destroyButtonPosition = {x = 1.800000, y = 0.300000, "
-            .. "z = -1.500000}"
-    )
     Test.contains(script, "actionsButtonWidth = 2100")
     Test.contains(
         script,
         "actionsButtonHeight = " .. tostring(Config.buttons.actions.height)
     )
-    Test.contains(script, "destroyButtonWidth = 900")
-    Test.contains(script, "destroyButtonHeight = 650")
+    Test.falsy(string.find(script, "destroyButtonPosition", 1, true))
 end)
 
 Test.case("card logic preserves its host-side compatibility facade", function()

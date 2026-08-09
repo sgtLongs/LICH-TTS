@@ -6,6 +6,7 @@ local callbackNames = {
     "getCardButtonConfig",
     "showCardPreview",
     "hideCardPreview",
+    "onCardPreviewActionClicked",
     "getCardFieldDestination",
     "onObjectHover",
     "onObjectPickUp",
@@ -48,6 +49,7 @@ local gameMethods = {
     "getCardButtonConfig",
     "showCardPreview",
     "hideCardPreview",
+    "onCardPreviewActionClicked",
     "getCardFieldDestination",
     "refreshCardButtons",
     "onObjectHover",
@@ -231,6 +233,18 @@ Test.case("global card routes validate parameter tables", function()
         Test.equal(
             "result-hideCardPreview",
             hideCardPreview({card = card, playerColor = "Red"})
+        )
+        Test.equal(
+            "result-onCardPreviewActionClicked",
+            onCardPreviewActionClicked({color = "Red"}, "destroy")
+        )
+        Test.equal(
+            "Red",
+            context.callsByName.onCardPreviewActionClicked.arguments[1]
+        )
+        Test.equal(
+            "destroy",
+            context.callsByName.onCardPreviewActionClicked.arguments[2]
         )
         local destination = getCardFieldDestination({
             fieldId = "field-a",

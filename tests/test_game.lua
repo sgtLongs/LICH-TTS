@@ -277,7 +277,7 @@ Test.case("game exposes card button runtime configuration", function()
 
     Test.truthy(config.actions)
     Test.nilValue(config.tap)
-    Test.truthy(config.destroy)
+    Test.nilValue(config.destroy)
 end)
 
 Test.case("game routes stable card-field destinations", function()

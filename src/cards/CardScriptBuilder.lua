@@ -37,7 +37,6 @@ end
 
 function CardScriptBuilder:getButtonConfig()
     local buttons = self.config.buttons
-    local actionList = buttons.actionList
     local runtimeConfig = {
         drawButtons = self.debugConfig.drawCardButtons == true
     }
@@ -50,13 +49,10 @@ function CardScriptBuilder:getButtonConfig()
             if type(buttonConfig) == "table"
                 and runtimeConfig[key] == nil
             then
-                local size = descriptor.sizeSource == "actionList"
-                    and actionList or buttonConfig
-
                 runtimeConfig[key] = {
                     position = buttonConfig.position,
-                    width = size.width,
-                    height = size.height
+                    width = buttonConfig.width,
+                    height = buttonConfig.height
                 }
 
                 if key == "actions" then
@@ -117,38 +113,6 @@ function CardScriptBuilder:makeContextSource(context)
             .. tostring(tonumber(buttons.actions.height) or 500) .. ",",
         "actionsLiftHeight = "
             .. tostring(tonumber(buttons.actions.liftHeight) or 0) .. ",",
-        "destroyButtonPosition = "
-            .. vectorLiteral(buttons.destroy.position, {1.8, 0.3, 0})
-            .. ",",
-        "destroyButtonWidth = "
-            .. tostring(tonumber(buttons.actionList.width) or 900) .. ",",
-        "destroyButtonHeight = "
-            .. tostring(tonumber(buttons.actionList.height) or 500) .. ",",
-        "damnButtonPosition = "
-            .. vectorLiteral(buttons.damn.position, {1.8, 0.3, -0.3})
-            .. ",",
-        "damnButtonWidth = "
-            .. tostring(tonumber(buttons.actionList.width) or 900) .. ",",
-        "damnButtonHeight = "
-            .. tostring(tonumber(buttons.actionList.height) or 500) .. ",",
-        "unequipButtonPosition = "
-            .. vectorLiteral(buttons.unequip.position, {1.8, 0.3, 0.3})
-            .. ",",
-        "unequipButtonWidth = "
-            .. tostring(tonumber(buttons.actionList.width) or 900) .. ",",
-        "unequipButtonHeight = "
-            .. tostring(tonumber(buttons.actionList.height) or 500) .. ",",
-        "returnToHandButtonPosition = "
-            .. vectorLiteral(
-                buttons.returnToHand.position,
-                {1.8, 0.3, 0.9}
-            ) .. ",",
-        "returnToHandButtonWidth = "
-            .. tostring(tonumber(buttons.actionList.width) or 900)
-            .. ",",
-        "returnToHandButtonHeight = "
-            .. tostring(tonumber(buttons.actionList.height) or 500)
-            .. ",",
         "}"
     }, "\n")
 end

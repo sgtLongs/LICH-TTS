@@ -66,6 +66,7 @@ local publicMethods = {
     "getCardButtonConfig",
     "showCardPreview",
     "hideCardPreview",
+    "onCardPreviewActionClicked",
     "getCardFieldDestination",
     "refreshCardButtons",
     "onAdvancePhaseClicked",

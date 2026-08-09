@@ -153,6 +153,41 @@ Test.case("card previews are player scoped and owned by the opening card", funct
     Test.equal("other", hiddenCards[3])
 end)
 
+Test.case("preview action buttons invoke only the owning player's card", function()
+    local calls = {}
+    local attributes = {}
+    local card = {
+        call = function(functionName, parameters)
+            calls[#calls + 1] = {
+                functionName = functionName,
+                parameters = parameters
+            }
+            return functionName == "onPreviewCardActionClicked"
+        end
+    }
+    local values = dependencies({
+        uiAdapter = {
+            setAttribute = function(id, attribute, value)
+                attributes[id .. "." .. attribute] = value
+            end
+        }
+    })
+    values.cardLogic.getPreviewConfig = function()
+        return {rootId = "preview", imageId = "previewImage"}
+    end
+    local controller = GameController.new(values)
+
+    Test.truthy(controller:showCardPreview(card, "Red", "card.png"))
+    Test.falsy(controller:onCardPreviewActionClicked("Blue", "destroy"))
+    Test.falsy(controller:onCardPreviewActionClicked("Red", "unknown"))
+    Test.truthy(controller:onCardPreviewActionClicked("Red", "damn"))
+    Test.equal("false", attributes["preview.active"])
+    Test.equal("hideCardActions", calls[1].functionName)
+    Test.equal("onPreviewCardActionClicked", calls[2].functionName)
+    Test.equal("damn", calls[2].parameters.action)
+    Test.equal("Red", calls[2].parameters.playerColor)
+end)
+
 Test.case("game controller loads legacy saves through injected ports", function()
     local loaded = {}
     local values = dependencies()

@@ -33,6 +33,10 @@ function hideCardPreview(parameters)
     return Game.hideCardPreview(parameters.card, parameters.playerColor)
 end
 
+function onCardPreviewActionClicked(player, action, id)
+    return Game.onCardPreviewActionClicked(player.color, action)
+end
+
 function getCardFieldDestination(parameters)
     if type(parameters) ~= "table" then
         return nil

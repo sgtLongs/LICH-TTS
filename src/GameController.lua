@@ -247,6 +247,33 @@ function GameController:hideCardPreview(card, playerColor)
     return true
 end
 
+function GameController:onCardPreviewActionClicked(playerColor, action)
+    local preview = self.cardPreview
+    local validActions = {
+        destroy = true,
+        damn = true,
+        unequip = true,
+        returnToHand = true
+    }
+
+    if preview == nil
+        or preview.playerColor ~= playerColor
+        or validActions[action] ~= true
+        or type(preview.card.call) ~= "function"
+    then
+        return false
+    end
+
+    local card = preview.card
+    self:hideCardPreview(card, playerColor)
+    local succeeded, handled = pcall(
+        card.call,
+        "onPreviewCardActionClicked",
+        {action = action, playerColor = playerColor}
+    )
+    return succeeded and handled == true
+end
+
 function GameController:getCardFieldDestination(fieldId, destination)
     return self.cardFields.getCardFieldDestination(fieldId, destination)
 end

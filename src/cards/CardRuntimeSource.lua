@@ -120,50 +120,6 @@ local function makeRuntimeConfigRefresh(descriptors)
 ]=]
     end
 
-    if selected.destroy then
-        chunks[#chunks + 1] = [=[
-    if type(config.destroy) == "table" then
-        cardContext.destroyButtonPosition = config.destroy.position
-            or cardContext.destroyButtonPosition
-        cardContext.destroyButtonWidth = tonumber(config.destroy.width)
-            or cardContext.destroyButtonWidth
-        cardContext.destroyButtonHeight = tonumber(config.destroy.height)
-            or cardContext.destroyButtonHeight
-    end
-]=]
-    end
-
-    local actionKeys = {}
-
-    for _, key in ipairs({"damn", "unequip", "returnToHand"}) do
-        if selected[key] then
-            actionKeys[#actionKeys + 1] = string.format("%q", key)
-        end
-    end
-
-    if #actionKeys > 0 then
-        chunks[#chunks + 1] = table.concat({
-            "    for _, actionName in ipairs({",
-            table.concat(actionKeys, ", "),
-            "}) do\n",
-            [=[        local actionConfig = config[actionName]
-
-        if type(actionConfig) == "table" then
-            cardContext[actionName .. "ButtonPosition"] =
-                actionConfig.position
-                or cardContext[actionName .. "ButtonPosition"]
-            cardContext[actionName .. "ButtonWidth"] =
-                tonumber(actionConfig.width)
-                or cardContext[actionName .. "ButtonWidth"]
-            cardContext[actionName .. "ButtonHeight"] =
-                tonumber(actionConfig.height)
-                or cardContext[actionName .. "ButtonHeight"]
-        end
-    end
-]=]
-        })
-    end
-
     return table.concat(chunks, "\n")
 end
 

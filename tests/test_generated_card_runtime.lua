@@ -14,6 +14,7 @@ local runtimeGlobalNames = {
     "onHover",
     "onCardTapped",
     "onActionsClicked",
+    "onPreviewCardActionClicked",
     "hideCardActions",
     "onSave",
     "hideActionButtonsDuringCardRotation",
@@ -539,7 +540,7 @@ Test.case("generated cards consume runtime button configuration", function()
     end)
 end)
 
-Test.case("generated actions button toggles the side controls", function()
+Test.case("generated actions button toggles the preview", function()
     runGenerated({
         context = {previewImageUrl = "https://example.test/card.png"},
         position = {x = 2, y = 3, z = 4}
@@ -554,11 +555,11 @@ Test.case("generated actions button toggles the side controls", function()
 
         onActionsClicked(environment.card, "Red", false)
 
-        Test.truthy(findButton(environment, "onDestroyCardClicked"))
-        Test.truthy(findButton(environment, "onDamnCardClicked"))
-        Test.truthy(findButton(environment, "onUnequipCardClicked"))
-        Test.truthy(findButton(environment, "onReturnCardClicked"))
-        Test.equal(5, #environment.buttons)
+        Test.nilValue(findButton(environment, "onDestroyCardClicked"))
+        Test.nilValue(findButton(environment, "onDamnCardClicked"))
+        Test.nilValue(findButton(environment, "onUnequipCardClicked"))
+        Test.nilValue(findButton(environment, "onReturnCardClicked"))
+        Test.equal(1, #environment.buttons)
         Test.equal(4.5, environment.position.y)
         Test.falsy(environment.card.use_gravity)
         Test.equal(
@@ -583,7 +584,10 @@ Test.case("generated actions button toggles the side controls", function()
 
         onActionsClicked(environment.card, "Red", false)
         Test.equal(4.5, environment.position.y)
-        onDestroyCardClicked(environment.card, "Red", false)
+        Test.truthy(onPreviewCardActionClicked({
+            action = "destroy",
+            playerColor = "Red"
+        }))
         Test.equal(3, environment.position.y)
         Test.nilValue(findButton(environment, "onDestroyCardClicked"))
         Test.equal(
@@ -823,9 +827,9 @@ Test.case("generated field actions work without the rotate feature", function()
         Test.truthy(findButton(environment, "onActionsClicked"))
         Test.nilValue(findButton(environment, "onDestroyCardClicked"))
         onActionsClicked(environment.card, "Red", false)
-        Test.truthy(findButton(environment, "onDestroyCardClicked"))
-        Test.truthy(findButton(environment, "onDamnCardClicked"))
-        Test.equal(5, #environment.buttons)
+        Test.nilValue(findButton(environment, "onDestroyCardClicked"))
+        Test.nilValue(findButton(environment, "onDamnCardClicked"))
+        Test.equal(1, #environment.buttons)
         onCardTapped(environment.card, "Red", false)
         Test.equal(0, #environment.rotationTargets)
     end)

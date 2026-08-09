@@ -14,23 +14,19 @@ return {
         },
         {
             callback = "onDestroyCardClicked",
-            configKey = "destroy",
-            sizeSource = "actionList"
+            removeOnRefresh = true
         },
         {
             callback = "onDamnCardClicked",
-            configKey = "damn",
-            sizeSource = "actionList"
+            removeOnRefresh = true
         },
         {
             callback = "onUnequipCardClicked",
-            configKey = "unequip",
-            sizeSource = "actionList"
+            removeOnRefresh = true
         },
         {
             callback = "onReturnCardClicked",
-            configKey = "returnToHand",
-            sizeSource = "actionList"
+            removeOnRefresh = true
         },
         {
             callback = "onActionButtonAreaClicked",
@@ -269,52 +265,10 @@ local function showActionButtons(playerColor)
         return
     end
 
-    if actionButtonsVisible
-        and findCardButton("onDestroyCardClicked") ~= nil
-    then
+    if actionButtonsVisible then
         return
     end
 
-    self.createButton(makeActionButton(
-        "destroy", "onDestroyCardClicked",
-        cardContext.destroyButtonPosition,
-        cardContext.destroyButtonWidth,
-        cardContext.destroyButtonHeight,
-        {0.65, 0.08, 0.08, 0.95},
-        {0.9, 0.12, 0.12, 1},
-        {0.45, 0.03, 0.03, 1},
-        "Move to purgatory"
-    ))
-    self.createButton(makeActionButton(
-        "damn", "onDamnCardClicked",
-        cardContext.damnButtonPosition,
-        cardContext.damnButtonWidth,
-        cardContext.damnButtonHeight,
-        {0.25, 0.06, 0.38, 0.95},
-        {0.42, 0.1, 0.62, 1},
-        {0.16, 0.03, 0.25, 1},
-        "Move to abyss"
-    ))
-    self.createButton(makeActionButton(
-        "unequip", "onUnequipCardClicked",
-        cardContext.unequipButtonPosition,
-        cardContext.unequipButtonWidth,
-        cardContext.unequipButtonHeight,
-        {0.5, 0.3, 0.05, 0.95},
-        {0.75, 0.48, 0.1, 1},
-        {0.32, 0.18, 0.02, 1},
-        "Return to bottom of deck"
-    ))
-    self.createButton(makeActionButton(
-        "return", "onReturnCardClicked",
-        cardContext.returnToHandButtonPosition,
-        cardContext.returnToHandButtonWidth,
-        cardContext.returnToHandButtonHeight,
-        {0.05, 0.35, 0.58, 0.95},
-        {0.08, 0.55, 0.85, 1},
-        {0.02, 0.22, 0.38, 1},
-        "Return to hand"
-    ))
     setActionCardLifted(true)
     showCardPreview(playerColor)
     actionButtonsVisible = true
@@ -346,6 +300,27 @@ function onActionsClicked(object, playerColor, altClick)
     else
         showActionButtons(playerColor)
     end
+end
+
+function onPreviewCardActionClicked(parameters)
+    if type(parameters) ~= "table" then
+        return false
+    end
+
+    local callbacks = {
+        destroy = onDestroyCardClicked,
+        damn = onDamnCardClicked,
+        unequip = onUnequipCardClicked,
+        returnToHand = onReturnCardClicked
+    }
+    local callback = callbacks[parameters.action]
+
+    if type(callback) ~= "function" then
+        return false
+    end
+
+    callback(self, parameters.playerColor, false)
+    return true
 end
 
 function hideActionButtonsDuringCardRotation()
@@ -400,53 +375,6 @@ function refreshCardActionButtons()
         self.editButton(actionsParameters)
     end
 
-    if actionButtonsVisible
-        and findCardButton("onDestroyCardClicked") == nil
-    then
-        actionButtonsVisible = false
-        showActionButtons(actionPreviewPlayerColor)
-    end
-
-    if not actionButtonsVisible then
-        return
-    end
-
-    local configByFunction = {
-        onDestroyCardClicked = {
-            cardContext.destroyButtonPosition,
-            cardContext.destroyButtonWidth,
-            cardContext.destroyButtonHeight
-        },
-        onDamnCardClicked = {
-            cardContext.damnButtonPosition,
-            cardContext.damnButtonWidth,
-            cardContext.damnButtonHeight
-        },
-        onUnequipCardClicked = {
-            cardContext.unequipButtonPosition,
-            cardContext.unequipButtonWidth,
-            cardContext.unequipButtonHeight
-        },
-        onReturnCardClicked = {
-            cardContext.returnToHandButtonPosition,
-            cardContext.returnToHandButtonWidth,
-            cardContext.returnToHandButtonHeight
-        }
-    }
-
-    for _, button in ipairs(self.getButtons() or {}) do
-        local config = configByFunction[button.click_function]
-
-        if config ~= nil then
-            self.editButton({
-                index = button.index,
-                position = actionButtonPosition(config[1]),
-                rotation = actionButtonRotation(),
-                width = config[2],
-                height = config[3]
-            })
-        end
-    end
 end
 
 local function notifyActionZoneCardLeaving()
