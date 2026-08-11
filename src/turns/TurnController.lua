@@ -579,16 +579,38 @@ function TurnController.new(dependencies)
         return true, playerColor
     end
 
-    function controller.removeMockPlayer(playerColor)
-        if not mockPlayers:remove(playerColor) then
+    function controller.removePlayer(playerColor)
+        if activeByColor[playerColor] ~= true then
             return false
+        end
+
+        local removedCurrentPlayer = getCurrentColor() == playerColor
+
+        if removedCurrentPlayer then
+            cancelUntapping()
+            cancelDrawing()
+            cancelDeathFogPlacement()
         end
 
         activeByColor[playerColor] = nil
         stateApi.setPlayerColors(turnState, getActivePlayerColors())
         updateUi()
+
+        if removedCurrentPlayer and getCurrentColor() ~= nil then
+            announceTurn()
+            beginUntapping()
+        end
+
         scheduleMockTurn()
         return true
+    end
+
+    function controller.removeMockPlayer(playerColor)
+        if not mockPlayers:remove(playerColor) then
+            return false
+        end
+
+        return controller.removePlayer(playerColor)
     end
 
     function controller.removeMostRecentMockPlayer()

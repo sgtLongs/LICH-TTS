@@ -197,6 +197,10 @@ local TurnSystem = {
         calls.removedMockPlayerColor = playerColor
         return true
     end,
+    removePlayer = function(playerColor)
+        calls.removedPlayerColor = playerColor
+        return true
+    end,
     removeMostRecentMockPlayer = function()
         calls.removedMostRecentMockPlayer = true
         return true, "White"

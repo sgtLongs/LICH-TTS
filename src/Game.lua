@@ -109,7 +109,8 @@ local publicMethods = {
     "onScriptingButtonDown",
     "onObjectNumberTyped",
     "onObjectDestroy",
-    "onPlayerConnect"
+    "onPlayerConnect",
+    "onPlayerDisconnect"
 }
 
 for _, methodName in ipairs(publicMethods) do

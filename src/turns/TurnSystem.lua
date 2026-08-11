@@ -40,6 +40,10 @@ function TurnSystem.addMockPlayer()
     return defaultController.addMockPlayer()
 end
 
+function TurnSystem.removePlayer(playerColor)
+    return defaultController.removePlayer(playerColor)
+end
+
 function TurnSystem.removeMockPlayer(playerColor)
     return defaultController.removeMockPlayer(playerColor)
 end

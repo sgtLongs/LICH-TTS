@@ -129,10 +129,13 @@ end
 
 function TurnState.setPlayerColors(state, playerColors)
     local currentColor = TurnState.getCurrentColor(state)
+    local previousColors = state.playerColors
+    local previousIndex = state.currentTurnIndex
     state.playerColors = playerColors
 
     if #playerColors == 0 then
         state.currentTurnIndex = 0
+        state.currentPhaseIndex = 1
         return
     end
 
@@ -142,6 +145,21 @@ function TurnState.setPlayerColors(state, playerColors)
         if playerColor == currentColor then
             state.currentTurnIndex = index
             return
+        end
+    end
+
+    state.currentPhaseIndex = 1
+
+    for offset = 1, #previousColors do
+        local previousColor = previousColors[
+            ((previousIndex + offset - 1) % #previousColors) + 1
+        ]
+
+        for index, playerColor in ipairs(playerColors) do
+            if playerColor == previousColor then
+                state.currentTurnIndex = index
+                return
+            end
         end
     end
 end

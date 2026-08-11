@@ -42,7 +42,8 @@ local callbackNames = {
     "onScriptingButtonDown",
     "onObjectNumberTyped",
     "onObjectDestroy",
-    "onPlayerConnect"
+    "onPlayerConnect",
+    "onPlayerDisconnect"
 }
 
 local gameMethods = {
@@ -88,7 +89,8 @@ local gameMethods = {
     "onScriptingButtonDown",
     "onObjectNumberTyped",
     "onObjectDestroy",
-    "onPlayerConnect"
+    "onPlayerConnect",
+    "onPlayerDisconnect"
 }
 
 local function withGlobalCallbacks(testFunction)
@@ -413,15 +415,20 @@ Test.case("global board callbacks preserve object and input arguments", function
     end)
 end)
 
-Test.case("global destruction and connection callbacks delegate", function()
+Test.case("global destruction and player callbacks delegate", function()
     withGlobalCallbacks(function(context)
         local object = {}
 
         onObjectDestroy(object)
         onPlayerConnect({color = "Blue"})
+        onPlayerDisconnect({color = "Red"})
 
         Test.equal(object, context.callsByName.onObjectDestroy.arguments[1])
         Test.truthy(context.callsByName.onPlayerConnect)
         Test.equal(0, #context.callsByName.onPlayerConnect.arguments)
+        Test.equal(
+            "Red",
+            context.callsByName.onPlayerDisconnect.arguments[1]
+        )
     end)
 end)

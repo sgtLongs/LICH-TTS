@@ -198,6 +198,35 @@ Test.case("turn system removes the most recently added mock player", function()
     Test.nilValue(removedColor)
 end)
 
+Test.case("turn system removes disconnected players from turn order", function()
+    local FakeWait = require("tests/support/FakeWait")
+    local wait = FakeWait.new()
+    local controller = TurnSystem.new({
+        scheduler = wait,
+        uiAdapter = {apply = function()
+        end},
+        announce = function()
+        end,
+        broadcastToColor = function()
+        end
+    })
+
+    controller.onLoad({
+        currentTurnColor = "White",
+        activePlayerColors = {"White", "Blue"}
+    })
+
+    Test.truthy(controller.removePlayer("White"))
+    Test.falsy(controller.isPlayerActive("White"))
+    Test.deepEqual({"Blue"}, controller.getSaveState().activePlayerColors)
+    Test.equal("Blue", controller.getSaveState().currentTurnColor)
+    Test.falsy(controller.removePlayer("White"))
+
+    wait.advanceFrames(1)
+    Test.equal("main", controller.getSaveState().currentPhase)
+    Test.truthy(controller.advancePhase("Blue"))
+end)
+
 Test.case("turn system advances phases and ends after end phase", function()
     TurnSystem.onLoad({
         currentTurnColor = "White",

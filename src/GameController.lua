@@ -933,4 +933,9 @@ function GameController:onPlayerConnect()
     self.turnSystem.refreshUi()
 end
 
+function GameController:onPlayerDisconnect(playerColor)
+    self.cardFields.refreshDeckSlotGlow()
+    self.turnSystem.removePlayer(playerColor)
+end
+
 return GameController

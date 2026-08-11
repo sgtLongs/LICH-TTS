@@ -656,6 +656,7 @@ Test.case("game controller preserves nil returns from legacy event wrappers", fu
     values.settingsMenu.onEditModeChanged = sentinel
     values.turnSystem.endTurn = sentinel
     values.turnSystem.refreshUi = sentinel
+    values.turnSystem.removePlayer = sentinel
 
     local controller = GameController.new(values)
     local calls = {
@@ -709,6 +710,9 @@ Test.case("game controller preserves nil returns from legacy event wrappers", fu
         end,
         function()
             return controller:onPlayerConnect()
+        end,
+        function()
+            return controller:onPlayerDisconnect("Blue")
         end
     }
 
@@ -733,4 +737,23 @@ Test.case("game controller returns surface picker results", function()
             "deathFog"
         )
     )
+end)
+
+Test.case("game controller removes disconnected players from turns", function()
+    local removedColor = nil
+    local glowRefreshes = 0
+    local values = dependencies()
+    values.cardFields.refreshDeckSlotGlow = function()
+        glowRefreshes = glowRefreshes + 1
+    end
+    values.turnSystem.removePlayer = function(playerColor)
+        removedColor = playerColor
+        return true
+    end
+
+    local result = GameController.new(values):onPlayerDisconnect("Red")
+
+    Test.nilValue(result)
+    Test.equal("Red", removedColor)
+    Test.equal(1, glowRefreshes)
 end)

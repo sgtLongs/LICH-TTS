@@ -237,3 +237,7 @@ end
 function onPlayerConnect(player)
     Game.onPlayerConnect()
 end
+
+function onPlayerDisconnect(player)
+    Game.onPlayerDisconnect(player.color)
+end

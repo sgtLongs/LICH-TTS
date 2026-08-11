@@ -85,7 +85,8 @@ Test.case("turn state supports changing active players", function()
     Test.equal("Red", TurnState.getCurrentColor(state))
 
     TurnState.setPlayerColors(state, {"White", "Blue"})
-    Test.equal("White", TurnState.getCurrentColor(state))
+    Test.equal("Blue", TurnState.getCurrentColor(state))
+    Test.equal("start", TurnState.getCurrentPhase(state))
 end)
 
 Test.case("turn state restores the active current color", function()
