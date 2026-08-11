@@ -54,6 +54,10 @@ function CardFields.getPlayerDrawInfo(playerColor)
     return defaultController:getPlayerDrawInfo(playerColor)
 end
 
+function CardFields.isCardOnPlayerField(playerColor, card)
+    return defaultController:isCardOnPlayerField(playerColor, card)
+end
+
 function CardFields.getCardFieldDestination(fieldId, destination)
     return defaultController:getCardFieldDestination(fieldId, destination)
 end

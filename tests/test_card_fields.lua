@@ -495,6 +495,32 @@ Test.case("card fields resolve current destinations by stable field ID", functio
     end)
 end)
 
+Test.case("card fields identify cards on a player's own field", function()
+    withFixture(function(environment)
+        addBothSurfaces(environment)
+        CardFields.onLoad(nil)
+
+        local redCard = {
+            tag = "Card",
+            getPosition = function()
+                return {x = 10, z = 20}
+            end
+        }
+        local blueCard = {
+            tag = "Card",
+            getPosition = function()
+                return {x = -10, z = -20}
+            end
+        }
+
+        Test.truthy(CardFields.isCardOnPlayerField("Red", redCard))
+        Test.falsy(CardFields.isCardOnPlayerField("Red", blueCard))
+        Test.truthy(CardFields.isCardOnPlayerField("Blue", blueCard))
+        Test.falsy(CardFields.isCardOnPlayerField("Missing", redCard))
+        Test.falsy(CardFields.isCardOnPlayerField("Red", {tag = "Deck"}))
+    end)
+end)
+
 Test.case("card fields save owner deck flags and action state", function()
     withFixture(function(environment)
         addBothSurfaces(environment)

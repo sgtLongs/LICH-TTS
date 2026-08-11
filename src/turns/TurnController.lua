@@ -302,9 +302,16 @@ function TurnController.new(dependencies)
         end
     end
 
-    local function untapAllCards()
+    local function untapPlayerFieldCards(playerColor)
         for _, object in ipairs(runtime.getAllObjects()) do
-            if object.tag == "Card" and type(object.call) == "function" then
+            local isOnPlayerField = cardFields ~= nil
+                and type(cardFields.isCardOnPlayerField) == "function"
+                and cardFields.isCardOnPlayerField(playerColor, object)
+
+            if isOnPlayerField
+                and object.tag == "Card"
+                and type(object.call) == "function"
+            then
                 local succeeded, rotated = pcall(function()
                     return object.call("getActionZoneTapRotation")
                 end)
@@ -346,7 +353,7 @@ function TurnController.new(dependencies)
                 return
             end
 
-            untapAllCards()
+            untapPlayerFieldCards(playerColor)
 
             if cardFields ~= nil
                 and type(cardFields.renewActionPoints) == "function"

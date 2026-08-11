@@ -515,7 +515,7 @@ Test.case("turn system rejects a phase change from another player", function()
     Test.equal("Blue", privateMessages[#privateMessages].playerColor)
 end)
 
-Test.case("start phase automatically untaps before advancing", function()
+Test.case("start phase untaps only the current player's field", function()
     local FakeWait = require("tests/support/FakeWait")
     local wait = FakeWait.new()
     local events = {}
@@ -523,6 +523,7 @@ Test.case("start phase automatically untaps before advancing", function()
     local privateMessage = nil
     local applied = {}
     local tappedCard = {tag = "Card"}
+    local otherPlayerCard = {tag = "Card"}
     local untappedCard = {tag = "Card"}
     local deck = {tag = "Deck"}
 
@@ -539,19 +540,32 @@ Test.case("start phase automatically untaps before advancing", function()
         events[#events + 1] = "untapped:" .. functionName
         return false
     end
+    otherPlayerCard.call = function(functionName)
+        events[#events + 1] = "other:" .. functionName
+        return true
+    end
     deck.call = function()
         error("decks must not be untapped")
     end
 
     local controller = TurnSystem.new({
         cardFields = {
+            isCardOnPlayerField = function(color, card)
+                Test.equal("White", color)
+                return card == tappedCard or card == untappedCard
+            end,
             renewActionPoints = function(color)
                 renewedColor = color
             end
         },
         runtime = {
             getAllObjects = function()
-                return {tappedCard, untappedCard, deck}
+                return {
+                    tappedCard,
+                    otherPlayerCard,
+                    untappedCard,
+                    deck
+                }
             end,
             getPlayer = function(color)
                 return {steam_name = color}

@@ -24,6 +24,7 @@ local publicMethodNames = {
     "getSaveState",
     "getFields",
     "getPlayerDrawInfo",
+    "isCardOnPlayerField",
     "getCardFieldDestination",
     "renewActionPoints",
     "useActionPoint",
@@ -796,6 +797,27 @@ function CardFieldController:getPlayerDrawInfo(playerColor)
     end
 
     return nil
+end
+
+function CardFieldController:isCardOnPlayerField(playerColor, card)
+    local field = self:findFieldByOwner(playerColor)
+
+    if field == nil
+        or card == nil
+        or card.tag ~= "Card"
+        or type(card.getPosition) ~= "function"
+    then
+        return false
+    end
+
+    local succeeded, position = pcall(card.getPosition)
+
+    if not succeeded then
+        return false
+    end
+
+    local containingField = self.layout.findZone({field}, position)
+    return containingField == field
 end
 
 function CardFieldController:getCardFieldDestination(fieldId, destination)
