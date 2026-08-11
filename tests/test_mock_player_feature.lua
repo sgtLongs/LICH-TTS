@@ -34,6 +34,31 @@ Test.case("mock player feature owns allocation names and persistence", function(
     Test.deepEqual({"Blue"}, feature:getPlayerColors())
 end)
 
+Test.case("mock player feature tracks the most recently added player", function()
+    local feature = MockPlayerFeature.new({
+        getPlayer = function()
+            return {seated = false}
+        end
+    })
+    local activeByColor = {}
+
+    local _, firstColor = feature:add(activeByColor)
+    activeByColor[firstColor] = true
+    local _, secondColor = feature:add(activeByColor)
+    activeByColor[secondColor] = true
+
+    Test.equal(secondColor, feature:getMostRecentPlayerColor())
+    Test.truthy(feature:remove(secondColor))
+    Test.equal(firstColor, feature:getMostRecentPlayerColor())
+
+    Test.truthy(feature:replaceWithReal(firstColor))
+    activeByColor[firstColor] = nil
+    local _, readdedColor = feature:add(activeByColor)
+    Test.equal(firstColor, readdedColor)
+    Test.equal(firstColor, feature:getMostRecentPlayerColor())
+    Test.deepEqual({firstColor}, feature:getPlayerColors())
+end)
+
 Test.case("mock player feature schedules only current unblocked mocks", function()
     local wait = FakeWait.new()
     local currentColor = "White"

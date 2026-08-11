@@ -196,6 +196,10 @@ local TurnSystem = {
     removeMockPlayer = function(playerColor)
         calls.removedMockPlayerColor = playerColor
         return true
+    end,
+    removeMostRecentMockPlayer = function()
+        calls.removedMostRecentMockPlayer = true
+        return true, "White"
     end
 }
 
@@ -284,6 +288,10 @@ Test.case("game load wires subsystems to saved state", function()
     )
     Test.truthy(type(calls.settingsContext.restartGame) == "function")
     Test.truthy(type(calls.settingsContext.addMockPlayer) == "function")
+    Test.equal(
+        TurnSystem.removeMostRecentMockPlayer,
+        calls.settingsContext.removeMockPlayer
+    )
     local added, color, deckName = calls.settingsContext.addMockPlayer()
     Test.truthy(added)
     Test.equal("White", color)

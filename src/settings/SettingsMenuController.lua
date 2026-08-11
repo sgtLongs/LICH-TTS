@@ -20,6 +20,7 @@ local function makeContext(parameters)
         onBoardLoadCompleted = parameters.onBoardLoadCompleted,
         setEditMode = parameters.setEditMode,
         addMockPlayer = parameters.addMockPlayer,
+        removeMockPlayer = parameters.removeMockPlayer,
         renewDeckSlotButton = parameters.renewDeckSlotButton,
         restartGame = parameters.restartGame
     }
@@ -255,6 +256,11 @@ function SettingsMenuController.new(dependencies)
             playerIsAdmin and "true" or "false"
         )
         uiAdapter.setAttribute(
+            config.ui.removeMockPlayerButtonId,
+            "interactable",
+            playerIsAdmin and "true" or "false"
+        )
+        uiAdapter.setAttribute(
             config.ui.saveTabButtonId,
             "interactable",
             playerIsAdmin and "true" or "false"
@@ -444,6 +450,33 @@ function SettingsMenuController.new(dependencies)
                     .. (deckName ~= nil
                         and " with " .. deckName or " with a random deck")
                     .. " to the turn rotation."
+                    .. (persistedImmediately
+                        and ""
+                        or " Save the TTS game to make it permanent."),
+                persistedImmediately and "#86EFAC" or "#FDE68A"
+            )
+            return
+        end
+
+        if action == "removeMockPlayer" then
+            local succeeded, mockColor = false, nil
+
+            if context.removeMockPlayer ~= nil then
+                succeeded, mockColor = context.removeMockPlayer()
+            end
+
+            if not succeeded then
+                setStatus(
+                    "There are no mock players to remove.",
+                    "#FCA5A5"
+                )
+                return
+            end
+
+            local persistedImmediately = context.persistState ~= nil
+                and context.persistState() or false
+            setStatus(
+                "Removed Mock " .. mockColor .. " from the turn rotation."
                     .. (persistedImmediately
                         and ""
                         or " Save the TTS game to make it permanent."),

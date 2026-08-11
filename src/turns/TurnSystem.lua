@@ -44,6 +44,10 @@ function TurnSystem.removeMockPlayer(playerColor)
     return defaultController.removeMockPlayer(playerColor)
 end
 
+function TurnSystem.removeMostRecentMockPlayer()
+    return defaultController.removeMostRecentMockPlayer()
+end
+
 function TurnSystem.isPlayerActive(playerColor)
     return defaultController.isPlayerActive(playerColor)
 end

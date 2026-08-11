@@ -9,6 +9,17 @@ local MockPlayerFeature = {}
 local Controller = {}
 Controller.__index = Controller
 
+local function forget(feature, playerColor)
+    feature.mockByColor[playerColor] = nil
+
+    for index = #feature.additionOrder, 1, -1 do
+        if feature.additionOrder[index] == playerColor then
+            table.remove(feature.additionOrder, index)
+            return
+        end
+    end
+end
+
 function MockPlayerFeature.new(dependencies)
     dependencies = dependencies or {}
     local runtime = dependencies.runtime or Runtime.default()
@@ -19,6 +30,7 @@ function MockPlayerFeature.new(dependencies)
         scheduler = dependencies.scheduler or Scheduler.default(),
         getPlayer = dependencies.getPlayer or runtime.getPlayer,
         mockByColor = {},
+        additionOrder = {},
         generation = 0
     }, Controller)
 end
@@ -49,6 +61,7 @@ end
 function Controller:load(savedTurnState, activeByColor)
     self:cancelAutomation()
     self.mockByColor = {}
+    self.additionOrder = {}
 
     if type(savedTurnState) ~= "table"
         or type(savedTurnState.mockPlayerColors) ~= "table"
@@ -59,8 +72,10 @@ function Controller:load(savedTurnState, activeByColor)
     for _, playerColor in ipairs(savedTurnState.mockPlayerColors) do
         if activeByColor[playerColor] == true
             and self.turnConfig.playerHexColors[playerColor] ~= nil
+            and self.mockByColor[playerColor] ~= true
         then
             self.mockByColor[playerColor] = true
+            self.additionOrder[#self.additionOrder + 1] = playerColor
         end
     end
 end
@@ -68,10 +83,8 @@ end
 function Controller:getPlayerColors()
     local playerColors = {}
 
-    for _, playerColor in ipairs(self.turnConfig.playerColors) do
-        if self.mockByColor[playerColor] == true then
-            playerColors[#playerColors + 1] = playerColor
-        end
+    for _, playerColor in ipairs(self.additionOrder) do
+        playerColors[#playerColors + 1] = playerColor
     end
 
     return playerColors
@@ -79,6 +92,10 @@ end
 
 function Controller:isMock(playerColor)
     return self.mockByColor[playerColor] == true
+end
+
+function Controller:getMostRecentPlayerColor()
+    return self.additionOrder[#self.additionOrder]
 end
 
 function Controller:getName(playerColor)
@@ -96,6 +113,7 @@ function Controller:add(activeByColor)
 
         if activeByColor[playerColor] ~= true and not isSeated then
             self.mockByColor[playerColor] = true
+            self.additionOrder[#self.additionOrder + 1] = playerColor
             return true, playerColor
         end
     end
@@ -108,7 +126,7 @@ function Controller:remove(playerColor)
         return false
     end
 
-    self.mockByColor[playerColor] = nil
+    forget(self, playerColor)
     self:cancelAutomation()
     return true
 end
@@ -118,7 +136,7 @@ function Controller:replaceWithReal(playerColor, preserveMock)
         return false
     end
 
-    self.mockByColor[playerColor] = nil
+    forget(self, playerColor)
     self:cancelAutomation()
     return true
 end

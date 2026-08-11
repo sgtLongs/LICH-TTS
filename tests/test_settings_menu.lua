@@ -14,6 +14,8 @@ local restartedPlayerColor = nil
 local restartSucceeded = true
 local addedMockPlayerCalls = 0
 local addMockPlayerSucceeded = true
+local removedMockPlayerCalls = 0
+local removeMockPlayerSucceeded = true
 local savedBoardsChangedCalls = 0
 local currentBoardState = nil
 local currentBoardJson = nil
@@ -50,6 +52,8 @@ local function initialize(savedState, options)
     restartSucceeded = options.restartSucceeded ~= false
     addedMockPlayerCalls = 0
     addMockPlayerSucceeded = options.addMockPlayerSucceeded ~= false
+    removedMockPlayerCalls = 0
+    removeMockPlayerSucceeded = options.removeMockPlayerSucceeded ~= false
     savedBoardsChangedCalls = 0
     currentBoardState = options.currentBoardState or {marker = "current"}
     currentBoardJson = options.currentBoardJson or "current-json"
@@ -164,6 +168,11 @@ local function initialize(savedState, options)
                 addMockPlayerSucceeded and "Arysa Andrews" or nil,
                 addMockPlayerSucceeded and nil
                     or "A random deck could not be generated."
+        end,
+        removeMockPlayer = function()
+            removedMockPlayerCalls = removedMockPlayerCalls + 1
+            return removeMockPlayerSucceeded,
+                removeMockPlayerSucceeded and "White" or nil
         end
     }, savedState)
 end
@@ -197,6 +206,7 @@ Test.case("players can renew only their own deck spawn button", function()
     Test.equal("false", attributes["settingsSaveTab.interactable"])
     Test.equal("false", attributes["settingsRestartGame.interactable"])
     Test.equal("false", attributes["settingsAddMockPlayer.interactable"])
+    Test.equal("false", attributes["settingsRemoveMockPlayer.interactable"])
 end)
 
 Test.case("only admins can add mock players from settings", function()
@@ -213,8 +223,41 @@ Test.case("only admins can add mock players from settings", function()
     Test.equal(1, addedMockPlayerCalls)
     Test.equal(1, persistCalls)
     Test.equal("true", attributes["settingsAddMockPlayer.interactable"])
+    Test.equal("true", attributes["settingsRemoveMockPlayer.interactable"])
     Test.equal(
         "Added Mock White with Arysa Andrews to the turn rotation.",
+        attributes["settingsMenuStatus.text"]
+    )
+end)
+
+Test.case("only admins can remove the most recent mock player", function()
+    initialize(nil)
+    SettingsMenu.handleAction("Blue", "toggle")
+    SettingsMenu.handleAction("Blue", "removeMockPlayer")
+
+    Test.equal(0, removedMockPlayerCalls)
+    Test.contains(messages[#messages].message, "Only an admin")
+
+    SettingsMenu.handleAction("Red", "toggle")
+    SettingsMenu.handleAction("Red", "removeMockPlayer")
+
+    Test.equal(1, removedMockPlayerCalls)
+    Test.equal(1, persistCalls)
+    Test.equal(
+        "Removed Mock White from the turn rotation.",
+        attributes["settingsMenuStatus.text"]
+    )
+end)
+
+Test.case("settings reports when there is no mock player to remove", function()
+    initialize(nil, {removeMockPlayerSucceeded = false})
+    SettingsMenu.handleAction("Red", "toggle")
+    SettingsMenu.handleAction("Red", "removeMockPlayer")
+
+    Test.equal(1, removedMockPlayerCalls)
+    Test.equal(0, persistCalls)
+    Test.equal(
+        "There are no mock players to remove.",
         attributes["settingsMenuStatus.text"]
     )
 end)

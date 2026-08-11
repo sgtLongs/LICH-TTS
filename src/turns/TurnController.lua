@@ -591,6 +591,18 @@ function TurnController.new(dependencies)
         return true
     end
 
+    function controller.removeMostRecentMockPlayer()
+        local playerColor = mockPlayers:getMostRecentPlayerColor()
+
+        if playerColor == nil
+            or not controller.removeMockPlayer(playerColor)
+        then
+            return false, nil
+        end
+
+        return true, playerColor
+    end
+
     function controller.isPlayerActive(playerColor)
         return activeByColor[playerColor] == true
     end

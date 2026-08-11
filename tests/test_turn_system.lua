@@ -165,6 +165,39 @@ Test.case("a real deck activation replaces a mock player", function()
     Test.truthy(controller.isPlayerActive(mockColor))
 end)
 
+Test.case("turn system removes the most recently added mock player", function()
+    local controller = TurnSystem.new({
+        getPlayer = function()
+            return {seated = false}
+        end,
+        scheduler = {frames = function(callback)
+            callback()
+        end},
+        uiAdapter = {apply = function()
+        end},
+        announce = function()
+        end,
+        broadcastToColor = function()
+        end
+    })
+
+    controller.onLoad({})
+    local _, firstColor = controller.addMockPlayer()
+    local _, secondColor = controller.addMockPlayer()
+
+    local removed, removedColor = controller.removeMostRecentMockPlayer()
+    Test.truthy(removed)
+    Test.equal(secondColor, removedColor)
+    Test.truthy(controller.isPlayerActive(firstColor))
+    Test.falsy(controller.isPlayerActive(secondColor))
+    Test.deepEqual({firstColor}, controller.getSaveState().mockPlayerColors)
+
+    controller.removeMostRecentMockPlayer()
+    removed, removedColor = controller.removeMostRecentMockPlayer()
+    Test.falsy(removed)
+    Test.nilValue(removedColor)
+end)
+
 Test.case("turn system advances phases and ends after end phase", function()
     TurnSystem.onLoad({
         currentTurnColor = "White",

@@ -156,6 +156,7 @@ function GameController:onLoad(saveState)
                 self.cardFields
             )
         end,
+        removeMockPlayer = self.turnSystem.removeMostRecentMockPlayer,
         renewDeckSlotButton = self.cardFields.renewDeckSlotButton,
         restartGame = function(playerColor)
             return self:restartGame(playerColor)

@@ -239,9 +239,17 @@
                             id="settingsAddMockPlayer"
                             text="ADD MOCK PLAYER"
                             onClick="onSettingsUiClicked(addMockPlayer)"
-                            preferredWidth="248"
+                            preferredWidth="118"
                             preferredHeight="42"
                             tooltip="Add an unused player color to the turn rotation and automatically click through its turns."
+                        />
+                        <Button
+                            id="settingsRemoveMockPlayer"
+                            text="REMOVE MOCK PLAYER"
+                            onClick="onSettingsUiClicked(removeMockPlayer)"
+                            preferredWidth="118"
+                            preferredHeight="42"
+                            tooltip="Remove the most recently added mock player from the turn rotation."
                         />
                     </HorizontalLayout>
                     <Text
