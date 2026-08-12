@@ -1532,27 +1532,27 @@
 
 <Panel
     id="turnPanel"
-    rectAlignment="LowerLeft"
-    width="560"
-    height="105"
-    offsetXY="22 22"
+    rectAlignment="MiddleRight"
+    width="330"
+    height="78"
+    offsetXY="-22 289"
     color="#111827E8"
-    padding="10 10 10 10"
+    padding="8 8 8 8"
 >
-    <VerticalLayout spacing="3" childAlignment="UpperCenter">
+    <VerticalLayout spacing="2" childAlignment="UpperCenter">
         <Text
             id="turnPlayerName"
             text="White's Turn"
-            fontSize="34"
+            fontSize="25"
             fontStyle="Bold"
-            preferredHeight="45"
+            preferredHeight="32"
         />
         <Text
             id="turnColorName"
             text="White Player"
-            fontSize="18"
+            fontSize="16"
             color="#D1D5DB"
-            preferredHeight="27"
+            preferredHeight="22"
         />
 
     </VerticalLayout>
