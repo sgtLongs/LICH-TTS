@@ -29,10 +29,10 @@
 <Button
     id="dungeonMapButton"
     text="DUNGEON MAP"
-    rectAlignment="LowerRight"
+    rectAlignment="UpperLeft"
     width="250"
     height="58"
-    offsetXY="-22 22"
+    offsetXY="222 -22"
     fontSize="25"
     fontStyle="Bold"
     colors="#26364D|#344A69|#192638|#192638"
