@@ -30,6 +30,11 @@ function ObjectAdapter.clearButtons(object)
     return invoke(object, "clearButtons")
 end
 
+function ObjectAdapter.setVectorLines(object, lines)
+    local succeeded = invoke(object, "setVectorLines", lines)
+    return succeeded
+end
+
 function ObjectAdapter.moveSmooth(object, position, collide, fast)
     local succeeded = invoke(
         object,

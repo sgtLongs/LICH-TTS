@@ -175,6 +175,9 @@ function CardFieldController.new(dependencies)
         or scheduler.time
         or runtime.waitTime
         or defaultScheduler.time
+    controller.stopWait = dependencies.stopWait
+        or scheduler.stop
+        or defaultScheduler.stop
     controller.getGlobalOwner = dependencies.getGlobalOwner
         or runtime.getGlobalOwner
         or defaultRuntime.getGlobalOwner
@@ -182,6 +185,10 @@ function CardFieldController.new(dependencies)
     controller.fields = {}
     controller.baseVectorLines = {}
     controller.state = CardFieldState.new({}, nil)
+    controller.deckGlowPhase = 0
+    controller.deckGlowWaitId = nil
+    controller.deckGlowGeneration = 0
+    controller.deckGlowVisibleByFieldId = {}
 
     -- GameController consumes subsystem ports with dot calls, while feature
     -- tests and direct users commonly use colon calls. Keep both forms valid
@@ -455,13 +462,16 @@ end
 function CardFieldController:deckSlotGlowColor()
     local glow = self.config.deckSlot.glow or {}
     local baseColor = glow.color or {1, 1, 0}
+    local minimumOpacity = glow.minimumOpacity or 0
     local maximumOpacity = glow.maximumOpacity or 1
+    local wave = (math.sin(self.deckGlowPhase) + 1) * 0.5
 
     return {
         baseColor[1] or 1,
         baseColor[2] or 1,
         baseColor[3] or 0,
-        maximumOpacity
+        minimumOpacity
+            + (maximumOpacity - minimumOpacity) * wave
     }
 end
 
@@ -480,30 +490,78 @@ function CardFieldController:isFieldOccupied(field)
 end
 
 function CardFieldController:refreshDeckSlotGlow()
-    local lines = {}
     local glow = self.config.deckSlot.glow
 
-    for _, line in ipairs(self.baseVectorLines) do
-        lines[#lines + 1] = line
-    end
-
+    -- Keep the animated overlay on each field surface. Replacing Global's
+    -- vector lines every pulse makes all static field outlines flicker.
     for _, field in ipairs(self.fields) do
-        if type(glow) == "table"
+        local lines = {}
+        local surface = self.getObjectFromGuid(field.surfaceObjectGuid)
+        local fieldId = CardFieldDefinitions.fieldId(field)
+        local visible = type(glow) == "table"
             and not CardFieldState.isDeckSpawned(self.state, field)
             and self:isFieldOccupied(field)
-        then
+            and surface ~= nil
+
+        if visible then
             for _, line in ipairs(field.deckZoneLines or {}) do
+                local points = {}
+
+                for _, point in ipairs(line.points or {}) do
+                    points[#points + 1] = surface.positionToLocal(point)
+                end
+
                 lines[#lines + 1] = {
-                    points = line.points,
+                    points = points,
                     color = self:deckSlotGlowColor(),
                     thickness = glow.lineThickness
                         or line.thickness
                 }
             end
         end
+
+        if visible or (surface ~= nil
+            and self.deckGlowVisibleByFieldId[fieldId] == true)
+        then
+            self.objectAdapter.setVectorLines(surface, lines)
+        end
+
+        self.deckGlowVisibleByFieldId[fieldId] = visible
+    end
+end
+
+function CardFieldController:startDeckSlotGlow()
+    if self.deckGlowWaitId ~= nil then
+        self.stopWait(self.deckGlowWaitId)
+        self.deckGlowWaitId = nil
     end
 
-    self.setVectorLines(lines)
+    local glow = self.config.deckSlot.glow
+
+    if type(glow) ~= "table" then
+        return
+    end
+
+    local interval = tonumber(glow.updateIntervalSeconds) or 0.1
+    local period = tonumber(glow.periodSeconds) or 2
+
+    if interval <= 0 or period <= 0 then
+        return
+    end
+
+    self.deckGlowGeneration = self.deckGlowGeneration + 1
+    local generation = self.deckGlowGeneration
+    local phaseStep = 2 * math.pi * interval / period
+
+    self.deckGlowWaitId = self.waitTime(function()
+        if generation ~= self.deckGlowGeneration then
+            return
+        end
+
+        self.deckGlowPhase = (self.deckGlowPhase + phaseStep)
+            % (2 * math.pi)
+        self:refreshDeckSlotGlow()
+    end, interval, -1)
 end
 
 function CardFieldController:onHeroIntelligenceIncreaseClicked(surface, playerColor)
@@ -738,8 +796,10 @@ function CardFieldController:onLoad(savedState)
     -- Zone outlines are gameplay geometry and remain visible independently of
     -- the card-field debug controls.
     self.baseVectorLines = built.lines
+    self.setVectorLines(self.baseVectorLines)
     self:refreshDeckSlotGlow()
     self:refreshDeckSlotButtons()
+    self:startDeckSlotGlow()
 
     self.waitTime(function()
         self.zoneBehaviors:refresh(self.fields)

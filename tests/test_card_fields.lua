@@ -178,7 +178,9 @@ local function makeSurface(guid, initialButtons)
         createdButtons = {},
         editedButtons = {},
         localPositionInputs = {},
-        removedButtonIndexes = {}
+        removedButtonIndexes = {},
+        vectorLineUpdates = 0,
+        vectorLines = {}
     }
 
     surface.getGUID = function()
@@ -223,6 +225,10 @@ local function makeSurface(guid, initialButtons)
                 return
             end
         end
+    end
+    surface.setVectorLines = function(lines)
+        surface.vectorLines = lines
+        surface.vectorLineUpdates = surface.vectorLineUpdates + 1
     end
     surface.buttons = buttons
     return surface
@@ -392,9 +398,14 @@ Test.case("card fields load geometry, state, drawing, and action zones", functio
         Test.truthy(fields[1].deckSpawned)
         Test.falsy(fields[2].deckSpawned)
         Test.deepEqual(records.built.lines, environment.getVectorLines())
-        Test.equal(2, #records.waits)
-        Test.equal(0.5, records.waits[1].delay)
-        Test.equal(1, records.waits[2].delay)
+        Test.equal(3, #records.waits)
+        Test.equal(
+            Config.deckSlot.glow.updateIntervalSeconds,
+            records.waits[1].delay
+        )
+        Test.equal(-1, records.waits[1].repetitions)
+        Test.equal(0.5, records.waits[2].delay)
+        Test.equal(1, records.waits[3].delay)
         Test.equal(0, countDeckButtons(redSurface))
         Test.equal(1, countDeckButtons(blueSurface))
         Test.equal(
@@ -444,7 +455,7 @@ Test.case("card fields load geometry, state, drawing, and action zones", functio
             )
         end
 
-        records.waits[1].callback()
+        records.waits[2].callback()
         Test.equal(fields, records.actionRefreshFields)
     end)
 end)
@@ -695,34 +706,48 @@ Test.case("action point buttons toggle for their owner and renew together", func
     end)
 end)
 
-Test.case("unchosen deck zones stay yellow until a deck is chosen", function()
+Test.case("unchosen deck zones pulse yellow until a deck is chosen", function()
     withFixture(function(environment)
         makeBuiltFields = function()
             local built = makeFields()
             built.fields[1].deckZoneLines = {{
-                points = {{x = 1}, {x = 2}},
+                points = {
+                    {x = 1, y = 2, z = 3},
+                    {x = 2, y = 3, z = 4}
+                },
                 thickness = Config.zoneLineThickness
             }}
             return built
         end
-        environment.addSurface("red-surface")
+        local redSurface = environment.addSurface("red-surface")
         environment.addSurface("blue-surface")
         CardFields.onLoad({deckSpawnedByPlayer = {Blue = true}})
 
-        local glowLine = environment.getVectorLines()[2]
+        local glowLine = redSurface.vectorLines[1]
         Test.truthy(glowLine)
         Test.equal(1, glowLine.color[1])
         Test.equal(1, glowLine.color[2])
         Test.equal(0, glowLine.color[3])
         Test.equal(Config.deckSlot.glow.lineThickness, glowLine.thickness)
         Test.near(
-            Config.deckSlot.glow.maximumOpacity,
+            (Config.deckSlot.glow.minimumOpacity
+                + Config.deckSlot.glow.maximumOpacity) * 0.5,
             glowLine.color[4],
             0.0001
         )
+        Test.deepEqual(
+            {x = 101, y = 202, z = 303},
+            glowLine.points[1]
+        )
+        local initialOpacity = glowLine.color[4]
+
+        records.waits[1].callback()
+        glowLine = redSurface.vectorLines[1]
+        Test.truthy(glowLine.color[4] > initialOpacity)
 
         CardFields.getFields()[1].onDeckSpawned()
-        Test.equal(1, #environment.getVectorLines())
+        Test.equal(0, #redSurface.vectorLines)
+        Test.deepEqual(records.built.lines, environment.getVectorLines())
     end)
 end)
 
@@ -731,38 +756,52 @@ Test.case("deck glow follows whether the field owner is seated", function()
         makeBuiltFields = function()
             local built = makeFields()
             built.fields[1].deckZoneLines = {{
-                points = {{x = 1}, {x = 2}},
+                points = {
+                    {x = 1, y = 2, z = 3},
+                    {x = 2, y = 3, z = 4}
+                },
                 thickness = Config.zoneLineThickness
             }}
             return built
         end
         environment.setPlayerSeated("Red", false)
-        environment.addSurface("red-surface")
+        local redSurface = environment.addSurface("red-surface")
         environment.addSurface("blue-surface")
         CardFields.onLoad({deckSpawnedByPlayer = {Blue = true}})
-        Test.equal(1, #environment.getVectorLines())
+        Test.equal(0, #redSurface.vectorLines)
 
-        CardFields.refreshDeckSlotGlow()
-        Test.equal(1, #environment.getVectorLines())
+        records.waits[1].callback()
+        Test.equal(0, #redSurface.vectorLines)
 
         environment.setPlayerSeated("Red", true)
-        CardFields.refreshDeckSlotGlow()
-        Test.equal(2, #environment.getVectorLines())
+        records.waits[1].callback()
+        Test.equal(1, #redSurface.vectorLines)
 
         environment.setPlayerSeated("Red", false)
-        CardFields.refreshDeckSlotGlow()
-        Test.equal(1, #environment.getVectorLines())
+        records.waits[1].callback()
+        Test.equal(0, #redSurface.vectorLines)
     end)
 end)
 
-Test.case("card field timers do not republish static vector lines", function()
+Test.case("deck glow pulses do not republish static vector lines", function()
     withFixture(function(environment)
-        addBothSurfaces(environment)
+        local redSurface = addBothSurfaces(environment)
         CardFields.onLoad(nil)
+        local stalePulse = records.waits[1].callback
+
+        CardFields.onLoad(nil)
+        Test.equal(1, #records.stoppedWaits)
+        Test.equal(1, records.stoppedWaits[1])
+
         local updateCount = environment.getVectorLineUpdateCount()
-        records.waits[1].callback()
-        records.waits[2].callback()
+        local surfaceUpdateCount = redSurface.vectorLineUpdates
+        stalePulse()
         Test.equal(updateCount, environment.getVectorLineUpdateCount())
+        Test.equal(surfaceUpdateCount, redSurface.vectorLineUpdates)
+
+        records.waits[4].callback()
+        Test.equal(updateCount, environment.getVectorLineUpdateCount())
+        Test.equal(surfaceUpdateCount + 1, redSurface.vectorLineUpdates)
     end)
 end)
 

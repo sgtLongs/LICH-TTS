@@ -161,6 +161,7 @@ end)
 
 Test.case("object adapter tolerates missing and throwing methods", function()
     local removed = nil
+    local vectorLines = nil
     local object = {}
 
     object.getButtons = function()
@@ -175,13 +176,19 @@ Test.case("object adapter tolerates missing and throwing methods", function()
     object.setPosition = function(position)
         object.position = position
     end
+    object.setVectorLines = function(lines)
+        vectorLines = lines
+    end
 
     Test.equal(7, ObjectAdapter.getButtons(object)[1].index)
     Test.truthy(ObjectAdapter.removeButton(object, 7))
     Test.equal(7, removed)
     Test.truthy(ObjectAdapter.moveSmooth(object, {x = 1, y = 2, z = 3}))
     Test.equal(1, object.position.x)
+    Test.truthy(ObjectAdapter.setVectorLines(object, {"line"}))
+    Test.equal("line", vectorLines[1])
     Test.falsy(ObjectAdapter.clearButtons({}))
+    Test.falsy(ObjectAdapter.setVectorLines({}, {}))
 end)
 
 Test.case("web adapter reports unavailable and available transports", function()
