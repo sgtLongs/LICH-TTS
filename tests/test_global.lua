@@ -22,6 +22,7 @@ local callbackNames = {
     "onActionZoneCardRotationChanged",
     "onEndTurnClicked",
     "onAdvancePhaseClicked",
+    "onFirstPlayerUiClicked",
     "onActionPoint1Clicked",
     "onActionPoint2Clicked",
     "onActionPoint3Clicked",
@@ -69,6 +70,7 @@ local gameMethods = {
     "onActionZoneCardRotationChanged",
     "onEndTurnClicked",
     "onAdvancePhaseClicked",
+    "onFirstPlayerUiClicked",
     "onActionPoint1Clicked",
     "onActionPoint2Clicked",
     "onActionPoint3Clicked",
@@ -323,6 +325,7 @@ Test.case("global turn and action buttons unwrap player data", function()
         local card = {}
         onEndTurnClicked({color = "Brown"}, nil, "end")
         onAdvancePhaseClicked({color = "Green"}, nil, "phase")
+        onFirstPlayerUiClicked({color = "White"}, "chooseBlue", "first")
         onActionStackUpClicked(card, "Red", false)
         onActionStackDownClicked(card, "Red", false)
         onActionPoint3Clicked(card, "Red", false)
@@ -331,6 +334,14 @@ Test.case("global turn and action buttons unwrap player data", function()
         Test.equal(
             "Green",
             context.callsByName.onAdvancePhaseClicked.arguments[1]
+        )
+        Test.equal(
+            "White",
+            context.callsByName.onFirstPlayerUiClicked.arguments[1]
+        )
+        Test.equal(
+            "chooseBlue",
+            context.callsByName.onFirstPlayerUiClicked.arguments[2]
         )
         Test.equal(card, context.callsByName.onActionStackUpClicked.arguments[1])
         Test.equal(card, context.callsByName.onActionStackDownClicked.arguments[1])

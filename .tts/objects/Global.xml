@@ -1562,7 +1562,7 @@
     id="turnPhasePanel"
     rectAlignment="MiddleRight"
     width="330"
-    height="420"
+    height="480"
     offsetXY="-22 0"
     color="#111827F2"
     padding="18 18 16 16"
@@ -1676,7 +1676,99 @@
             preferredHeight="52"
             interactable="false"
         />
+
+        <Button
+            id="chooseFirstPlayer"
+            text="SPAWN DECKS FIRST"
+            onClick="onFirstPlayerUiClicked(open)"
+            preferredWidth="280"
+            preferredHeight="48"
+            interactable="false"
+        />
         <!-- END GENERATED:turn-phase-and-player-controls -->
+    </VerticalLayout>
+</Panel>
+
+<Panel
+    id="firstPlayerMenuRoot"
+    rectAlignment="MiddleRight"
+    width="360"
+    height="530"
+    offsetXY="-370 0"
+    color="#090C12F5"
+    padding="20 20 20 20"
+    active="false"
+>
+    <VerticalLayout spacing="10" childAlignment="UpperCenter">
+        <Text
+            text="WHO GOES FIRST?"
+            fontSize="26"
+            fontStyle="Bold"
+            color="#E5E7EB"
+            preferredHeight="42"
+        />
+        <Text
+            text="Choose a player with a spawned deck."
+            fontSize="17"
+            color="#CBD5E1"
+            preferredHeight="44"
+        />
+        <!-- BEGIN GENERATED:first-player-choice-buttons -->
+        <Button
+            id="firstPlayerChoiceWhite"
+            text="WHITE"
+            onClick="onFirstPlayerUiClicked(chooseWhite)"
+            preferredWidth="300"
+            preferredHeight="44"
+            active="false"
+        />
+        <Button
+            id="firstPlayerChoiceBrown"
+            text="BROWN"
+            onClick="onFirstPlayerUiClicked(chooseBrown)"
+            preferredWidth="300"
+            preferredHeight="44"
+            active="false"
+        />
+        <Button
+            id="firstPlayerChoiceRed"
+            text="RED"
+            onClick="onFirstPlayerUiClicked(chooseRed)"
+            preferredWidth="300"
+            preferredHeight="44"
+            active="false"
+        />
+        <Button
+            id="firstPlayerChoiceGreen"
+            text="GREEN"
+            onClick="onFirstPlayerUiClicked(chooseGreen)"
+            preferredWidth="300"
+            preferredHeight="44"
+            active="false"
+        />
+        <Button
+            id="firstPlayerChoiceTeal"
+            text="TEAL"
+            onClick="onFirstPlayerUiClicked(chooseTeal)"
+            preferredWidth="300"
+            preferredHeight="44"
+            active="false"
+        />
+        <Button
+            id="firstPlayerChoiceBlue"
+            text="BLUE"
+            onClick="onFirstPlayerUiClicked(chooseBlue)"
+            preferredWidth="300"
+            preferredHeight="44"
+            active="false"
+        />
+        <!-- END GENERATED:first-player-choice-buttons -->
+        <Button
+            text="CANCEL"
+            onClick="onFirstPlayerUiClicked(close)"
+            preferredWidth="300"
+            preferredHeight="44"
+        />
     </VerticalLayout>
 </Panel>
 

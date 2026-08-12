@@ -164,6 +164,18 @@ function TurnState.setPlayerColors(state, playerColors)
     end
 end
 
+function TurnState.setCurrentColor(state, playerColor)
+    for index, activeColor in ipairs(state.playerColors) do
+        if activeColor == playerColor then
+            state.currentTurnIndex = index
+            state.currentPhaseIndex = 1
+            return true
+        end
+    end
+
+    return false
+end
+
 function TurnState.getSaveState(state)
     return {
         currentTurnIndex = state.currentTurnIndex,

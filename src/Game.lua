@@ -77,6 +77,7 @@ local publicMethods = {
     "getCardFieldDestination",
     "refreshCardButtons",
     "onAdvancePhaseClicked",
+    "onFirstPlayerUiClicked",
     "onHexGridClicked",
     "onCardFieldDeckSlotClicked",
     "onDeckSelectionUiClicked",

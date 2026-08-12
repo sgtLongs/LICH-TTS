@@ -33,12 +33,15 @@ function TurnController.new(dependencies)
     end
     local turnState = stateApi.new({})
     local activeByColor = {}
+    local hasStarted = false
+    local firstPlayerMenuOpen = false
     local untapGeneration = 0
     local isUntapping = false
     local drawGeneration = 0
     local isDrawing = false
     local isPlacingDeathFog = false
     local controller = {}
+    local getActivePlayerColors
     local mockPlayers = dependencies.mockPlayers
         or MockPlayerFeature.new({
             turnConfig = config,
@@ -57,6 +60,10 @@ function TurnController.new(dependencies)
     end
 
     local function getCurrentColor()
+        if not hasStarted then
+            return nil
+        end
+
         return stateApi.getCurrentColor(turnState)
     end
 
@@ -94,6 +101,9 @@ function TurnController.new(dependencies)
         model.isUntapping = isUntapping
         model.isDrawing = isDrawing
         model.isPlacingDeathFog = isPlacingDeathFog
+        model.hasStarted = hasStarted
+        model.firstPlayerMenuOpen = firstPlayerMenuOpen
+        model.activePlayerColors = getActivePlayerColors()
         uiAdapter.apply(view.buildPatch(config, model))
     end
 
@@ -276,7 +286,7 @@ function TurnController.new(dependencies)
         )
     end
 
-    local function getActivePlayerColors()
+    getActivePlayerColors = function()
         local playerColors = {}
 
         for _, playerColor in ipairs(config.playerColors) do
@@ -368,12 +378,75 @@ function TurnController.new(dependencies)
         end, 1)
     end
 
+    local function isAdmin(playerColor)
+        local player = getPlayer(playerColor)
+        return player ~= nil and player.admin == true
+    end
+
+    function controller.onFirstPlayerUiClicked(playerColor, action)
+        if not isAdmin(playerColor) then
+            sendPrivate(
+                "Only an admin can choose who goes first.",
+                playerColor,
+                config.invalidTurnColor
+            )
+            return false
+        end
+
+        if hasStarted then
+            firstPlayerMenuOpen = false
+            updateUi()
+            return false
+        end
+
+        if action == "open" then
+            if #getActivePlayerColors() == 0 then
+                sendPrivate(
+                    "Spawn at least one deck before choosing who goes first.",
+                    playerColor,
+                    config.invalidTurnColor
+                )
+                return false
+            end
+
+            firstPlayerMenuOpen = true
+            updateUi()
+            return true
+        end
+
+        if action == "close" then
+            firstPlayerMenuOpen = false
+            updateUi()
+            return true
+        end
+
+        local firstColor = type(action) == "string"
+            and string.match(action, "^choose(.+)$") or nil
+
+        if firstColor == nil
+            or activeByColor[firstColor] ~= true
+            or not stateApi.setCurrentColor(turnState, firstColor)
+        then
+            return false
+        end
+
+        hasStarted = true
+        firstPlayerMenuOpen = false
+        updateUi()
+        announceTurn()
+        beginUntapping()
+        scheduleMockTurn()
+        return true
+    end
+
     function controller.advancePhase(playerColor)
         local currentColor = getCurrentColor()
 
         if currentColor == nil then
             sendPrivate(
-                "No players have spawned a deck yet.",
+                #getActivePlayerColors() == 0
+                    and "No players have spawned a deck yet."
+                    or "An admin must choose who goes first.",
                 playerColor,
                 config.invalidTurnColor
             )
@@ -446,6 +519,17 @@ function TurnController.new(dependencies)
         cancelDrawing()
         cancelDeathFogPlacement()
         restoreActivePlayers(savedTurnState)
+        hasStarted = type(savedTurnState) == "table"
+            and savedTurnState.hasStarted == true
+
+        if type(savedTurnState) == "table"
+            and savedTurnState.hasStarted == nil
+            and #getActivePlayerColors() > 0
+        then
+            hasStarted = true
+        end
+
+        firstPlayerMenuOpen = false
         mockPlayers:load(savedTurnState, activeByColor)
         turnState = stateApi.new(
             getActivePlayerColors(),
@@ -453,7 +537,10 @@ function TurnController.new(dependencies)
         )
 
         scheduler.frames(function()
-            if stateApi.getCurrentPhase(turnState) == "start" then
+            if not hasStarted then
+                updateUi()
+                return
+            elseif stateApi.getCurrentPhase(turnState) == "start" then
                 beginUntapping()
             elseif stateApi.getCurrentPhase(turnState) == "draw" then
                 beginDrawing()
@@ -474,6 +561,7 @@ function TurnController.new(dependencies)
 
     function controller.getSaveState()
         local saveState = stateApi.getSaveState(turnState)
+        saveState.hasStarted = hasStarted
         saveState.activePlayerColors = getActivePlayerColors()
         saveState.mockPlayerColors = mockPlayers:getPlayerColors()
         return saveState
@@ -484,7 +572,9 @@ function TurnController.new(dependencies)
 
         if currentColor == nil then
             sendPrivate(
-                "No players have spawned a deck yet.",
+                #getActivePlayerColors() == 0
+                    and "No players have spawned a deck yet."
+                    or "An admin must choose who goes first.",
                 playerColor,
                 config.invalidTurnColor
             )
@@ -555,7 +645,7 @@ function TurnController.new(dependencies)
         stateApi.setPlayerColors(turnState, getActivePlayerColors())
         updateUi()
 
-        if not hadCurrentPlayer then
+        if hasStarted and not hadCurrentPlayer then
             announceTurn()
             beginUntapping()
         end
@@ -577,7 +667,7 @@ function TurnController.new(dependencies)
         stateApi.setPlayerColors(turnState, getActivePlayerColors())
         updateUi()
 
-        if not hadCurrentPlayer then
+        if hasStarted and not hadCurrentPlayer then
             announceTurn()
             beginUntapping()
         end

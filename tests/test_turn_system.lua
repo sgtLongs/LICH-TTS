@@ -10,7 +10,7 @@ local announcements = {}
 local privateMessages = {}
 
 Player = {
-    White = {steam_name = "Wendy"},
+    White = {steam_name = "Wendy", admin = true},
     Brown = {},
     Red = {},
     Green = {},
@@ -649,6 +649,8 @@ Test.case("turn system includes only players with spawned decks", function()
     Test.truthy(TurnSystem.activatePlayer("Red"))
     Test.falsy(TurnSystem.activatePlayer("Red"))
     Test.truthy(TurnSystem.activatePlayer("Blue"))
+    Test.falsy(TurnSystem.getSaveState().hasStarted)
+    Test.truthy(TurnSystem.onFirstPlayerUiClicked("White", "chooseRed"))
     Test.equal("Red", TurnSystem.getSaveState().currentTurnColor)
     Test.equal(
         "true",
@@ -658,6 +660,59 @@ Test.case("turn system includes only players with spawned decks", function()
     Test.truthy(TurnSystem.endTurn("Red"))
     Test.equal("Blue", TurnSystem.getSaveState().currentTurnColor)
     Test.equal(2, #TurnSystem.getSaveState().activePlayerColors)
+end)
+
+Test.case("only an admin can choose an active deck player to go first", function()
+    local attributes = {}
+    local messages = {}
+    local announced = {}
+    local controller = TurnSystem.new({
+        getPlayer = function(color)
+            return {
+                admin = color == "White",
+                steam_name = "Player " .. color
+            }
+        end,
+        runtime = {
+            getAllObjects = function() return {} end
+        },
+        scheduler = {
+            frames = function(callback) callback() end
+        },
+        uiAdapter = {
+            apply = function(patches)
+                for _, patch in ipairs(patches) do
+                    attributes[patch.id .. ":" .. patch.attribute] = patch.value
+                end
+            end
+        },
+        broadcastToColor = function(message, color)
+            messages[#messages + 1] = {message = message, color = color}
+        end,
+        announce = function(message)
+            announced[#announced + 1] = message
+        end
+    })
+
+    controller.onLoad(nil)
+    Test.truthy(controller.activatePlayer("Red"))
+    Test.truthy(controller.activatePlayer("Blue"))
+    Test.equal("true", attributes["chooseFirstPlayer:interactable"])
+    Test.equal("CHOOSE FIRST PLAYER", attributes["turnPlayerName:text"])
+
+    Test.falsy(controller.onFirstPlayerUiClicked("Red", "open"))
+    Test.contains(messages[#messages].message, "Only an admin")
+    Test.truthy(controller.onFirstPlayerUiClicked("White", "open"))
+    Test.equal("true", attributes["firstPlayerMenuRoot:active"])
+    Test.equal("true", attributes["firstPlayerChoiceRed:active"])
+    Test.equal("false", attributes["firstPlayerChoiceGreen:active"])
+    Test.falsy(controller.onFirstPlayerUiClicked("White", "chooseGreen"))
+
+    Test.truthy(controller.onFirstPlayerUiClicked("White", "chooseBlue"))
+    Test.truthy(controller.getSaveState().hasStarted)
+    Test.equal("Blue", controller.getSaveState().currentTurnColor)
+    Test.equal("false", attributes["chooseFirstPlayer:active"])
+    Test.equal("Player Blue (Blue), it is your turn!", announced[1])
 end)
 
 Test.case("turn view builds a deterministic UI patch", function()
@@ -711,7 +766,7 @@ Test.case("turn view builds a deterministic UI patch", function()
         patches[6],
         patches[7]
     })
-    Test.equal(19, #patches)
+    Test.equal(29, #patches)
     Test.deepEqual({
         id = "advancePhaseRed",
         attribute = "text",

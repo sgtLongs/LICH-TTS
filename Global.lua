@@ -130,6 +130,10 @@ function onAdvancePhaseClicked(player, value, id)
     Game.onAdvancePhaseClicked(player.color)
 end
 
+function onFirstPlayerUiClicked(player, action, id)
+    return Game.onFirstPlayerUiClicked(player.color, action)
+end
+
 function onHexGridClicked(object, playerColor, altClick)
     Game.onHexGridClicked(playerColor, altClick)
 end

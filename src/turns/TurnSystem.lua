@@ -16,6 +16,10 @@ function TurnSystem.advancePhase(playerColor)
     return defaultController.advancePhase(playerColor)
 end
 
+function TurnSystem.onFirstPlayerUiClicked(playerColor, action)
+    return defaultController.onFirstPlayerUiClicked(playerColor, action)
+end
+
 function TurnSystem.onLoad(savedTurnState)
     return defaultController.onLoad(savedTurnState)
 end

@@ -710,6 +710,10 @@ function GameController:onAdvancePhaseClicked(playerColor)
     return self.turnSystem.advancePhase(playerColor)
 end
 
+function GameController:onFirstPlayerUiClicked(playerColor, action)
+    return self.turnSystem.onFirstPlayerUiClicked(playerColor, action)
+end
+
 function GameController:onHexGridClicked(playerColor, altClick)
     self.hexGrid.onClicked(playerColor, altClick)
 end

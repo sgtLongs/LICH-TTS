@@ -24,11 +24,15 @@ function TurnView.buildPatch(config, model)
     local currentPhase = model.currentPhase
 
     if currentColor == nil then
+        local awaitingFirstPlayer = model.hasStarted ~= true
+            and #(model.activePlayerColors or {}) > 0
         add(
             patches,
             config.ui.playerNameId,
             "text",
-            config.ui.noPlayersText
+            awaitingFirstPlayer
+                and config.ui.awaitingFirstPlayerText
+                or config.ui.noPlayersText
         )
         add(
             patches,
@@ -40,7 +44,9 @@ function TurnView.buildPatch(config, model)
             patches,
             config.ui.colorNameId,
             "text",
-            config.ui.noPlayersDetailText
+            awaitingFirstPlayer
+                and config.ui.awaitingFirstPlayerDetailText
+                or config.ui.noPlayersDetailText
         )
     else
         add(
@@ -120,6 +126,49 @@ function TurnView.buildPatch(config, model)
                 and model.isUntapping ~= true
                 and model.isPlacingDeathFog ~= true
                 and "true" or "false"
+        )
+    end
+
+    local activePlayerColors = model.activePlayerColors or {}
+    local hasActivePlayers = #activePlayerColors > 0
+    add(
+        patches,
+        config.ui.firstPlayerButtonId,
+        "active",
+        model.hasStarted == true and "false" or "true"
+    )
+    add(
+        patches,
+        config.ui.firstPlayerButtonId,
+        "interactable",
+        hasActivePlayers and "true" or "false"
+    )
+    add(
+        patches,
+        config.ui.firstPlayerButtonId,
+        "text",
+        hasActivePlayers
+            and config.ui.chooseFirstPlayerText
+            or config.ui.waitingForDecksText
+    )
+    add(
+        patches,
+        config.ui.firstPlayerMenuRootId,
+        "active",
+        model.firstPlayerMenuOpen == true and "true" or "false"
+    )
+
+    local activeByColor = {}
+    for _, playerColor in ipairs(activePlayerColors) do
+        activeByColor[playerColor] = true
+    end
+
+    for _, playerColor in ipairs(config.playerColors) do
+        add(
+            patches,
+            config.ui.firstPlayerChoicePrefix .. playerColor,
+            "active",
+            activeByColor[playerColor] == true and "true" or "false"
         )
     end
 

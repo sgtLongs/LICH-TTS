@@ -694,6 +694,8 @@ static string RenderTurnControls(
     var startPhaseButtonText = uiValues[5];
     var waitingButtonText = uiValues[6];
     var phaseButtonPrefix = uiValues[7];
+    var firstPlayerButtonId = uiValues[8];
+    var waitingForDecksText = uiValues[9];
     var lines = new List<string>();
 
     for (var index = 0; index < phaseDefinitions.Count; index++)
@@ -743,6 +745,37 @@ static string RenderTurnControls(
             lines.Add("            interactable=\"false\"");
         }
 
+        lines.Add("        />");
+    }
+
+    lines.Add("");
+    lines.Add("        <Button");
+    lines.Add($"            id=\"{firstPlayerButtonId}\"");
+    lines.Add($"            text=\"{EscapeXmlAttribute(waitingForDecksText)}\"");
+    lines.Add("            onClick=\"onFirstPlayerUiClicked(open)\"");
+    lines.Add("            preferredWidth=\"280\"");
+    lines.Add("            preferredHeight=\"48\"");
+    lines.Add("            interactable=\"false\"");
+    lines.Add("        />");
+
+    return string.Join('\n', lines);
+}
+
+static string RenderFirstPlayerChoices(
+    IReadOnlyList<string> playerColors,
+    string choicePrefix)
+{
+    var lines = new List<string>();
+
+    foreach (var color in playerColors)
+    {
+        lines.Add("        <Button");
+        lines.Add($"            id=\"{choicePrefix}{color}\"");
+        lines.Add($"            text=\"{color.ToUpperInvariant()}\"");
+        lines.Add($"            onClick=\"onFirstPlayerUiClicked(choose{color})\"");
+        lines.Add("            preferredWidth=\"300\"");
+        lines.Add("            preferredHeight=\"44\"");
+        lines.Add("            active=\"false\"");
         lines.Add("        />");
     }
 
@@ -1000,7 +1033,7 @@ static IReadOnlyDictionary<string, string> BuildGlobalUiRegions(Script script)
         script,
         "local ui = require('src/config/TurnConfig').ui; return {ui.phaseIdPrefix, ui.activePhasePrefix, "
             + "ui.inactivePhasePrefix, ui.activePhaseColor, ui.inactivePhaseColor, ui.startPhaseButtonText, "
-            + "ui.waitingButtonText, ui.phaseButtonPrefix}",
+            + "ui.waitingButtonText, ui.phaseButtonPrefix, ui.firstPlayerButtonId, ui.waitingForDecksText}",
         "turn UI values");
     var spawnDefinitions = EvaluateLuaStrings(
         script,
@@ -1043,6 +1076,12 @@ static IReadOnlyDictionary<string, string> BuildGlobalUiRegions(Script script)
             phases,
             players,
             turnUi),
+        ["first-player-choice-buttons"] = RenderFirstPlayerChoices(
+            players,
+            EvaluateLuaStrings(
+                script,
+                "return {require('src/config/TurnConfig').ui.firstPlayerChoicePrefix}",
+                "first-player choice prefix")[0]),
         ["hex-spawn-selector-rows"] = RenderHexSpawnSelectorRows(
             spawnDefinitions,
             spawnPrefix),
@@ -1356,6 +1395,7 @@ static void ValidateTrackedAssets(string repositoryRoot, Script script)
                 + "result[#result + 1] = config.ui.phaseIdPrefix .. phase; "
                 + "end; for _, color in ipairs(config.playerColors) do "
                 + "result[#result + 1] = config.ui.phaseButtonPrefix .. color; "
+                + "result[#result + 1] = config.ui.firstPlayerChoicePrefix .. color; "
                 + "end; return result",
             "turn UI IDs"));
 

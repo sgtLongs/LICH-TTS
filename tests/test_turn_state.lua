@@ -11,6 +11,15 @@ Test.case("turn state starts at the first player", function()
     Test.equal("start", TurnState.getCurrentPhase(state))
 end)
 
+Test.case("turn state can select any active player to go first", function()
+    local state = TurnState.new({"Red", "Blue"})
+
+    Test.truthy(TurnState.setCurrentColor(state, "Blue"))
+    Test.equal("Blue", TurnState.getCurrentColor(state))
+    Test.equal("start", TurnState.getCurrentPhase(state))
+    Test.falsy(TurnState.setCurrentColor(state, "Green"))
+end)
+
 Test.case("turn state advances through every phase in order", function()
     local state = TurnState.new(colors)
 

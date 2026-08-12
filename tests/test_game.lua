@@ -179,6 +179,11 @@ local TurnSystem = {
         calls.phasePlayerColor = playerColor
         return true
     end,
+    onFirstPlayerUiClicked = function(playerColor, action)
+        calls.firstPlayerUiColor = playerColor
+        calls.firstPlayerUiAction = action
+        return true
+    end,
     refreshUi = function()
     end,
     resetForRestart = function()
@@ -349,6 +354,12 @@ end)
 Test.case("game routes phase advances", function()
     Test.truthy(Game.onAdvancePhaseClicked("Teal"))
     Test.equal("Teal", calls.phasePlayerColor)
+end)
+
+Test.case("game routes first-player menu actions", function()
+    Test.truthy(Game.onFirstPlayerUiClicked("White", "chooseBlue"))
+    Test.equal("White", calls.firstPlayerUiColor)
+    Test.equal("chooseBlue", calls.firstPlayerUiAction)
 end)
 
 Test.case("game routes deck slot and deck menu choices", function()
