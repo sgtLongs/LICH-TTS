@@ -222,7 +222,8 @@ TTS after changing those boundaries and before publishing a save:
    empty and Source Stone hexes, place each configured surface, and verify its
    tint/opacity. Confirm the Source Stone settles on top, one non-fog surface
    replaces another, the red remove button deletes a selected non-fog surface,
-   and death-fog hexes reject placement and removal.
+   and death-fog hexes reject new surface placement while the red remove
+   button still removes the death fog.
 7. Save several named boards, paginate/select them in Settings and DungeonMap,
    traverse adjacent levels, and confirm failed/timed-out loads leave traversal
    usable.

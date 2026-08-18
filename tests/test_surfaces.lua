@@ -173,7 +173,7 @@ Test.case("surface rules reject ordinary occupied hexes", function()
     ))
 end)
 
-Test.case("surfaces replace surfaces but never death fog", function()
+Test.case("death fog blocks replacement but remains removable", function()
     local mud = placement("mud", 0, 0)
     local deathFog = placement("deathFog", 0, 1)
     local placements = {mud, deathFog}
@@ -200,7 +200,7 @@ Test.case("surfaces replace surfaces but never death fog", function()
         placements,
         templatesByKey
     ))
-    Test.nilValue(SurfaceRules.getRemovableSurfacePlacement(
+    Test.equal(deathFog, SurfaceRules.getRemovableSurfacePlacement(
         {row = 0, column = 1},
         placements,
         templatesByKey
@@ -361,6 +361,7 @@ Test.case("source stone removal remains available on death fog", function()
     Test.truthy(controller.open("Red", {row = 0, column = 0}))
     local activeMenu = controller.getActiveMenu()
     Test.truthy(activeMenu.canRemoveSourceStone)
+    Test.truthy(activeMenu.canRemoveSurface)
     Test.nilValue(next(activeMenu.availableSurfaceKeys))
 end)
 

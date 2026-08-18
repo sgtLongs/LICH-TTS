@@ -120,7 +120,6 @@ function SurfaceRules.getRemovableSurfacePlacement(
         local template = templatesByKey[placement.templateKey]
 
         if isSurface(template)
-            and not blocksSurfaces(template)
             and HexPlacementRules.occupiesCell(
                 placement,
                 cell,

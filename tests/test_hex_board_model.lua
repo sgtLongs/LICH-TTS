@@ -835,18 +835,31 @@ Test.case("placing a surface atomically replaces the previous surface", function
     Test.equal(oldObject, harness.destroyed[1])
 end)
 
-Test.case("death fog prevents reopening the surface picker", function()
-    local harness = makeGridHarness("protected-fog", 1.25)
+Test.case("surface picker removes death fog", function()
+    local harness = makeGridHarness("removable-fog", 1.25)
+    local fogObject = {}
 
     harness.controller.onLoad(nil)
     harness.callbacks[1].callback()
+    harness.objectsByGuid["death-fog"] = fogObject
     HexBoardModel.addPlacement(harness.controller.getModel(), {
         templateKey = "deathFog",
         cell = {row = 0, column = 0},
-        facingCell = {row = 0, column = 1}
+        facingCell = {row = 0, column = 1},
+        guid = "death-fog"
     })
     harness.controller.onClicked("Red", false)
-    Test.nilValue(harness.controller.getSessionSnapshot().surfaceMenu)
+    local activeMenu = harness.controller.getSessionSnapshot().surfaceMenu
+    Test.truthy(activeMenu.canRemoveSurface)
+    Test.nilValue(next(activeMenu.availableSurfaceKeys))
+    Test.truthy(harness.controller.onSurfaceUiClicked(
+        "Red",
+        "removeSurface"
+    ))
+
+    Test.equal(0, #harness.controller.getModel().placements)
+    Test.equal(1, #harness.destroyed)
+    Test.equal(fogObject, harness.destroyed[1])
 end)
 
 Test.case("constructed hex grid supports bound dot calls", function()
