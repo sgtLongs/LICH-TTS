@@ -419,6 +419,12 @@ Test.case("existing standalone cards receive button config refreshes", function(
         return {
             {
                 tag = "Card",
+                getVar = function()
+                    return nil
+                end,
+                call = function()
+                    error("Legacy cards should use direct button edits.")
+                end,
                 getButtons = function()
                     return {
                         {index = 3, click_function = "onCardTapped"},
@@ -474,6 +480,38 @@ Test.case("existing standalone cards receive button config refreshes", function(
     Test.equal(Config.buttons.actions.width, editedButtons[1].width)
     Test.equal(Config.buttons.actions.height, editedButtons[1].height)
     Test.equal(Config.buttons.actions.position, editedButtons[1].position)
+    getAllObjects = originalGetAllObjects
+end)
+
+Test.case("current generated cards own their button config refresh", function()
+    local originalGetAllObjects = getAllObjects
+    local calls = {}
+
+    getAllObjects = function()
+        return {
+            {
+                tag = "Card",
+                getZones = function()
+                    return {}
+                end,
+                getVar = function(functionName)
+                    if functionName == "refreshCardButtons" then
+                        return function() end
+                    end
+                end,
+                call = function(functionName)
+                    calls[#calls + 1] = functionName
+                    error("A failed card-local refresh must not fall back.")
+                end,
+                getButtons = function()
+                    error("Host should not edit current generated cards.")
+                end
+            }
+        }
+    end
+
+    CardLogic.refreshExistingButtons()
+    Test.deepEqual({"refreshCardButtons"}, calls)
     getAllObjects = originalGetAllObjects
 end)
 

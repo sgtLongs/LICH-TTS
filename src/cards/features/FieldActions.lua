@@ -384,16 +384,22 @@ end
 function hideActionButtonsDuringCardRotation()
     local shouldRestore = actionButtonsVisible
     local restorePreviewPlayerColor = actionPreviewPlayerColor
+    local actionsButton = findCardButton("onActionsClicked")
     removeActionButtons()
 
-    if not shouldRestore then
-        return
+    if actionsButton ~= nil then
+        self.removeButton(actionsButton.index)
     end
 
     local function restoreAfterRotation()
         Wait.condition(
             function()
-                if not isCardInHand() then
+                -- Position and rotation are one compensated transform. Update
+                -- both after the card settles so the persistent Actions
+                -- trigger remains on the same world-facing side of the card.
+                refreshCardActionButtons()
+
+                if shouldRestore and not isCardInHand() then
                     showActionButtons(restorePreviewPlayerColor)
                 end
             end,

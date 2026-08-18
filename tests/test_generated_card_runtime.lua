@@ -620,6 +620,48 @@ Test.case("generated action controls follow either tapped side", function()
     end)
 end)
 
+Test.case("generated taps refresh the actions transform after settling", function()
+    runGenerated({deferFrames = true}, function(environment)
+        onLoad("")
+        local actions = findButton(environment, "onActionsClicked")
+
+        Test.near(0, actions.position.x, 0.0001)
+        Test.near(-2.2, actions.position.z, 0.0001)
+        Test.equal(0, actions.rotation[2])
+
+        onCardTapped(environment.card, "Red", false)
+        Test.equal(1, #environment.pendingFrames)
+        Test.nilValue(findButton(environment, "onActionsClicked"))
+        environment.moving = true
+        environment.runFrames(1)
+        Test.equal(1, #environment.pendingConditions)
+        Test.nilValue(findButton(environment, "onActionsClicked"))
+
+        environment.moving = false
+        environment.runConditions()
+        actions = findButton(environment, "onActionsClicked")
+
+        Test.near(-2.2, actions.position.x, 0.0001)
+        Test.near(0, actions.position.z, 0.0001)
+        Test.equal(-90, actions.rotation[2])
+
+        onCardTapped(environment.card, "Red", false)
+        Test.equal(1, #environment.pendingFrames)
+        Test.nilValue(findButton(environment, "onActionsClicked"))
+        environment.moving = true
+        environment.runFrames(1)
+        Test.equal(1, #environment.pendingConditions)
+        Test.nilValue(findButton(environment, "onActionsClicked"))
+        environment.moving = false
+        environment.runConditions()
+        actions = findButton(environment, "onActionsClicked")
+
+        Test.near(0, actions.position.x, 0.0001)
+        Test.near(-2.2, actions.position.z, 0.0001)
+        Test.equal(0, actions.rotation[2])
+    end)
+end)
+
 Test.case("generated actions button toggles the preview", function()
     runGenerated({
         context = {previewImageUrl = "https://example.test/card.png"},

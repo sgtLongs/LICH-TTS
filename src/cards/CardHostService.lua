@@ -507,6 +507,25 @@ local function makeRefreshParameters(button, descriptor)
     return parameters
 end
 
+local function refreshThroughCardScript(object)
+    if type(object.getVar) ~= "function"
+        or type(object.call) ~= "function"
+    then
+        return false
+    end
+
+    local found, refresh = pcall(object.getVar, "refreshCardButtons")
+
+    if not found or type(refresh) ~= "function" then
+        return false
+    end
+
+    -- Once this API exists, do not partially overwrite its transform even if
+    -- the card-local refresh fails. A later lifecycle refresh can safely retry.
+    pcall(object.call, "refreshCardButtons")
+    return true
+end
+
 function CardHostService.refreshExistingButtons(featureDescriptors)
     local hostButtons = indexHostButtons(featureDescriptors)
 
@@ -514,7 +533,15 @@ function CardHostService.refreshExistingButtons(featureDescriptors)
         if object.tag == "Card"
             and not CardHostService.removeButtonsIfInHand(object)
         then
-            local succeeded, buttons = pcall(object.getButtons)
+            -- Current generated cards own their complete button transform,
+            -- including tap-dependent position and rotation. Keep the direct
+            -- edit path below only for older saved cards without that API.
+            local refreshed = refreshThroughCardScript(object)
+            local succeeded, buttons = false, nil
+
+            if not refreshed then
+                succeeded, buttons = pcall(object.getButtons)
+            end
 
             if succeeded and type(buttons) == "table" then
                 for _, button in ipairs(buttons) do
