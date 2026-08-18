@@ -49,6 +49,8 @@ local function dependencies(overrides)
 
     values.cardFields.refreshDeckSlotGlow = function()
     end
+    values.turnSystem.refreshUi = function()
+    end
 
     for key, value in pairs(overrides or {}) do
         values[key] = value
@@ -656,7 +658,7 @@ Test.case("game controller preserves nil returns from legacy event wrappers", fu
     values.settingsMenu.onEditModeChanged = sentinel
     values.turnSystem.endTurn = sentinel
     values.turnSystem.refreshUi = sentinel
-    values.turnSystem.removePlayer = sentinel
+    values.turnSystem.registerPlayer = sentinel
 
     local controller = GameController.new(values)
     local calls = {
@@ -739,21 +741,30 @@ Test.case("game controller returns surface picker results", function()
     )
 end)
 
-Test.case("game controller removes disconnected players from turns", function()
-    local removedColor = nil
+Test.case("game controller preserves turns across player connections", function()
+    local registeredPlayer = nil
+    local turnRefreshes = 0
     local glowRefreshes = 0
     local values = dependencies()
     values.cardFields.refreshDeckSlotGlow = function()
         glowRefreshes = glowRefreshes + 1
     end
-    values.turnSystem.removePlayer = function(playerColor)
-        removedColor = playerColor
+    values.turnSystem.registerPlayer = function(player)
+        registeredPlayer = player
         return true
     end
+    values.turnSystem.refreshUi = function()
+        turnRefreshes = turnRefreshes + 1
+    end
 
-    local result = GameController.new(values):onPlayerDisconnect("Red")
+    local controller = GameController.new(values)
+    local player = {color = "Red", steam_name = "Rhea"}
+    local connectResult = controller:onPlayerConnect(player)
+    local disconnectResult = controller:onPlayerDisconnect("Red")
 
-    Test.nilValue(result)
-    Test.equal("Red", removedColor)
-    Test.equal(1, glowRefreshes)
+    Test.nilValue(connectResult)
+    Test.nilValue(disconnectResult)
+    Test.equal(player, registeredPlayer)
+    Test.equal(1, turnRefreshes)
+    Test.equal(2, glowRefreshes)
 end)

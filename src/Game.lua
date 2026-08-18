@@ -19,6 +19,9 @@ if type(CardFields.configureDefaultDependencies) == "function" then
                 ownerColor,
                 field ~= nil and field.isMockPlayer == true
             )
+        end,
+        onHeroHealthDepleted = function(ownerColor)
+            return TurnSystem.removePlayer(ownerColor)
         end
     })
 end
@@ -78,6 +81,7 @@ local publicMethods = {
     "refreshCardButtons",
     "onAdvancePhaseClicked",
     "onFirstPlayerUiClicked",
+    "onPlayersUiClicked",
     "onHexGridClicked",
     "onCardFieldDeckSlotClicked",
     "onDeckSelectionUiClicked",

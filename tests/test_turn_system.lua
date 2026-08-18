@@ -198,7 +198,38 @@ Test.case("turn system removes the most recently added mock player", function()
     Test.nilValue(removedColor)
 end)
 
-Test.case("turn system removes disconnected players from turn order", function()
+Test.case("turn system disconnects a mock without removing its turn", function()
+    local controller = TurnSystem.new({
+        getPlayer = function()
+            return {seated = false}
+        end,
+        scheduler = {frames = function(callback) callback() end},
+        uiAdapter = {apply = function() end},
+        announce = function() end,
+        broadcastToColor = function() end
+    })
+
+    controller.onLoad({})
+    local _, mockColor = controller.addMockPlayer()
+    local disconnected, disconnectedColor =
+        controller.disconnectMostRecentMockPlayer()
+
+    Test.truthy(disconnected)
+    Test.equal(mockColor, disconnectedColor)
+    Test.truthy(controller.isPlayerActive(mockColor))
+    Test.deepEqual({mockColor}, controller.getSaveState().activePlayerColors)
+    Test.deepEqual(
+        {mockColor},
+        controller.getSaveState().mockPlayerColors
+    )
+    Test.deepEqual(
+        {mockColor},
+        controller.getSaveState().disconnectedMockPlayerColors
+    )
+    Test.falsy(controller.disconnectMostRecentMockPlayer())
+end)
+
+Test.case("turn system explicitly removes players from turn order", function()
     local FakeWait = require("tests/support/FakeWait")
     local wait = FakeWait.new()
     local controller = TurnSystem.new({
@@ -225,6 +256,48 @@ Test.case("turn system removes disconnected players from turn order", function()
     wait.advanceFrames(1)
     Test.equal("main", controller.getSaveState().currentPhase)
     Test.truthy(controller.advancePhase("Blue"))
+end)
+
+Test.case("players menu lists saved names and lets admins remove players", function()
+    local attributes = {}
+    local messages = {}
+    local connected = {
+        White = {color = "White", steam_name = "Wendy", admin = true},
+        Red = {color = "Red", steam_name = "Rhea", admin = false}
+    }
+    local controller = TurnSystem.new({
+        getPlayer = function(color)
+            return connected[color]
+        end,
+        scheduler = {frames = function(callback) callback() end},
+        uiAdapter = {apply = function(patches)
+            for _, patch in ipairs(patches) do
+                attributes[patch.id .. ":" .. patch.attribute] = patch.value
+            end
+        end},
+        announce = function() end,
+        broadcastToColor = function(message, color)
+            messages[#messages + 1] = {message, color}
+        end
+    })
+
+    controller.onLoad({activePlayerColors = {"Red"}})
+    Test.truthy(controller.onPlayersUiClicked("Red", "toggle"))
+    Test.equal("true", attributes["playersMenuRoot:active"])
+    Test.equal("true", attributes["playersRowRed:active"])
+    Test.equal("false", attributes["playersRowBlue:active"])
+    Test.equal("Rhea", attributes["playersNameRed:text"])
+    Test.falsy(controller.onPlayersUiClicked("Red", "removeRed"))
+    Test.contains(messages[#messages][1], "Only an admin")
+
+    connected.Red = nil
+    local saved = controller.getSaveState()
+    Test.equal("Rhea", saved.playerNamesByColor.Red)
+
+    controller.onLoad(saved)
+    Test.equal("Rhea", attributes["playersNameRed:text"])
+    Test.truthy(controller.onPlayersUiClicked("White", "removeRed"))
+    Test.falsy(controller.isPlayerActive("Red"))
 end)
 
 Test.case("turn system advances phases and ends after end phase", function()
@@ -766,7 +839,7 @@ Test.case("turn view builds a deterministic UI patch", function()
         patches[6],
         patches[7]
     })
-    Test.equal(29, #patches)
+    Test.equal(42, #patches)
     Test.deepEqual({
         id = "advancePhaseRed",
         attribute = "text",

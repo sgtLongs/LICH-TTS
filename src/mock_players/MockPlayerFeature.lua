@@ -11,6 +11,7 @@ Controller.__index = Controller
 
 local function forget(feature, playerColor)
     feature.mockByColor[playerColor] = nil
+    feature.disconnectedByColor[playerColor] = nil
 
     for index = #feature.additionOrder, 1, -1 do
         if feature.additionOrder[index] == playerColor then
@@ -30,6 +31,7 @@ function MockPlayerFeature.new(dependencies)
         scheduler = dependencies.scheduler or Scheduler.default(),
         getPlayer = dependencies.getPlayer or runtime.getPlayer,
         mockByColor = {},
+        disconnectedByColor = {},
         additionOrder = {},
         generation = 0
     }, Controller)
@@ -61,6 +63,7 @@ end
 function Controller:load(savedTurnState, activeByColor)
     self:cancelAutomation()
     self.mockByColor = {}
+    self.disconnectedByColor = {}
     self.additionOrder = {}
 
     if type(savedTurnState) ~= "table"
@@ -76,6 +79,16 @@ function Controller:load(savedTurnState, activeByColor)
         then
             self.mockByColor[playerColor] = true
             self.additionOrder[#self.additionOrder + 1] = playerColor
+        end
+    end
+
+    if type(savedTurnState.disconnectedMockPlayerColors) == "table" then
+        for _, playerColor in ipairs(
+            savedTurnState.disconnectedMockPlayerColors
+        ) do
+            if self.mockByColor[playerColor] == true then
+                self.disconnectedByColor[playerColor] = true
+            end
         end
     end
 end
@@ -94,6 +107,22 @@ function Controller:isMock(playerColor)
     return self.mockByColor[playerColor] == true
 end
 
+function Controller:isDisconnected(playerColor)
+    return self.disconnectedByColor[playerColor] == true
+end
+
+function Controller:getDisconnectedPlayerColors()
+    local playerColors = {}
+
+    for _, playerColor in ipairs(self.additionOrder) do
+        if self:isDisconnected(playerColor) then
+            playerColors[#playerColors + 1] = playerColor
+        end
+    end
+
+    return playerColors
+end
+
 function Controller:getMostRecentPlayerColor()
     return self.additionOrder[#self.additionOrder]
 end
@@ -104,6 +133,9 @@ function Controller:getName(playerColor)
     end
 
     return self.config.namePrefix .. playerColor
+        .. (self:isDisconnected(playerColor)
+            and (self.config.disconnectedNameSuffix
+                or " (Disconnected)") or "")
 end
 
 function Controller:add(activeByColor)
@@ -113,7 +145,22 @@ function Controller:add(activeByColor)
 
         if activeByColor[playerColor] ~= true and not isSeated then
             self.mockByColor[playerColor] = true
+            self.disconnectedByColor[playerColor] = nil
             self.additionOrder[#self.additionOrder + 1] = playerColor
+            return true, playerColor
+        end
+    end
+
+    return false, nil
+end
+
+function Controller:disconnectMostRecent()
+    for index = #self.additionOrder, 1, -1 do
+        local playerColor = self.additionOrder[index]
+
+        if not self:isDisconnected(playerColor) then
+            self.disconnectedByColor[playerColor] = true
+            self:cancelAutomation()
             return true, playerColor
         end
     end
@@ -160,6 +207,7 @@ function Controller:schedule(parameters)
 
     if playerColor == nil
         or not self:isMock(playerColor)
+        or self:isDisconnected(playerColor)
         or parameters.isBlocked()
         or type(self.scheduler.time) ~= "function"
     then
@@ -177,6 +225,7 @@ function Controller:schedule(parameters)
         if generation ~= self.generation
             or parameters.getCurrentColor() ~= playerColor
             or not self:isMock(playerColor)
+            or self:isDisconnected(playerColor)
         then
             return
         end

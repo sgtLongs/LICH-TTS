@@ -184,6 +184,11 @@ local TurnSystem = {
         calls.firstPlayerUiAction = action
         return true
     end,
+    onPlayersUiClicked = function(playerColor, action)
+        calls.playersUiColor = playerColor
+        calls.playersUiAction = action
+        return true
+    end,
     refreshUi = function()
     end,
     resetForRestart = function()
@@ -206,8 +211,16 @@ local TurnSystem = {
         calls.removedPlayerColor = playerColor
         return true
     end,
+    registerPlayer = function(player)
+        calls.registeredPlayer = player
+        return true
+    end,
     removeMostRecentMockPlayer = function()
         calls.removedMostRecentMockPlayer = true
+        return true, "White"
+    end,
+    disconnectMostRecentMockPlayer = function()
+        calls.disconnectedMostRecentMockPlayer = true
         return true, "White"
     end
 }
@@ -255,6 +268,11 @@ Test.case("game composition injects deck activation into card fields", function(
     Test.truthy(calls.preservedMockPlayer)
 end)
 
+Test.case("game composition removes heroes whose health is depleted", function()
+    Test.truthy(calls.cardFieldDependencies.onHeroHealthDepleted("Blue", 0))
+    Test.equal("Blue", calls.removedPlayerColor)
+end)
+
 Test.case("game save gathers state from each subsystem", function()
     local result = Game.onSave()
 
@@ -300,6 +318,10 @@ Test.case("game load wires subsystems to saved state", function()
     Test.equal(
         TurnSystem.removeMostRecentMockPlayer,
         calls.settingsContext.removeMockPlayer
+    )
+    Test.equal(
+        TurnSystem.disconnectMostRecentMockPlayer,
+        calls.settingsContext.disconnectMockPlayer
     )
     local added, color, deckName = calls.settingsContext.addMockPlayer()
     Test.truthy(added)
@@ -360,6 +382,12 @@ Test.case("game routes first-player menu actions", function()
     Test.truthy(Game.onFirstPlayerUiClicked("White", "chooseBlue"))
     Test.equal("White", calls.firstPlayerUiColor)
     Test.equal("chooseBlue", calls.firstPlayerUiAction)
+end)
+
+Test.case("game routes player-menu actions", function()
+    Test.truthy(Game.onPlayersUiClicked("White", "removeBlue"))
+    Test.equal("White", calls.playersUiColor)
+    Test.equal("removeBlue", calls.playersUiAction)
 end)
 
 Test.case("game routes deck slot and deck menu choices", function()

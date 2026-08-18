@@ -838,6 +838,42 @@ Test.case("Hero stat arrow buttons enforce ownership and adjust values", functio
     end)
 end)
 
+Test.case("health dropping to zero removes the hero from turns", function()
+    withFixture(function(environment)
+        local depleted = {}
+        CardFields.configureDefaultDependencies({
+            onHeroHealthDepleted = function(playerColor, health)
+                depleted[#depleted + 1] = {playerColor, health}
+            end
+        })
+        local redSurface = environment.addSurface("red-surface")
+        environment.addSurface("blue-surface")
+        CardFields.onLoad(nil)
+        CardFields.getFields()[1].onHeroStatsAvailable({
+            intelligence = 1,
+            health = 1
+        })
+
+        Test.truthy(CardFields.onHeroHealthDecreaseClicked(
+            redSurface,
+            "Red"
+        ))
+        Test.deepEqual({{"Red", 0}}, depleted)
+
+        Test.truthy(CardFields.onHeroHealthIncreaseClicked(
+            redSurface,
+            "Red"
+        ))
+        Test.equal(1, #depleted)
+
+        Test.truthy(CardFields.onHeroHealthDecreaseFiveClicked(
+            redSurface,
+            "Red"
+        ))
+        Test.deepEqual({"Red", -4}, depleted[2])
+    end)
+end)
+
 Test.case("deck spawn completion activates the owner and clears its button", function()
     withFixture(function(environment)
         local redSurface = environment.addSurface("red-surface")

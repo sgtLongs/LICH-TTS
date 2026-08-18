@@ -35,6 +35,8 @@ function TurnController.new(dependencies)
     local activeByColor = {}
     local hasStarted = false
     local firstPlayerMenuOpen = false
+    local playersMenuOpen = false
+    local playerNamesByColor = {}
     local untapGeneration = 0
     local isUntapping = false
     local drawGeneration = 0
@@ -84,10 +86,11 @@ function TurnController.new(dependencies)
             and player.steam_name ~= nil
             and player.steam_name ~= ""
         then
+            playerNamesByColor[playerColor] = player.steam_name
             return player.steam_name
         end
 
-        return playerColor
+        return playerNamesByColor[playerColor] or playerColor
     end
 
     local function updateUi()
@@ -103,7 +106,12 @@ function TurnController.new(dependencies)
         model.isPlacingDeathFog = isPlacingDeathFog
         model.hasStarted = hasStarted
         model.firstPlayerMenuOpen = firstPlayerMenuOpen
+        model.playersMenuOpen = playersMenuOpen
         model.activePlayerColors = getActivePlayerColors()
+        model.playerNamesByColor = {}
+        for _, playerColor in ipairs(model.activePlayerColors) do
+            model.playerNamesByColor[playerColor] = getPlayerName(playerColor)
+        end
         uiAdapter.apply(view.buildPatch(config, model))
     end
 
@@ -300,6 +308,7 @@ function TurnController.new(dependencies)
 
     local function restoreActivePlayers(savedTurnState)
         activeByColor = {}
+        playerNamesByColor = {}
 
         if type(savedTurnState) ~= "table"
             or type(savedTurnState.activePlayerColors) ~= "table"
@@ -309,6 +318,19 @@ function TurnController.new(dependencies)
 
         for _, playerColor in ipairs(savedTurnState.activePlayerColors) do
             activeByColor[playerColor] = true
+        end
+
+        if type(savedTurnState.playerNamesByColor) == "table" then
+            for playerColor, playerName in pairs(
+                savedTurnState.playerNamesByColor
+            ) do
+                if activeByColor[playerColor] == true
+                    and type(playerName) == "string"
+                    and playerName ~= ""
+                then
+                    playerNamesByColor[playerColor] = playerName
+                end
+            end
         end
     end
 
@@ -439,6 +461,38 @@ function TurnController.new(dependencies)
         return true
     end
 
+    function controller.onPlayersUiClicked(playerColor, action)
+        if action == "toggle" then
+            playersMenuOpen = not playersMenuOpen
+            updateUi()
+            return true
+        end
+
+        if action == "close" then
+            playersMenuOpen = false
+            updateUi()
+            return true
+        end
+
+        local removedColor = type(action) == "string"
+            and string.match(action, "^remove(.+)$") or nil
+
+        if removedColor == nil or activeByColor[removedColor] ~= true then
+            return false
+        end
+
+        if not isAdmin(playerColor) then
+            sendPrivate(
+                "Only an admin can remove players from the turn queue.",
+                playerColor,
+                config.invalidTurnColor
+            )
+            return false
+        end
+
+        return controller.removePlayer(removedColor)
+    end
+
     function controller.advancePhase(playerColor)
         local currentColor = getCurrentColor()
 
@@ -530,6 +584,7 @@ function TurnController.new(dependencies)
         end
 
         firstPlayerMenuOpen = false
+        playersMenuOpen = false
         mockPlayers:load(savedTurnState, activeByColor)
         turnState = stateApi.new(
             getActivePlayerColors(),
@@ -563,7 +618,15 @@ function TurnController.new(dependencies)
         local saveState = stateApi.getSaveState(turnState)
         saveState.hasStarted = hasStarted
         saveState.activePlayerColors = getActivePlayerColors()
+        saveState.playerNamesByColor = {}
+        for _, playerColor in ipairs(saveState.activePlayerColors) do
+            saveState.playerNamesByColor[playerColor] = getPlayerName(
+                playerColor
+            )
+        end
         saveState.mockPlayerColors = mockPlayers:getPlayerColors()
+        saveState.disconnectedMockPlayerColors =
+            mockPlayers:getDisconnectedPlayerColors()
         return saveState
     end
 
@@ -641,6 +704,7 @@ function TurnController.new(dependencies)
         end
 
         local hadCurrentPlayer = getCurrentColor() ~= nil
+        getPlayerName(playerColor)
         activeByColor[playerColor] = true
         stateApi.setPlayerColors(turnState, getActivePlayerColors())
         updateUi()
@@ -690,6 +754,7 @@ function TurnController.new(dependencies)
         end
 
         activeByColor[playerColor] = nil
+        playerNamesByColor[playerColor] = nil
         stateApi.setPlayerColors(turnState, getActivePlayerColors())
         updateUi()
 
@@ -722,8 +787,35 @@ function TurnController.new(dependencies)
         return true, playerColor
     end
 
+    function controller.disconnectMostRecentMockPlayer()
+        local disconnected, playerColor =
+            mockPlayers:disconnectMostRecent()
+
+        if not disconnected then
+            return false, nil
+        end
+
+        updateUi()
+        scheduleMockTurn()
+        return true, playerColor
+    end
+
     function controller.isPlayerActive(playerColor)
         return activeByColor[playerColor] == true
+    end
+
+    function controller.registerPlayer(player)
+        if type(player) ~= "table"
+            or activeByColor[player.color] ~= true
+            or type(player.steam_name) ~= "string"
+            or player.steam_name == ""
+        then
+            return false
+        end
+
+        playerNamesByColor[player.color] = player.steam_name
+        updateUi()
+        return true
     end
 
     function controller.refreshUi()

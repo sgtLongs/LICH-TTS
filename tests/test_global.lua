@@ -23,6 +23,7 @@ local callbackNames = {
     "onEndTurnClicked",
     "onAdvancePhaseClicked",
     "onFirstPlayerUiClicked",
+    "onPlayersUiClicked",
     "onActionPoint1Clicked",
     "onActionPoint2Clicked",
     "onActionPoint3Clicked",
@@ -71,6 +72,7 @@ local gameMethods = {
     "onEndTurnClicked",
     "onAdvancePhaseClicked",
     "onFirstPlayerUiClicked",
+    "onPlayersUiClicked",
     "onActionPoint1Clicked",
     "onActionPoint2Clicked",
     "onActionPoint3Clicked",
@@ -377,6 +379,10 @@ Test.case("global menu callbacks unwrap player and action values", function()
         onSettingsBoardNameEdited(player, "Crypt", "name")
         onSettingsEditModeChanged(player, "True", "edit")
         onDungeonMapUiClicked(player, "tile1", "dungeon")
+        Test.equal(
+            "result-onPlayersUiClicked",
+            onPlayersUiClicked(player, "removeRed", "players")
+        )
 
         Test.equal("Teal", context.callsByName.onDeckSelectionUiClicked.arguments[1])
         Test.equal("9636", context.callsByName.onDeckSelectionUiClicked.arguments[2])
@@ -388,6 +394,8 @@ Test.case("global menu callbacks unwrap player and action values", function()
         Test.equal("Crypt", context.callsByName.onSettingsBoardNameEdited.arguments[2])
         Test.equal("True", context.callsByName.onSettingsEditModeChanged.arguments[2])
         Test.equal("tile1", context.callsByName.onDungeonMapUiClicked.arguments[2])
+        Test.equal("Teal", context.callsByName.onPlayersUiClicked.arguments[1])
+        Test.equal("removeRed", context.callsByName.onPlayersUiClicked.arguments[2])
     end)
 end)
 
@@ -431,12 +439,16 @@ Test.case("global destruction and player callbacks delegate", function()
         local object = {}
 
         onObjectDestroy(object)
-        onPlayerConnect({color = "Blue"})
+        local connectedPlayer = {color = "Blue", steam_name = "Bea"}
+        onPlayerConnect(connectedPlayer)
         onPlayerDisconnect({color = "Red"})
 
         Test.equal(object, context.callsByName.onObjectDestroy.arguments[1])
         Test.truthy(context.callsByName.onPlayerConnect)
-        Test.equal(0, #context.callsByName.onPlayerConnect.arguments)
+        Test.equal(
+            connectedPlayer,
+            context.callsByName.onPlayerConnect.arguments[1]
+        )
         Test.equal(
             "Red",
             context.callsByName.onPlayerDisconnect.arguments[1]

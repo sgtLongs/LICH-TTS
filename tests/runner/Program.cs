@@ -782,6 +782,46 @@ static string RenderFirstPlayerChoices(
     return string.Join('\n', lines);
 }
 
+static string RenderPlayerRows(
+    IReadOnlyList<string> playerColors,
+    IReadOnlyList<string> uiValues)
+{
+    var rowPrefix = uiValues[0];
+    var namePrefix = uiValues[1];
+    var removePrefix = uiValues[2];
+    var removeText = uiValues[3];
+    var lines = new List<string>();
+
+    foreach (var color in playerColors)
+    {
+        lines.Add("        <HorizontalLayout");
+        lines.Add($"            id=\"{rowPrefix}{color}\"");
+        lines.Add("            spacing=\"12\"");
+        lines.Add("            childAlignment=\"MiddleCenter\"");
+        lines.Add("            preferredHeight=\"52\"");
+        lines.Add("            active=\"false\"");
+        lines.Add("        >");
+        lines.Add("            <Text");
+        lines.Add($"                id=\"{namePrefix}{color}\"");
+        lines.Add($"                text=\"{color}\"");
+        lines.Add("                fontSize=\"20\"");
+        lines.Add("                alignment=\"MiddleLeft\"");
+        lines.Add("                preferredWidth=\"300\"");
+        lines.Add("            />");
+        lines.Add("            <Button");
+        lines.Add($"                id=\"{removePrefix}{color}\"");
+        lines.Add($"                text=\"{EscapeXmlAttribute(removeText)}\"");
+        lines.Add($"                onClick=\"onPlayersUiClicked(remove{color})\"");
+        lines.Add("                colors=\"#8F1D1D|#B52A2A|#611212|#611212\"");
+        lines.Add("                preferredWidth=\"150\"");
+        lines.Add("                preferredHeight=\"44\"");
+        lines.Add("            />");
+        lines.Add("        </HorizontalLayout>");
+    }
+
+    return string.Join('\n', lines);
+}
+
 static string SelectorLabel(string label)
 {
     if (label.Length <= 8)
@@ -1035,6 +1075,11 @@ static IReadOnlyDictionary<string, string> BuildGlobalUiRegions(Script script)
             + "ui.inactivePhasePrefix, ui.activePhaseColor, ui.inactivePhaseColor, ui.startPhaseButtonText, "
             + "ui.waitingButtonText, ui.phaseButtonPrefix, ui.firstPlayerButtonId, ui.waitingForDecksText}",
         "turn UI values");
+    var playersUi = EvaluateLuaStrings(
+        script,
+        "local ui = require('src/config/TurnConfig').ui; return {ui.playersRowPrefix, "
+            + "ui.playersNamePrefix, ui.playersRemovePrefix, ui.removePlayerText}",
+        "players menu UI values");
     var spawnDefinitions = EvaluateLuaStrings(
         script,
         "local result = {}; for _, definition in ipairs(require('src/hex/HexSpawnDefinitions')) do "
@@ -1082,6 +1127,7 @@ static IReadOnlyDictionary<string, string> BuildGlobalUiRegions(Script script)
                 script,
                 "return {require('src/config/TurnConfig').ui.firstPlayerChoicePrefix}",
                 "first-player choice prefix")[0]),
+        ["player-menu-rows"] = RenderPlayerRows(players, playersUi),
         ["hex-spawn-selector-rows"] = RenderHexSpawnSelectorRows(
             spawnDefinitions,
             spawnPrefix),
@@ -1396,6 +1442,9 @@ static void ValidateTrackedAssets(string repositoryRoot, Script script)
                 + "end; for _, color in ipairs(config.playerColors) do "
                 + "result[#result + 1] = config.ui.phaseButtonPrefix .. color; "
                 + "result[#result + 1] = config.ui.firstPlayerChoicePrefix .. color; "
+                + "result[#result + 1] = config.ui.playersRowPrefix .. color; "
+                + "result[#result + 1] = config.ui.playersNamePrefix .. color; "
+                + "result[#result + 1] = config.ui.playersRemovePrefix .. color; "
                 + "end; return result",
             "turn UI IDs"));
 

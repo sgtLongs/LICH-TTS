@@ -40,6 +40,20 @@
     tooltip="Browse or edit the connected dungeon levels"
 />
 
+<Button
+    id="playersButton"
+    text="PLAYERS"
+    rectAlignment="UpperLeft"
+    width="180"
+    height="58"
+    offsetXY="482 -22"
+    fontSize="25"
+    fontStyle="Bold"
+    colors="#26364D|#344A69|#192638|#192638"
+    onClick="onPlayersUiClicked(toggle)"
+    tooltip="View and manage the turn queue"
+/>
+
 <Panel
     id="cardPreviewRoot"
     rectAlignment="MiddleLeft"
@@ -207,7 +221,7 @@
                 color="#121A27"
                 padding="22 22 18 18"
                 preferredWidth="600"
-                preferredHeight="150"
+                preferredHeight="210"
             >
                 <VerticalLayout spacing="10" childAlignment="MiddleCenter">
                     <HorizontalLayout
@@ -235,6 +249,13 @@
                             preferredWidth="230"
                             preferredHeight="40"
                         />
+                    </HorizontalLayout>
+                    <HorizontalLayout
+                        preferredWidth="550"
+                        preferredHeight="50"
+                        spacing="12"
+                        childAlignment="MiddleCenter"
+                    >
                         <Button
                             id="settingsAddMockPlayer"
                             text="ADD MOCK PLAYER"
@@ -242,6 +263,14 @@
                             preferredWidth="118"
                             preferredHeight="42"
                             tooltip="Add an unused player color to the turn rotation and automatically click through its turns."
+                        />
+                        <Button
+                            id="settingsDisconnectMockPlayer"
+                            text="DISCONNECT MOCK"
+                            onClick="onSettingsUiClicked(disconnectMockPlayer)"
+                            preferredWidth="142"
+                            preferredHeight="42"
+                            tooltip="Stop the most recently added connected mock player without removing it from the turn rotation."
                         />
                         <Button
                             id="settingsRemoveMockPlayer"
@@ -1766,6 +1795,178 @@
         <Button
             text="CANCEL"
             onClick="onFirstPlayerUiClicked(close)"
+            preferredWidth="300"
+            preferredHeight="44"
+        />
+    </VerticalLayout>
+</Panel>
+
+<Panel
+    id="playersMenuRoot"
+    rectAlignment="MiddleCenter"
+    width="560"
+    height="650"
+    color="#090C12F5"
+    padding="24 24 24 24"
+    active="false"
+>
+    <VerticalLayout spacing="10" childAlignment="UpperCenter">
+        <Text
+            text="PLAYERS"
+            fontSize="28"
+            fontStyle="Bold"
+            color="#E5E7EB"
+            preferredHeight="44"
+        />
+        <Text
+            text="Players remain in the turn queue while disconnected."
+            fontSize="17"
+            color="#CBD5E1"
+            preferredHeight="46"
+        />
+        <!-- BEGIN GENERATED:player-menu-rows -->
+        <HorizontalLayout
+            id="playersRowWhite"
+            spacing="12"
+            childAlignment="MiddleCenter"
+            preferredHeight="52"
+            active="false"
+        >
+            <Text
+                id="playersNameWhite"
+                text="White"
+                fontSize="20"
+                alignment="MiddleLeft"
+                preferredWidth="300"
+            />
+            <Button
+                id="playersRemoveWhite"
+                text="REMOVE"
+                onClick="onPlayersUiClicked(removeWhite)"
+                colors="#8F1D1D|#B52A2A|#611212|#611212"
+                preferredWidth="150"
+                preferredHeight="44"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout
+            id="playersRowBrown"
+            spacing="12"
+            childAlignment="MiddleCenter"
+            preferredHeight="52"
+            active="false"
+        >
+            <Text
+                id="playersNameBrown"
+                text="Brown"
+                fontSize="20"
+                alignment="MiddleLeft"
+                preferredWidth="300"
+            />
+            <Button
+                id="playersRemoveBrown"
+                text="REMOVE"
+                onClick="onPlayersUiClicked(removeBrown)"
+                colors="#8F1D1D|#B52A2A|#611212|#611212"
+                preferredWidth="150"
+                preferredHeight="44"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout
+            id="playersRowRed"
+            spacing="12"
+            childAlignment="MiddleCenter"
+            preferredHeight="52"
+            active="false"
+        >
+            <Text
+                id="playersNameRed"
+                text="Red"
+                fontSize="20"
+                alignment="MiddleLeft"
+                preferredWidth="300"
+            />
+            <Button
+                id="playersRemoveRed"
+                text="REMOVE"
+                onClick="onPlayersUiClicked(removeRed)"
+                colors="#8F1D1D|#B52A2A|#611212|#611212"
+                preferredWidth="150"
+                preferredHeight="44"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout
+            id="playersRowGreen"
+            spacing="12"
+            childAlignment="MiddleCenter"
+            preferredHeight="52"
+            active="false"
+        >
+            <Text
+                id="playersNameGreen"
+                text="Green"
+                fontSize="20"
+                alignment="MiddleLeft"
+                preferredWidth="300"
+            />
+            <Button
+                id="playersRemoveGreen"
+                text="REMOVE"
+                onClick="onPlayersUiClicked(removeGreen)"
+                colors="#8F1D1D|#B52A2A|#611212|#611212"
+                preferredWidth="150"
+                preferredHeight="44"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout
+            id="playersRowTeal"
+            spacing="12"
+            childAlignment="MiddleCenter"
+            preferredHeight="52"
+            active="false"
+        >
+            <Text
+                id="playersNameTeal"
+                text="Teal"
+                fontSize="20"
+                alignment="MiddleLeft"
+                preferredWidth="300"
+            />
+            <Button
+                id="playersRemoveTeal"
+                text="REMOVE"
+                onClick="onPlayersUiClicked(removeTeal)"
+                colors="#8F1D1D|#B52A2A|#611212|#611212"
+                preferredWidth="150"
+                preferredHeight="44"
+            />
+        </HorizontalLayout>
+        <HorizontalLayout
+            id="playersRowBlue"
+            spacing="12"
+            childAlignment="MiddleCenter"
+            preferredHeight="52"
+            active="false"
+        >
+            <Text
+                id="playersNameBlue"
+                text="Blue"
+                fontSize="20"
+                alignment="MiddleLeft"
+                preferredWidth="300"
+            />
+            <Button
+                id="playersRemoveBlue"
+                text="REMOVE"
+                onClick="onPlayersUiClicked(removeBlue)"
+                colors="#8F1D1D|#B52A2A|#611212|#611212"
+                preferredWidth="150"
+                preferredHeight="44"
+            />
+        </HorizontalLayout>
+        <!-- END GENERATED:player-menu-rows -->
+        <Button
+            text="CLOSE"
+            onClick="onPlayersUiClicked(close)"
             preferredWidth="300"
             preferredHeight="44"
         />

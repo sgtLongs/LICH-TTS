@@ -20,6 +20,10 @@ function TurnSystem.onFirstPlayerUiClicked(playerColor, action)
     return defaultController.onFirstPlayerUiClicked(playerColor, action)
 end
 
+function TurnSystem.onPlayersUiClicked(playerColor, action)
+    return defaultController.onPlayersUiClicked(playerColor, action)
+end
+
 function TurnSystem.onLoad(savedTurnState)
     return defaultController.onLoad(savedTurnState)
 end
@@ -56,8 +60,16 @@ function TurnSystem.removeMostRecentMockPlayer()
     return defaultController.removeMostRecentMockPlayer()
 end
 
+function TurnSystem.disconnectMostRecentMockPlayer()
+    return defaultController.disconnectMostRecentMockPlayer()
+end
+
 function TurnSystem.isPlayerActive(playerColor)
     return defaultController.isPlayerActive(playerColor)
+end
+
+function TurnSystem.registerPlayer(player)
+    return defaultController.registerPlayer(player)
 end
 
 function TurnSystem.refreshUi()

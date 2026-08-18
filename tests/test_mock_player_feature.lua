@@ -29,9 +29,12 @@ Test.case("mock player feature owns allocation names and persistence", function(
     Test.deepEqual({"Brown"}, feature:getPlayerColors())
 
     feature:load({
-        mockPlayerColors = {"Blue", "invalid", "White"}
+        mockPlayerColors = {"Blue", "invalid", "White"},
+        disconnectedMockPlayerColors = {"Blue", "White"}
     }, {Blue = true})
     Test.deepEqual({"Blue"}, feature:getPlayerColors())
+    Test.deepEqual({"Blue"}, feature:getDisconnectedPlayerColors())
+    Test.equal("Mock Blue (Disconnected)", feature:getName("Blue"))
 end)
 
 Test.case("mock player feature tracks the most recently added player", function()
@@ -57,6 +60,48 @@ Test.case("mock player feature tracks the most recently added player", function(
     Test.equal(firstColor, readdedColor)
     Test.equal(firstColor, feature:getMostRecentPlayerColor())
     Test.deepEqual({firstColor}, feature:getPlayerColors())
+end)
+
+Test.case("disconnecting a mock preserves it and stops automation", function()
+    local wait = FakeWait.new()
+    local advanced = {}
+    local feature = MockPlayerFeature.new({
+        scheduler = Scheduler.new(wait),
+        getPlayer = function()
+            return {seated = false}
+        end
+    })
+    local _, firstColor = feature:add({})
+    local activeByColor = {[firstColor] = true}
+    local _, secondColor = feature:add(activeByColor)
+    local parameters = {
+        getCurrentColor = function()
+            return secondColor
+        end,
+        isBlocked = function()
+            return false
+        end,
+        advance = function(color)
+            advanced[#advanced + 1] = color
+        end
+    }
+
+    Test.truthy(feature:schedule(parameters))
+    local disconnected, color = feature:disconnectMostRecent()
+    Test.truthy(disconnected)
+    Test.equal(secondColor, color)
+    Test.truthy(feature:isMock(secondColor))
+    Test.truthy(feature:isDisconnected(secondColor))
+    Test.deepEqual({firstColor, secondColor}, feature:getPlayerColors())
+    Test.deepEqual({secondColor}, feature:getDisconnectedPlayerColors())
+    Test.falsy(feature:schedule(parameters))
+
+    wait.advanceTime(MockPlayerConfig.phaseDelaySeconds)
+    Test.deepEqual({}, advanced)
+    disconnected, color = feature:disconnectMostRecent()
+    Test.truthy(disconnected)
+    Test.equal(firstColor, color)
+    Test.falsy(feature:disconnectMostRecent())
 end)
 
 Test.case("mock player feature schedules only current unblocked mocks", function()

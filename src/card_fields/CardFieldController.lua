@@ -160,6 +160,9 @@ function CardFieldController.new(dependencies)
         or makeDefaultZoneBehaviors(dependencies)
     controller.onDeckSpawned = dependencies.onDeckSpawned or function()
     end
+    controller.onHeroHealthDepleted = dependencies.onHeroHealthDepleted
+        or function()
+        end
     controller.objectAdapter = dependencies.objectAdapter or ObjectAdapter
     controller.getObjectFromGuid = dependencies.getObjectFromGUID
         or runtime.getObjectFromGUID
@@ -378,6 +381,14 @@ function CardFieldController:adjustHeroStat(
     stats[statKey] = stats[statKey] + amount
     CardFieldState.setHeroStats(self.state, field, stats)
     self:addHeroStatDisplays(field)
+
+    if statKey == "health" and amount < 0 and stats.health <= 0 then
+        self.onHeroHealthDepleted(
+            CardFieldDefinitions.ownerColor(field),
+            stats.health
+        )
+    end
+
     return true
 end
 

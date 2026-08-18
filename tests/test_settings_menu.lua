@@ -16,6 +16,8 @@ local addedMockPlayerCalls = 0
 local addMockPlayerSucceeded = true
 local removedMockPlayerCalls = 0
 local removeMockPlayerSucceeded = true
+local disconnectedMockPlayerCalls = 0
+local disconnectMockPlayerSucceeded = true
 local savedBoardsChangedCalls = 0
 local currentBoardState = nil
 local currentBoardJson = nil
@@ -54,6 +56,9 @@ local function initialize(savedState, options)
     addMockPlayerSucceeded = options.addMockPlayerSucceeded ~= false
     removedMockPlayerCalls = 0
     removeMockPlayerSucceeded = options.removeMockPlayerSucceeded ~= false
+    disconnectedMockPlayerCalls = 0
+    disconnectMockPlayerSucceeded =
+        options.disconnectMockPlayerSucceeded ~= false
     savedBoardsChangedCalls = 0
     currentBoardState = options.currentBoardState or {marker = "current"}
     currentBoardJson = options.currentBoardJson or "current-json"
@@ -173,6 +178,12 @@ local function initialize(savedState, options)
             removedMockPlayerCalls = removedMockPlayerCalls + 1
             return removeMockPlayerSucceeded,
                 removeMockPlayerSucceeded and "White" or nil
+        end,
+        disconnectMockPlayer = function()
+            disconnectedMockPlayerCalls =
+                disconnectedMockPlayerCalls + 1
+            return disconnectMockPlayerSucceeded,
+                disconnectMockPlayerSucceeded and "White" or nil
         end
     }, savedState)
 end
@@ -207,6 +218,46 @@ Test.case("players can renew only their own deck spawn button", function()
     Test.equal("false", attributes["settingsRestartGame.interactable"])
     Test.equal("false", attributes["settingsAddMockPlayer.interactable"])
     Test.equal("false", attributes["settingsRemoveMockPlayer.interactable"])
+    Test.equal(
+        "false",
+        attributes["settingsDisconnectMockPlayer.interactable"]
+    )
+end)
+
+Test.case("only admins can disconnect a mock without removing it", function()
+    initialize(nil)
+    SettingsMenu.handleAction("Blue", "toggle")
+    SettingsMenu.handleAction("Blue", "disconnectMockPlayer")
+
+    Test.equal(0, disconnectedMockPlayerCalls)
+    Test.contains(messages[#messages].message, "Only an admin")
+
+    SettingsMenu.handleAction("Red", "toggle")
+    SettingsMenu.handleAction("Red", "disconnectMockPlayer")
+
+    Test.equal(1, disconnectedMockPlayerCalls)
+    Test.equal(1, persistCalls)
+    Test.equal(
+        "true",
+        attributes["settingsDisconnectMockPlayer.interactable"]
+    )
+    Test.equal(
+        "Disconnected Mock White without removing it from the turn rotation.",
+        attributes["settingsMenuStatus.text"]
+    )
+end)
+
+Test.case("settings reports when no mock can be disconnected", function()
+    initialize(nil, {disconnectMockPlayerSucceeded = false})
+    SettingsMenu.handleAction("Red", "toggle")
+    SettingsMenu.handleAction("Red", "disconnectMockPlayer")
+
+    Test.equal(1, disconnectedMockPlayerCalls)
+    Test.equal(0, persistCalls)
+    Test.equal(
+        "There are no connected mock players to disconnect.",
+        attributes["settingsMenuStatus.text"]
+    )
 end)
 
 Test.case("only admins can add mock players from settings", function()

@@ -172,6 +172,29 @@ function TurnView.buildPatch(config, model)
         )
     end
 
+    add(
+        patches,
+        config.ui.playersMenuRootId,
+        "active",
+        model.playersMenuOpen == true and "true" or "false"
+    )
+
+    local playerNamesByColor = model.playerNamesByColor or {}
+    for _, playerColor in ipairs(config.playerColors) do
+        add(
+            patches,
+            config.ui.playersRowPrefix .. playerColor,
+            "active",
+            activeByColor[playerColor] == true and "true" or "false"
+        )
+        add(
+            patches,
+            config.ui.playersNamePrefix .. playerColor,
+            "text",
+            playerNamesByColor[playerColor] or playerColor
+        )
+    end
+
     return patches
 end
 

@@ -134,6 +134,10 @@ function onFirstPlayerUiClicked(player, action, id)
     return Game.onFirstPlayerUiClicked(player.color, action)
 end
 
+function onPlayersUiClicked(player, action, id)
+    return Game.onPlayersUiClicked(player.color, action)
+end
+
 function onHexGridClicked(object, playerColor, altClick)
     Game.onHexGridClicked(playerColor, altClick)
 end
@@ -239,7 +243,7 @@ function onObjectDestroy(object)
 end
 
 function onPlayerConnect(player)
-    Game.onPlayerConnect()
+    Game.onPlayerConnect(player)
 end
 
 function onPlayerDisconnect(player)

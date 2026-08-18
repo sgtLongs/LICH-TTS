@@ -157,6 +157,8 @@ function GameController:onLoad(saveState)
             )
         end,
         removeMockPlayer = self.turnSystem.removeMostRecentMockPlayer,
+        disconnectMockPlayer =
+            self.turnSystem.disconnectMostRecentMockPlayer,
         renewDeckSlotButton = self.cardFields.renewDeckSlotButton,
         restartGame = function(playerColor)
             return self:restartGame(playerColor)
@@ -714,6 +716,10 @@ function GameController:onFirstPlayerUiClicked(playerColor, action)
     return self.turnSystem.onFirstPlayerUiClicked(playerColor, action)
 end
 
+function GameController:onPlayersUiClicked(playerColor, action)
+    return self.turnSystem.onPlayersUiClicked(playerColor, action)
+end
+
 function GameController:onHexGridClicked(playerColor, altClick)
     self.hexGrid.onClicked(playerColor, altClick)
 end
@@ -932,14 +938,18 @@ function GameController:onObjectDestroy(object)
     self.hexGrid.onObjectDestroy(object)
 end
 
-function GameController:onPlayerConnect()
+function GameController:onPlayerConnect(player)
     self.cardFields.refreshDeckSlotGlow()
-    self.turnSystem.refreshUi()
+    if type(self.turnSystem.registerPlayer) == "function" then
+        self.turnSystem.registerPlayer(player)
+    else
+        self.turnSystem.refreshUi()
+    end
 end
 
-function GameController:onPlayerDisconnect(playerColor)
+function GameController:onPlayerDisconnect()
     self.cardFields.refreshDeckSlotGlow()
-    self.turnSystem.removePlayer(playerColor)
+    self.turnSystem.refreshUi()
 end
 
 return GameController
